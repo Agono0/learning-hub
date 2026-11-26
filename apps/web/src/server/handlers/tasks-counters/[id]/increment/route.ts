@@ -4,16 +4,14 @@
  * POST /api/tasks-counters/[id]/increment `{ day?, by? }` — upserts the
  * (counter, day) row ADDING `by` (default 1); repeated taps accumulate.
  */
+import { calendarDay } from '@/lib/query-params'
 import { z } from 'zod'
 import { incrementCounter } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
 import { routeId, taskErrorResponse, type IdContext } from '../../../tasks/_shared'
 
 const bodySchema = z.object({
-  day: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
+  day: calendarDay.optional(),
   by: z.number().int().min(1).max(1000).default(1),
 })
 

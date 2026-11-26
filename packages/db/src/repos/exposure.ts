@@ -7,6 +7,7 @@
  * (counts, distinct days) are computed at read time so the promotion rule in
  * `@learning-hub/core/exposure` stays the single source of truth.
  */
+import { rowLimit } from '../limits'
 import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm'
 import { meetsPromotionThreshold, normalizeExposureToken } from '@learning-hub/core/exposure'
 import { getDb, type LearningHubDB } from '../index'
@@ -135,7 +136,7 @@ export function getWordExposureSummaries(
     .from(exposureEvents)
     .groupBy(exposureEvents.normalized)
     .orderBy(desc(count), desc(sql`max(${exposureEvents.createdAt})`))
-    .limit(limit)
+    .limit(rowLimit(limit))
     .all()
 
   const existing = findCardFronts(

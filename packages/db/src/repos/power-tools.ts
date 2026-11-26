@@ -3,6 +3,7 @@
  * - Quick Captures (inbox thoughts, external references)
  * - Card Vector Embeddings & Similarity Search
  */
+import { rowLimit } from '../limits'
 import { and, desc, eq, not, sql } from 'drizzle-orm'
 import { cosineSimilarity } from '@learning-hub/core/embeddings'
 import { getDb } from '../index'
@@ -47,7 +48,7 @@ export function listQuickCaptures(limit = 50, includeProcessed = false): QuickCa
       .select()
       .from(quickCaptures)
       .orderBy(desc(quickCaptures.createdAt))
-      .limit(limit)
+      .limit(rowLimit(limit))
       .all() as QuickCaptureRow[]
   }
   return db
@@ -55,7 +56,7 @@ export function listQuickCaptures(limit = 50, includeProcessed = false): QuickCa
     .from(quickCaptures)
     .where(eq(quickCaptures.processed, false))
     .orderBy(desc(quickCaptures.createdAt))
-    .limit(limit)
+    .limit(rowLimit(limit))
     .all() as QuickCaptureRow[]
 }
 

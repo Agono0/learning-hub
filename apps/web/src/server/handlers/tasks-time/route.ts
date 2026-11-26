@@ -5,28 +5,20 @@
  * history (newest first) plus the filtered total, for the tick indicator
  * (S3-77) and inline worklog corrections (S3-28).
  */
+import { calendarDay } from '@/lib/query-params'
 import { listTimeLogs, sumTimeLogs } from '@learning-hub/db'
-import { readQuery } from '@/lib/api'
+import { readQuery, withRoute } from '@/lib/api'
 import { z } from 'zod'
 
 const querySchema = z.object({
   taskId: z.coerce.number().int().positive().optional(),
-  day: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
-  from: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
-  to: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
+  day: calendarDay.optional(),
+  from: calendarDay.optional(),
+  to: calendarDay.optional(),
 })
 
-export async function GET(req: Request) {
+export const GET = withRoute(async (req: Request) => {
   const q = readQuery(req, querySchema)
   const filter = { taskId: q.taskId, day: q.day, from: q.from, to: q.to }
   return Response.json({ logs: listTimeLogs(filter), totalMs: sumTimeLogs(filter) })
-}
+})

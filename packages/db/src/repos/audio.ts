@@ -3,6 +3,7 @@
  *
  * Provides queries for due cards audio scripts and hands-free commute session logs.
  */
+import { rowLimit } from '../limits'
 import { and, asc, desc, eq, lte } from 'drizzle-orm'
 import { cardAnswerText, cardFrontText, type CardContent } from '@learning-hub/core'
 import { audioSessions, cards, decks } from '../schema'
@@ -42,7 +43,12 @@ export function listAudioSessions(
   database?: LearningHubDB,
 ): (typeof audioSessions.$inferSelect)[] {
   const conn = database ?? getDb()
-  return conn.select().from(audioSessions).orderBy(desc(audioSessions.createdAt)).limit(limit).all()
+  return conn
+    .select()
+    .from(audioSessions)
+    .orderBy(desc(audioSessions.createdAt))
+    .limit(rowLimit(limit))
+    .all()
 }
 
 /** Spoken stand-in for a cloze blank — TTS engines read '___' as 'underscore'. */

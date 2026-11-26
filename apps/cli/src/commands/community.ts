@@ -1,6 +1,7 @@
 /**
  * Dialectic Debate, Spatial Memory Palace, 3D Virtual World, and Study Guilds CLI commands.
  */
+import { numFlag } from '../flags'
 import { type RegisteredCommand } from './registry'
 import type { DebateTurn } from '@learning-hub/core'
 import {
@@ -110,8 +111,8 @@ export function debateCommand(args: string[]): void {
       console.error('Usage: learning-hub debate vote <id> --verdict "..." [--score N] [--xp N]')
       return
     }
-    const score = Number(parseFlag(args, '--score') ?? '80')
-    const xp = Number(parseFlag(args, '--xp') ?? '20')
+    const score = numFlag(parseFlag(args, '--score'), '--score', 80)
+    const xp = numFlag(parseFlag(args, '--xp'), '--xp', 20)
     const result = submitDialecticVerdict(id, verdict, score, xp)
     if (!result) {
       console.error(`✖ Debate #${id} not found.`)

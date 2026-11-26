@@ -1,6 +1,7 @@
 /**
  * /api/hud/capture — Quick capture thoughts, notes, and external URLs from global HUD.
  */
+import { queryId, queryLimit } from '@/lib/query-params'
 import { z } from 'zod'
 import {
   createQuickCapture,
@@ -24,7 +25,7 @@ const updateCaptureSchema = z.object({
 
 export const GET = withRoute(async (req: Request) => {
   const url = new URL(req.url)
-  const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit') || 50)))
+  const limit = queryLimit(url.searchParams, 50, 100)
   const includeProcessed = url.searchParams.get('includeProcessed') === 'true'
 
   const captures = listQuickCaptures(limit, includeProcessed)
@@ -60,8 +61,8 @@ export const PATCH = withRoute(async (req: Request) => {
 
 export const DELETE = withRoute(async (req: Request) => {
   const url = new URL(req.url)
-  const id = Number(url.searchParams.get('id'))
-  if (!id || Number.isNaN(id)) {
+  const id = queryId(url.searchParams, 'id')
+  if (id === null) {
     return Response.json({ ok: false, error: 'Valid id required' }, { status: 400 })
   }
   const deleted = deleteQuickCapture(id)

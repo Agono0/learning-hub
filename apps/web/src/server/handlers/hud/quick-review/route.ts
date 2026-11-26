@@ -1,12 +1,13 @@
 /**
  * /api/hud/quick-review — Returns top due cards for fast desktop HUD micro-review.
  */
+import { queryLimit } from '@/lib/query-params'
 import { getDueCardsForAudio } from '@learning-hub/db'
 import { withRoute } from '@/lib/api'
 
 export const GET = withRoute(async (req: Request) => {
   const url = new URL(req.url)
-  const limit = Math.min(10, Math.max(1, Number(url.searchParams.get('limit') || 3)))
+  const limit = queryLimit(url.searchParams, 3, 10)
 
   const cards = getDueCardsForAudio(limit)
   return Response.json({

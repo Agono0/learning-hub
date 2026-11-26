@@ -7,16 +7,14 @@
  * tracked totals, plus the overdue row (open tasks due before today —
  * SP's red "from previous days" bucket).
  */
+import { calendarDay } from '@/lib/query-params'
 import { listTaskItems, sumTimeLogs } from '@learning-hub/db'
-import { readQuery } from '@/lib/api'
+import { readQuery, withRoute } from '@/lib/api'
 import { z } from 'zod'
 
 const querySchema = z.object({
   days: z.coerce.number().int().min(1).max(60).default(7),
-  from: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
+  from: calendarDay.optional(),
 })
 
 /** Date part of a due value (`YYYY-MM-DD` prefix — timed dues included). */
@@ -26,7 +24,7 @@ function daysAgo(n: number): string {
   return new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10)
 }
 
-export async function GET(req: Request) {
+export const GET = withRoute(async (req: Request) => {
   const q = readQuery(req, querySchema)
   const start = q.from ?? daysAgo(0)
   const days: string[] = []
@@ -65,4 +63,4 @@ export async function GET(req: Request) {
   )
 
   return Response.json({ start, days: columns, overdue, deadlines })
-}
+})

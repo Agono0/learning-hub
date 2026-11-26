@@ -8,16 +8,14 @@
  * - `stillOpenForDay`: open tasks due that day (the plan-tomorrow prompt);
  * - `archive`: the S3-11 auto-archive pass applied (young/old tiers).
  */
+import { calendarDay } from '@/lib/query-params'
 import { z } from 'zod'
 import { listTaskItems, runArchivePass, sumTimeLogs } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
 import { taskErrorResponse } from '../tasks/_shared'
 
 const bodySchema = z.object({
-  day: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
+  day: calendarDay.optional(),
 })
 
 export const POST = withRoute(async (req: Request) => {

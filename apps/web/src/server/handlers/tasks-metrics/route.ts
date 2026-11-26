@@ -6,20 +6,15 @@
  *      (per-key addition), `impact` (1-4), `energy` (1-3) and `reflection`
  *      replace when given — the evaluation sheet writes here.
  */
+import { calendarDay } from '@/lib/query-params'
 import { z } from 'zod'
 import { listMetricDays, upsertMetricDay } from '@learning-hub/db'
 import { readJson, readQuery, withRoute } from '@/lib/api'
 import { taskErrorResponse } from '../tasks/_shared'
 
 const querySchema = z.object({
-  from: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
-  to: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
+  from: calendarDay.optional(),
+  to: calendarDay.optional(),
 })
 
 /** GET /api/tasks-metrics. */
@@ -29,7 +24,7 @@ export async function GET(req: Request) {
 }
 
 const bodySchema = z.object({
-  day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  day: calendarDay,
   metrics: z.record(z.string(), z.number()).optional(),
   impact: z.number().int().min(1).max(4).nullable().optional(),
   energy: z.number().int().min(1).max(3).nullable().optional(),

@@ -8,6 +8,7 @@
  * copies of the deck upsert, the basic-card parser, the cognitive card
  * selects, and the confusion-pair revlog query.
  */
+import { rowLimit } from '../limits'
 import { and, asc, desc, eq, sql, type SQL } from 'drizzle-orm'
 import { getDb, type LearningHubDB } from '../index'
 import { cards, decks, revlog } from '../schema'
@@ -146,7 +147,7 @@ export function listCardsByStability(
     .from(cards)
     .where(and(...conditions))
     .orderBy(asc(cards.stability))
-    .limit(limit)
+    .limit(rowLimit(limit))
     .all()
 }
 
@@ -177,6 +178,6 @@ export function recentReviewEvents(
     .from(revlog)
     .where(sql`NOT EXISTS (SELECT 1 FROM revlog_undos u WHERE u.revlog_id = ${revlog.id})`)
     .orderBy(desc(revlog.id))
-    .limit(limit)
+    .limit(rowLimit(limit))
     .all()
 }

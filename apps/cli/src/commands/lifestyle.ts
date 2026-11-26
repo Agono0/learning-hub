@@ -1,6 +1,7 @@
 /**
  * Habits, Journal, and Physio CLI commands.
  */
+import { numFlag } from '../flags'
 import { type RegisteredCommand } from './registry'
 import { dayKey } from '@learning-hub/core'
 import {
@@ -76,7 +77,7 @@ export function habitsCommand(args: string[]): void {
       console.error('Usage: learning-hub habits history <id> [--days N]')
       return
     }
-    const days = Number(parseFlag(args, '--days') ?? 14)
+    const days = numFlag(parseFlag(args, '--days'), '--days', 14)
     const { habits } = listHabits({ includeArchived: true })
     const habit = habits.find((h) => h.id === id)
     if (!habit) {

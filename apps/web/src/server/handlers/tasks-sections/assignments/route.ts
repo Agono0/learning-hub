@@ -5,8 +5,9 @@
  * Today list's inline section headers: one row per SECTIONED task; the
  * page treats absent ids as unsectioned.
  */
+import { withRoute } from '@/lib/api'
 import { listTaskSectionAssignments } from '@learning-hub/db'
 
-export async function GET() {
+export const GET = withRoute(async () => {
   return Response.json({ assignments: listTaskSectionAssignments() })
-}
+})

@@ -6,6 +6,7 @@
  * lessons → the course's skills, with prereq edges between those skills —
  * the course mind map (M5).
  */
+import { queryId } from '@/lib/query-params'
 import { eq } from 'drizzle-orm'
 import {
   db,
@@ -36,8 +37,8 @@ interface GraphNode {
 }
 
 export const GET = withRoute(async (req: Request) => {
-  const courseId = Number(new URL(req.url).searchParams.get('courseId'))
-  if (Number.isInteger(courseId) && courseId > 0) {
+  const courseId = queryId(new URL(req.url).searchParams, 'courseId')
+  if (courseId !== null) {
     return courseMindMap(courseId)
   }
   return knowledgeGraph()

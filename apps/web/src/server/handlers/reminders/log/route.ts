@@ -1,6 +1,7 @@
 /**
  * /api/reminders/log — Append-only audit trail of dispatched reminders.
  */
+import { queryLimit } from '@/lib/query-params'
 import { z } from 'zod'
 import { listRecentReminderLogs, logReminderSent, reminderEngagement } from '@learning-hub/db'
 import { REMINDER_KINDS, type ReminderKind } from '@learning-hub/core/reminders'
@@ -15,7 +16,7 @@ const logReminderSchema = z.object({
 
 export const GET = withRoute(async (req: Request) => {
   const url = new URL(req.url)
-  const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit')) || 50))
+  const limit = queryLimit(url.searchParams, 50, 100)
   const logs = listRecentReminderLogs(limit)
   // Engagement (F-08④): clicks vs sends over the trailing week — both tables
   // are append-only, so this is a pure read.

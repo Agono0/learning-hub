@@ -1,6 +1,7 @@
 /**
  * Learning HUB — Multi-Agent Dialectic Arena DB Repository.
  */
+import { rowLimit } from '../limits'
 import { desc, eq } from 'drizzle-orm'
 import type { DebateTurn } from '@learning-hub/core'
 import { getDb, type LearningHubDB } from '../index'
@@ -48,7 +49,7 @@ export function listDialecticDebates(
     .select()
     .from(dialecticArenaDebates)
     .orderBy(desc(dialecticArenaDebates.createdAt))
-    .limit(limit)
+    .limit(rowLimit(limit))
     .all()
 }
 

@@ -6,19 +6,14 @@
  * quoting on the title, as `text/csv` attachment (the Worklog page's export
  * button and S3-28's inline corrections both consume the same log source).
  */
+import { calendarDay } from '@/lib/query-params'
 import { getTaskItem, listTimeLogs } from '@learning-hub/db'
-import { readQuery } from '@/lib/api'
+import { readQuery, withRoute } from '@/lib/api'
 import { z } from 'zod'
 
 const querySchema = z.object({
-  from: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
-  to: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
+  from: calendarDay.optional(),
+  to: calendarDay.optional(),
 })
 
 /** RFC 4180: quote a field when it carries a comma, quote or newline. */
@@ -26,7 +21,7 @@ function csvField(value: string): string {
   return /[",\n]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value
 }
 
-export async function GET(req: Request) {
+export const GET = withRoute(async (req: Request) => {
   const q = readQuery(req, querySchema)
   const logs = listTimeLogs({ from: q.from, to: q.to })
 
@@ -51,4 +46,4 @@ export async function GET(req: Request) {
       'content-disposition': `attachment; filename="worklog-${q.from ?? 'all'}-${q.to ?? 'all'}.csv"`,
     },
   })
-}
+})

@@ -4,6 +4,7 @@
  * - 30-Tier Seasonal Motivation Pass
  * - 1v1 Review Duel Match Records
  */
+import { rowLimit } from '../limits'
 import { and, desc, eq, sql } from 'drizzle-orm'
 import { calculateGuildLevel, calculateSeasonProgress } from '@learning-hub/core/guilds'
 import { getDb } from '../index'
@@ -74,7 +75,12 @@ export function getGuild(id: number): GuildRow | null {
 
 export function listGuilds(limit = 20): GuildRow[] {
   const db = getDb()
-  return db.select().from(guilds).orderBy(desc(guilds.totalXp)).limit(limit).all() as GuildRow[]
+  return db
+    .select()
+    .from(guilds)
+    .orderBy(desc(guilds.totalXp))
+    .limit(rowLimit(limit))
+    .all() as GuildRow[]
 }
 
 /**
@@ -242,7 +248,12 @@ export function recordDuelResult(data: {
 
 export function listRecentDuels(limit = 10) {
   const db = getDb()
-  return db.select().from(reviewDuels).orderBy(desc(reviewDuels.completedAt)).limit(limit).all()
+  return db
+    .select()
+    .from(reviewDuels)
+    .orderBy(desc(reviewDuels.completedAt))
+    .limit(rowLimit(limit))
+    .all()
 }
 
 export interface GuildMembershipRow {

@@ -1,6 +1,7 @@
 /**
  * /api/social/guilds — Study Guild clans, member rosters & pooled XP.
  */
+import { queryLimit } from '@/lib/query-params'
 import { z } from 'zod'
 import { eq } from 'drizzle-orm'
 import {
@@ -54,7 +55,7 @@ export const GET = withRoute(async (req: Request) => {
     })
   }
 
-  const limit = Math.min(50, Math.max(1, Number(url.searchParams.get('limit') || 20)))
+  const limit = queryLimit(url.searchParams, 20, 50)
   const guildsList = listGuilds(limit)
   return Response.json({
     ok: true,

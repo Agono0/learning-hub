@@ -1,6 +1,7 @@
 /**
  * /api/curriculum/graph/dependencies — Manages concept prerequisite edges in the DAG.
  */
+import { queryId } from '@/lib/query-params'
 import { z } from 'zod'
 import {
   ConceptCycleError,
@@ -48,8 +49,8 @@ export const POST = withRoute(async (req: Request) => {
 
 export const DELETE = withRoute(async (req: Request) => {
   const url = new URL(req.url)
-  const id = Number(url.searchParams.get('id'))
-  if (!id || Number.isNaN(id)) {
+  const id = queryId(url.searchParams, 'id')
+  if (id === null) {
     return Response.json({ ok: false, error: 'Valid id required' }, { status: 400 })
   }
   const deleted = removeConceptDependency(id)

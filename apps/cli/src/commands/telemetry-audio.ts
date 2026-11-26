@@ -1,6 +1,7 @@
 /**
  * Audio schedule, Cognitive Load telemetry, and Solo RPG Games CLI commands.
  */
+import { limitFlag, numFlag } from '../flags'
 import { type RegisteredCommand } from './registry'
 import { BOSS_ROSTER, buildTonightPlan, sleepProfileSchema } from '@learning-hub/core'
 import {
@@ -32,9 +33,9 @@ export function tmrPlanCommand(args: string[]): void {
   const profile = sleepProfileSchema.parse({
     bedtime: parseFlag(args, '--bedtime') ?? '23:00',
     wakeTime: parseFlag(args, '--wake') ?? '07:00',
-    chronotype: Number(parseFlag(args, '--chronotype') ?? '0'),
-    sleepDebtHours: Number(parseFlag(args, '--debt') ?? '0'),
-    maxAcousticDba: Number(parseFlag(args, '--dba') ?? '35'),
+    chronotype: numFlag(parseFlag(args, '--chronotype'), '--chronotype', 0),
+    sleepDebtHours: numFlag(parseFlag(args, '--debt'), '--debt', 0),
+    maxAcousticDba: numFlag(parseFlag(args, '--dba'), '--dba', 35),
   })
 
   // Shared repo projection — identical candidate fetch to the MCP
@@ -47,7 +48,7 @@ export function tmrPlanCommand(args: string[]): void {
       .map((r) => ({ id: r.id, stability: r.stability, difficulty: r.difficulty, due: r.due })),
   )
     .sort((a, b) => fragilityScore(b) - fragilityScore(a))
-    .slice(Number(parseFlag(args, '--limit') ?? '12'))
+    .slice(0, limitFlag(parseFlag(args, '--limit'), 12))
 
   const plan = buildTonightPlan(profile, candidates)
 
@@ -87,12 +88,12 @@ export function audioCommand(args: string[]): void {
 
   if (sub === 'schedule') {
     const kind = parseFlag(args, '--kind') ?? 'commute'
-    const limit = Number(parseFlag(args, '--limit') ?? (kind === 'tmr' ? '40' : '20'))
+    const limit = limitFlag(parseFlag(args, '--limit'), kind === 'tmr' ? 40 : 20)
 
     if (kind === 'tmr') {
       const action = parseFlag(args, '--action') ?? 'get'
       if (action === 'mint') {
-        const sinceHours = Number(parseFlag(args, '--since-hours') ?? '24')
+        const sinceHours = numFlag(parseFlag(args, '--since-hours'), '--since-hours', 24)
         const sinceIso = new Date(Date.now() - sinceHours * 3600_000).toISOString()
         const minted = mintTmrCuesForRecentReviews(sinceIso, limit)
         console.log(
@@ -136,7 +137,7 @@ export function audioCommand(args: string[]): void {
 }
 
 export function focusLoadCmd(args: string[]): void {
-  const limit = Number(parseFlag(args, '--limit') ?? '20')
+  const limit = limitFlag(parseFlag(args, '--limit'), 20)
   const cardIdStr = parseFlag(args, '--card')
   const cardId = cardIdStr ? Number(cardIdStr) : undefined
 

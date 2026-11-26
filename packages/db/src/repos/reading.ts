@@ -3,6 +3,7 @@
  * Readwise-style highlight resurfacing and spaced triage, and Robinson's SQ3R
  * active reading sessions (Robinson 1946).
  */
+import { rowLimit } from '../limits'
 import { desc, eq, inArray } from 'drizzle-orm'
 import {
   extractSurveyHeadings,
@@ -82,7 +83,7 @@ export function listSources(
   if (opts.status) {
     query = query.where(eq(sources.status, opts.status))
   }
-  return query.orderBy(desc(sources.priority)).limit(limit).all()
+  return query.orderBy(desc(sources.priority)).limit(rowLimit(limit)).all()
 }
 
 /**

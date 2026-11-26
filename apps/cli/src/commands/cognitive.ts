@@ -5,6 +5,7 @@
  * 3. metacognition: Koriat & Bjork (2005) Calibration & Glenn Brier score.
  * 4. invariance: Rohrer & Taylor (2007) interleaved structural invariance planning.
  */
+import { limitFlag, numFlag } from '../flags'
 import { type RegisteredCommand } from './registry'
 import {
   auditDesirableDifficulty,
@@ -122,7 +123,7 @@ export function feynmanCommand(args: string[]): void {
     const explanation =
       parseFlag(args, '--explanation') ||
       'Spaced repetition is a method where you review flashcards right before you forget them so synapses strengthen.'
-    const confidence = Number(parseFlag(args, '--confidence') || '4')
+    const confidence = numFlag(parseFlag(args, '--confidence'), '--confidence', 4)
 
     const report = evaluateFeynmanExplanation({
       concept,
@@ -164,7 +165,7 @@ export async function metacognitionCommand(args: string[]): Promise<void> {
   const sub = args[0] || 'stats'
 
   if (sub === 'stats') {
-    const limit = Number(parseFlag(args, '--limit') || '50')
+    const limit = limitFlag(parseFlag(args, '--limit'), 50)
     // Shared trial query (repos/cognitive-trials) + core's canonical row→JOL
     // mapping — identical trials to the web API and MCP tool, undone reviews
     // excluded.
@@ -189,7 +190,7 @@ export async function metacognitionCommand(args: string[]): Promise<void> {
   }
 
   if (sub === 'hypercorrection') {
-    const limit = Number(parseFlag(args, '--limit') || '200')
+    const limit = limitFlag(parseFlag(args, '--limit'), 200)
     // Shared trial query + canonical crucible reconstruction (repos/
     // cognitive-trials): a miss arms its card, the card's next success counts
     // as the correction — identical to the web API / MCP tool, undone reviews
@@ -242,16 +243,16 @@ export async function difficultyCommand(args: string[]): Promise<void> {
   }
 
   const minutesByTechnique: Record<string, number> = {
-    practice_testing: Number(parseFlag(args, '--testing') ?? '0'),
-    distributed_practice: Number(parseFlag(args, '--spaced') ?? '0'),
-    interleaved_practice: Number(parseFlag(args, '--interleaved') ?? '0'),
-    self_explanation: Number(parseFlag(args, '--explain') ?? '0'),
-    elaborative_interrogation: Number(parseFlag(args, '--interrogate') ?? '0'),
-    rereading: Number(parseFlag(args, '--reread') ?? '0'),
-    highlighting: Number(parseFlag(args, '--highlight') ?? '0'),
-    summarization: Number(parseFlag(args, '--summarize') ?? '0'),
-    keyword_mnemonic: Number(parseFlag(args, '--mnemonic') ?? '0'),
-    imagery_for_text: Number(parseFlag(args, '--imagery') ?? '0'),
+    practice_testing: numFlag(parseFlag(args, '--testing'), '--testing', 0),
+    distributed_practice: numFlag(parseFlag(args, '--spaced'), '--spaced', 0),
+    interleaved_practice: numFlag(parseFlag(args, '--interleaved'), '--interleaved', 0),
+    self_explanation: numFlag(parseFlag(args, '--explain'), '--explain', 0),
+    elaborative_interrogation: numFlag(parseFlag(args, '--interrogate'), '--interrogate', 0),
+    rereading: numFlag(parseFlag(args, '--reread'), '--reread', 0),
+    highlighting: numFlag(parseFlag(args, '--highlight'), '--highlight', 0),
+    summarization: numFlag(parseFlag(args, '--summarize'), '--summarize', 0),
+    keyword_mnemonic: numFlag(parseFlag(args, '--mnemonic'), '--mnemonic', 0),
+    imagery_for_text: numFlag(parseFlag(args, '--imagery'), '--imagery', 0),
   }
 
   const measured = deriveMeasuredBehavior(0, 7)
@@ -295,7 +296,7 @@ export async function pretestCommand(args: string[]): Promise<void> {
     console.error(`Unknown subcommand: ${sub}. Usage: learning-hub pretest questions [--limit 8]`)
     return
   }
-  const limit = Number(parseFlag(args, '--limit') || '8')
+  const limit = limitFlag(parseFlag(args, '--limit'), 8)
   // Shared repo projection — identical candidate fetch to the MCP
   // `pretesting_protocol` tool (repos/cards.listCardsByStability).
   const rows = listCardsByStability({ limit: 120 })
@@ -545,7 +546,7 @@ export function interactivityCommand(args: string[]): void {
     )
     return
   }
-  const extraneous = Number(parseFlag(args, '--extraneous') || '1')
+  const extraneous = numFlag(parseFlag(args, '--extraneous'), '--extraneous', 1)
   const analysis = analyzeElementInteractivity(suite, extraneous)
 
   console.log(`

@@ -7,6 +7,7 @@
  * deck names. Everything is derived from the append-only arena_runs table —
  * no mutable counters that could drift from history.
  */
+import { queryLimit } from '@/lib/query-params'
 import { inArray } from 'drizzle-orm'
 import {
   db,
@@ -132,7 +133,7 @@ function accuracyInsight(recent: ArenaRunRow[]): {
 
 export const GET = withRoute(async (req: Request) => {
   const url = new URL(req.url)
-  const limit = Math.min(Math.max(Number(url.searchParams.get('limit') ?? 10), 1), 50)
+  const limit = queryLimit(url.searchParams, 10, 50)
   const perDeck = getArenaStatsByDeck()
   // The trend reads left-to-right oldest → newest over the latest runs.
   const trendRows = listArenaRuns({ limit: 10 }).reverse()

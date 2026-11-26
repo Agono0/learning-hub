@@ -29,6 +29,7 @@
  * functions taking `database?` reuse a caller-supplied connection (nested
  * calls stay inside the caller's transaction) or wrap their own.
  */
+import { rowLimit } from '../limits'
 import { and, asc, desc, eq, gte, inArray, isNull, lte, sql, type SQL } from 'drizzle-orm'
 import {
   DEFAULT_ARCHIVE_CONFIG,
@@ -294,7 +295,7 @@ export function listTaskItems(opts: ListTaskItemsOpts = {}): TaskItem[] {
     .from(taskItems)
     .where(where.length > 0 ? and(...where) : undefined)
     .orderBy(asc(taskItems.order), asc(taskItems.id))
-  const rows = (opts.limit !== undefined ? query.limit(opts.limit) : query).all()
+  const rows = (opts.limit !== undefined ? query.limit(rowLimit(opts.limit)) : query).all()
   return rows.map((row) => taskFromRow(conn, row))
 }
 
@@ -1371,11 +1372,12 @@ export function deleteTimeLog(id: number, database?: DbOrTx): boolean {
 
 /** Total tracked ms over the filter (worklog totals, S3-28). */
 export function sumTimeLogs(
-  opts: { taskId?: number; from?: string; to?: string; database?: DbOrTx } = {},
+  opts: { taskId?: number; day?: string; from?: string; to?: string; database?: DbOrTx } = {},
 ): number {
   const conn = opts.database ?? getDb()
   const where: SQL[] = []
   if (opts.taskId !== undefined) where.push(eq(taskTimeLogs.taskId, opts.taskId))
+  if (opts.day !== undefined) where.push(eq(taskTimeLogs.day, opts.day))
   if (opts.from !== undefined) where.push(gte(taskTimeLogs.day, opts.from))
   if (opts.to !== undefined) where.push(lte(taskTimeLogs.day, opts.to))
   const [row] = conn

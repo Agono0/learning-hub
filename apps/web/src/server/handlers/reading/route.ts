@@ -3,6 +3,7 @@
  * POST accepts multipart/form-data (PDF → unpdf, EPUB → extractEpubBytes,
  * Markdown/TXT → UTF-8 text) or JSON { title, kind, content, url }.
  */
+import { queryId } from '@/lib/query-params'
 import { z } from 'zod'
 import { extractEpubBytes } from '@learning-hub/core'
 import { createSource, deleteSource, listSources } from '@learning-hub/db'
@@ -109,8 +110,8 @@ export const POST = withRoute(async (req: Request) => {
 
 export const DELETE = withRoute(async (req: Request) => {
   const url = new URL(req.url)
-  const id = Number(url.searchParams.get('id'))
-  if (!id || Number.isNaN(id)) return Response.json({ error: 'id required' }, { status: 400 })
+  const id = queryId(url.searchParams, 'id')
+  if (id === null) return Response.json({ error: 'id required' }, { status: 400 })
 
   deleteSource(id)
   return Response.json({ ok: true })

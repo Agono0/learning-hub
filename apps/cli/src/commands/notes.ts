@@ -10,6 +10,7 @@
  *   notes update <id> [--title s] [--content s] [--status inbox|project|area|resource|archive]
  *   notes delete <id>
  */
+import { limitFlag } from '../flags'
 import { createNote, deleteNote, getNoteDetail, listNotes, updateNote } from '@learning-hub/db'
 import { panel } from './ui'
 import type { RegisteredCommand } from './registry'
@@ -26,7 +27,7 @@ function parseFlag(args: string[], flag: string): string | undefined {
 }
 
 function notesListCommand(args: string[]): void {
-  const limit = Number(parseFlag(args, '--limit') ?? '20')
+  const limit = limitFlag(parseFlag(args, '--limit'), 20)
   const notes = listNotes({ limit })
   if (notes.length === 0) {
     console.log('No notes yet — try `learning-hub notes create "Zettelkasten"`.')
@@ -47,7 +48,7 @@ function notesSearchCommand(args: string[]): void {
     process.exitCode = 1
     return
   }
-  const limit = Number(parseFlag(args, '--limit') ?? '20')
+  const limit = limitFlag(parseFlag(args, '--limit'), 20)
   const notes = listNotes({ query, limit })
   if (notes.length === 0) {
     console.log(`No notes matching "${query}".`)

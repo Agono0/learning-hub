@@ -6,6 +6,7 @@
  * POST /api/tasks-repeat-cfgs — create from the core repeat input (the
  *      UI-side `title` is accepted and dropped — no DB column).
  */
+import { calendarDay } from '@/lib/query-params'
 import { z } from 'zod'
 import { createRepeatCfgRow, listRepeatCfgs } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
@@ -20,13 +21,9 @@ const createSchema = z.object({
   title: z.string().max(200).nullable().optional(),
   cycle: z.enum(['d', 'w', 'm', 'y']),
   interval: z.number().int().min(1).max(999).default(1),
-  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  endDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .nullable()
-    .optional(),
-  skipDates: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).default([]),
+  startDate: calendarDay,
+  endDate: calendarDay.nullable().optional(),
+  skipDates: z.array(calendarDay).default([]),
   reAnchor: z.enum(['scheduled', 'completion', 'postponed']),
 })
 

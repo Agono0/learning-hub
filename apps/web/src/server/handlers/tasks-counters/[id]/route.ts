@@ -6,6 +6,7 @@
  * PATCH  /api/tasks-counters/[id] — `{ label?, color?, archived? }`.
  * DELETE /api/tasks-counters/[id] — cascades the daily log.
  */
+import { calendarDay } from '@/lib/query-params'
 import { z } from 'zod'
 import { deleteCounterRow, listCounterLogs, listCounters, updateCounterRow } from '@learning-hub/db'
 import { readJson, readQuery, withRoute } from '@/lib/api'
@@ -20,14 +21,8 @@ export async function GET(req: Request, ctx: IdContext) {
   const q = readQuery(
     req,
     z.object({
-      from: z
-        .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/)
-        .optional(),
-      to: z
-        .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/)
-        .optional(),
+      from: calendarDay.optional(),
+      to: calendarDay.optional(),
     }),
   )
   return Response.json({

@@ -1,6 +1,7 @@
 /**
  * Learning HUB — Real-Time Cognitive Load Telemetry DB Repository.
  */
+import { rowLimit } from '../limits'
 import { desc, eq } from 'drizzle-orm'
 import { getDb, type LearningHubDB } from '../index'
 import { cognitiveTelemetryEvents } from '../schema'
@@ -51,7 +52,7 @@ export function getRecentCognitiveTelemetry(
       .from(cognitiveTelemetryEvents)
       .where(eq(cognitiveTelemetryEvents.cardId, cardId))
       .orderBy(desc(cognitiveTelemetryEvents.createdAt))
-      .limit(limit)
+      .limit(rowLimit(limit))
       .all()
   }
 
@@ -59,6 +60,6 @@ export function getRecentCognitiveTelemetry(
     .select()
     .from(cognitiveTelemetryEvents)
     .orderBy(desc(cognitiveTelemetryEvents.createdAt))
-    .limit(limit)
+    .limit(rowLimit(limit))
     .all()
 }

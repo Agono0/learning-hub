@@ -1,3 +1,4 @@
+import { calendarDay } from '@/lib/query-params'
 import { z } from 'zod'
 import { getJournalEntry, listJournalEntriesSince, setJournalAiInsight } from '@learning-hub/db'
 import { dayKey } from '@learning-hub/core'
@@ -17,10 +18,7 @@ export async function GET(req: Request) {
 }
 
 const postInsightSchema = z.object({
-  date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD')
-    .optional(),
+  date: calendarDay.optional(),
   tzOffset: tzOffsetSchema,
 })
 

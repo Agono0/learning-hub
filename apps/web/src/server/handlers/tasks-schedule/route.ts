@@ -9,7 +9,7 @@
  * work is summarized separately (S3-95's "from previous days" row).
  */
 import { listTaskItems, sumTimeLogs } from '@learning-hub/db'
-import { readQuery } from '@/lib/api'
+import { readQuery, withRoute } from '@/lib/api'
 import { z } from 'zod'
 
 const querySchema = z.object({
@@ -22,7 +22,7 @@ function daysAgo(n: number): string {
   return new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10)
 }
 
-export async function GET(req: Request) {
+export const GET = withRoute(async (req: Request) => {
   const q = readQuery(req, querySchema)
   const today = daysAgo(0)
   const days: string[] = []
@@ -64,4 +64,4 @@ export async function GET(req: Request) {
       .filter((t) => t.due !== null && dayOf(t.due) < today)
       .map((t) => ({ id: t.id, title: t.title, due: t.due, estimateMs: t.estimateMs })),
   })
-}
+})

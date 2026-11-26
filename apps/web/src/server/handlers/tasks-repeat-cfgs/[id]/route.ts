@@ -4,6 +4,7 @@
  * DELETE /api/tasks-repeat-cfgs/[id] — referencing tasks become one-off
  *        (repeatCfgId nulled; SP's "remove repeat").
  */
+import { calendarDay } from '@/lib/query-params'
 import { z } from 'zod'
 import { deleteRepeatCfgRow, getRepeatCfg, updateRepeatCfgRow } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
@@ -13,16 +14,9 @@ const patchSchema = z.object({
   title: z.string().max(200).nullable().optional(),
   cycle: z.enum(['d', 'w', 'm', 'y']).optional(),
   interval: z.number().int().min(1).max(999).optional(),
-  startDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
-  endDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .nullable()
-    .optional(),
-  skipDates: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).optional(),
+  startDate: calendarDay.optional(),
+  endDate: calendarDay.nullable().optional(),
+  skipDates: z.array(calendarDay).optional(),
   reAnchor: z.enum(['scheduled', 'completion', 'postponed']).optional(),
 })
 

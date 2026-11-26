@@ -9,6 +9,7 @@
  * Practice insight only. Grades are client-controlled and honor-system, so
  * this never feeds the SRS scheduler and never moves the economy.
  */
+import { queryLimit } from '@/lib/query-params'
 import { inArray } from 'drizzle-orm'
 import { cards, db, listSettledGradeLogs } from '@learning-hub/db'
 import {
@@ -39,7 +40,7 @@ function frontOf(content: unknown): string {
 
 export const GET = withRoute(async (req: Request) => {
   const url = new URL(req.url)
-  const limit = Math.min(Math.max(Number(url.searchParams.get('limit') ?? 5) || 5, 1), 20)
+  const limit = queryLimit(url.searchParams, 5, 20)
 
   const logs = listSettledGradeLogs({ limit: 100 })
   const all = analyzeCardPerformance(logs)

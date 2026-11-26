@@ -6,6 +6,7 @@
  * - Marketplace purchases and catalog
  * - World & Timer settings
  */
+import { rowLimit } from '../limits'
 import { desc, eq, sql } from 'drizzle-orm'
 import {
   computeLedgerSignature,
@@ -100,7 +101,7 @@ export function getForestPlots(userId = 'default', limit = 50): ForestPlotRow[] 
     .from(forestPlots)
     .where(eq(forestPlots.userId, userId))
     .orderBy(desc(forestPlots.createdAt))
-    .limit(limit)
+    .limit(rowLimit(limit))
     .all()
 }
 
@@ -179,7 +180,7 @@ export function getCoinTransactions(userId = 'default', limit = 20): CoinLedgerR
     .from(studyCoinLedger)
     .where(eq(studyCoinLedger.userId, userId))
     .orderBy(desc(studyCoinLedger.id))
-    .limit(limit)
+    .limit(rowLimit(limit))
     .all()
 }
 

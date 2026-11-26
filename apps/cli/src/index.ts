@@ -15,6 +15,7 @@
  * additional `cliCommands` entries at dispatch time, so
  * `learning-hub <plugin-command>` works without touching this file.
  */
+import { FlagError } from './flags'
 import { exit } from 'node:process'
 import { getPluginContributions, loadPlugins } from '@learning-hub/core'
 import { helpLine, type RegisteredCommand } from './commands/registry'
@@ -192,6 +193,11 @@ async function main() {
 
 main()
   .catch((err) => {
+    // A bad flag value is a usage error: one line, exit 2, no stack trace.
+    if (err instanceof FlagError) {
+      console.error(`error: ${err.message}`)
+      exit(2)
+    }
     console.error(err)
     exit(1)
   })

@@ -2,6 +2,7 @@
  * Physiology repository — sleep, exercise, caffeine, and arousal tracking
  * mapped against retention and memory consolidation curves (Walker 2017, Stickgold 2005).
  */
+import { rowLimit } from '../limits'
 import { desc, eq, sql } from 'drizzle-orm'
 import {
   caffeineCutoffAdvice,
@@ -62,7 +63,7 @@ export function listPhysioLogs(
 ): PhysioLogRow[] {
   const db = opts.db ?? getDb()
   const limit = opts.limit ?? 120
-  return db.select().from(physioLog).orderBy(desc(physioLog.date)).limit(limit).all()
+  return db.select().from(physioLog).orderBy(desc(physioLog.date)).limit(rowLimit(limit)).all()
 }
 
 /**

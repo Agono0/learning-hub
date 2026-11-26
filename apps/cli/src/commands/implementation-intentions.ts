@@ -10,6 +10,7 @@
  */
 
 import { readBoundedJson } from '../bounded-input'
+import { numFlag } from '../flags'
 import { type RegisteredCommand } from './registry'
 import {
   evaluatePlanQuality,
@@ -102,9 +103,9 @@ export const implementationIntentionCommands: RegisteredCommand[] = [
     description: 'project habit automaticity on the Lally et al. (2009) curve',
     usage: '[--days N] [--adherence PCT] [--complexity F] [--json]',
     run: (args) => {
-      const daysCount = Number(parseFlag(args, '--days') ?? '30')
-      const adherencePct = Number(parseFlag(args, '--adherence') ?? '80')
-      const complexity = Number(parseFlag(args, '--complexity') ?? '1')
+      const daysCount = numFlag(parseFlag(args, '--days'), '--days', 30)
+      const adherencePct = numFlag(parseFlag(args, '--adherence'), '--adherence', 80)
+      const complexity = numFlag(parseFlag(args, '--complexity'), '--complexity', 1)
       const projection = projectAutomaticity(buildRecord(daysCount, adherencePct), complexity)
       if (hasFlag(args, '--json')) {
         console.log(JSON.stringify({ ok: true, projection }, null, 2))

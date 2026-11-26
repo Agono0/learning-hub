@@ -3,6 +3,7 @@
  * structured implementation intentions (Gollwitzer & Sheeran 2006, d = 0.65),
  * if-then distraction planning, and goal-quote bindings.
  */
+import { rowLimit } from '../limits'
 import { and, desc, eq } from 'drizzle-orm'
 import { getDb, type LearningHubDB } from '../index'
 import { goals, goalsQuotes, ifthenPlans } from '../schema'
@@ -71,7 +72,7 @@ export function listGoals(
     ? db.select().from(goals).where(eq(goals.status, opts.status))
     : db.select().from(goals)
   const query = base.orderBy(desc(goals.createdAt))
-  return (opts.limit !== undefined ? query.limit(opts.limit) : query).all()
+  return (opts.limit !== undefined ? query.limit(rowLimit(opts.limit)) : query).all()
 }
 
 /**

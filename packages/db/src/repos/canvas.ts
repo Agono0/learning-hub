@@ -2,6 +2,7 @@
  * Canvas & Chat-Sessions repository — spatial infinite canvas boards (items + edges)
  * and AI multi-turn dialogue transcripts (tutor/feynman/council/brainwrite) with hint tracking.
  */
+import { rowLimit } from '../limits'
 import { desc, eq } from 'drizzle-orm'
 import { getDb, type LearningHubDB } from '../index'
 import { canvases, chatSessions } from '../schema'
@@ -60,7 +61,7 @@ export function listCanvases(
 ): CanvasRow[] {
   const db = opts.db ?? getDb()
   const limit = opts.limit ?? 50
-  return db.select().from(canvases).orderBy(desc(canvases.updatedAt)).limit(limit).all()
+  return db.select().from(canvases).orderBy(desc(canvases.updatedAt)).limit(rowLimit(limit)).all()
 }
 
 /**
@@ -173,11 +174,11 @@ export function listChatSessions(
     return query
       .where(eq(chatSessions.kind, opts.kind))
       .orderBy(desc(chatSessions.id))
-      .limit(limit)
+      .limit(rowLimit(limit))
       .all()
   }
 
-  return query.orderBy(desc(chatSessions.id)).limit(limit).all()
+  return query.orderBy(desc(chatSessions.id)).limit(rowLimit(limit)).all()
 }
 
 /**

@@ -365,7 +365,7 @@ export const cognitiveTools: RegisteredTool[] = [
           .map((r) => ({ id: r.id, stability: r.stability, difficulty: r.difficulty, due: r.due })),
       )
         .sort((a, b) => fragilityScore(b) - fragilityScore(a))
-        .slice(limit)
+        .slice(0, limit)
 
       const plan = buildTonightPlan(profile, candidates)
       return json({

@@ -14,6 +14,7 @@
  */
 
 import { readBoundedJson } from '../bounded-input'
+import { numFlag } from '../flags'
 import { type RegisteredCommand } from './registry'
 import {
   auditFeedbackAgainstShute,
@@ -164,7 +165,7 @@ export const feedbackCommands: RegisteredCommand[] = [
     run: (args) => {
       const scenarioId = parseFlag(args, '--scenario') ?? 'fb-math-fraction-addition'
       const optionId = parseFlag(args, '--option') ?? 'a'
-      const confidence = Number(parseFlag(args, '--confidence') ?? '3')
+      const confidence = numFlag(parseFlag(args, '--confidence'), '--confidence', 3)
       const result = gradeScenarioResponse({ scenarioId, optionId, confidence })
       if (hasFlag(args, '--json')) {
         console.log(
@@ -221,7 +222,7 @@ export const feedbackCommands: RegisteredCommand[] = [
     usage: '[--difficulty 1-5] [--procedural] [--transfer] [--retrieval] [--json]',
     run: (args) => {
       const result = suggestFeedbackTiming({
-        taskDifficulty: Number(parseFlag(args, '--difficulty') ?? '3'),
+        taskDifficulty: numFlag(parseFlag(args, '--difficulty'), '--difficulty', 3),
         isProcedural: hasFlag(args, '--procedural'),
         transferGoal: hasFlag(args, '--transfer'),
         isRetrievalPractice: hasFlag(args, '--retrieval'),
