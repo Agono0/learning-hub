@@ -136,16 +136,16 @@ export default function DashboardPage() {
           </div>
           <Skeleton className="h-11 w-44" />
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
-        </div>
-        <div className="grid gap-3 md:grid-cols-2">
-          <Skeleton className="h-44" />
-          <Skeleton className="h-44" />
-        </div>
+        {/* Same bento geometry as the loaded page (hero + stat stack, focus + quick review,
+            review loop), so data arriving does not reflow the layout. */}
+        <BentoGrid>
+          <Skeleton className="bento-lg bento-tall min-h-[16rem]" />
+          <Skeleton className="bento-stat min-h-[7.5rem]" />
+          <Skeleton className="bento-stat min-h-[7.5rem]" />
+          <Skeleton className="bento-stat min-h-[10rem]" />
+          <Skeleton className="bento-lg min-h-[10rem]" />
+        </BentoGrid>
+        <Skeleton className="h-48" />
       </div>
     )
   }

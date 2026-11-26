@@ -60,6 +60,9 @@ for (const mode of ['normal', 'reduced'] as const) {
     })
     test('today entrance frames and computed samples', async ({ page }) => {
       await page.goto('/', { waitUntil: 'commit' })
+      // Start sampling once the page content has attached, so the entrance (or its absence under
+      // reduced motion) is inside the sampled window.
+      await expect(page.locator('h1').first()).toBeVisible({ timeout: 60_000 })
       // Install the sampler as early as the document allows, then capture timed frames.
       const samples = page.evaluate(
         () =>
@@ -100,6 +103,7 @@ for (const mode of ['normal', 'reduced'] as const) {
       )
       if (mode === 'reduced') {
         expect(distinctTransform).toBeLessThanOrEqual(1)
+        expect(distinctOpacity).toBe(1)
       }
     })
   })
