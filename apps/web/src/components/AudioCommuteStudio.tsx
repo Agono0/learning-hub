@@ -5,6 +5,7 @@ import { Car, Headphones, Mic, MicOff, Play, SkipForward, Square } from 'lucide-
 import { IconButton } from '@/ui'
 import { hapticLight, hapticWarning } from '../platform/haptics'
 import { cx } from '../ui/cx'
+import { detectSpeechLang, spokenMatchPercent } from '@/lib/speech-text'
 
 interface SpeechRecognitionResultItem {
   transcript: string
@@ -62,6 +63,7 @@ export function AudioCommuteStudio({
 
   const recognitionRef = useRef<SpeechRecognitionInstanceLike | null>(null)
   const synthRef = useRef<SpeechSynthesis | null>(null)
+  const nextCueTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const currentCard = cards[currentIndex]
 
   // Initialize Speech Synthesis
@@ -81,6 +83,7 @@ export function AudioCommuteStudio({
       const utterance = new SpeechSynthesisUtterance(cleanText)
       utterance.rate = speechRate
       utterance.pitch = 1.0
+      utterance.lang = detectSpeechLang(cleanText)
 
       if (onEnd) utterance.onend = onEnd
       synthRef.current.speak(utterance)
@@ -173,11 +176,7 @@ export function AudioCommuteStudio({
 
       // Calculate approximate similarity between spoken answer and target back
       if (transcript) {
-        const cleanBack = currentCard.back.toLowerCase().replace(/[^a-z0-9 ]/g, '')
-        const cleanTranscript = transcript.toLowerCase().replace(/[^a-z0-9 ]/g, '')
-        const words = cleanBack.split(' ').filter(Boolean)
-        const matched = words.filter((w) => cleanTranscript.includes(w))
-        const matchScore = words.length > 0 ? Math.round((matched.length / words.length) * 100) : 75
+        const matchScore = spokenMatchPercent(currentCard.back, transcript) ?? 75
         setSpokenMatchPct(matchScore)
       }
     }
@@ -205,7 +204,8 @@ export function AudioCommuteStudio({
       setCurrentIndex((i) => i + 1)
       const nextCard = cards[currentIndex + 1]
       if (nextCard && isPlaying) {
-        setTimeout(() => speakText(nextCard.front), 300)
+        if (nextCueTimer.current) clearTimeout(nextCueTimer.current)
+        nextCueTimer.current = setTimeout(() => speakText(nextCard.front), 300)
       }
     } else {
       setIsPlaying(false)
@@ -217,6 +217,7 @@ export function AudioCommuteStudio({
   const togglePlaySession = () => {
     if (isPlaying) {
       setIsPlaying(false)
+      if (nextCueTimer.current) clearTimeout(nextCueTimer.current)
       if (synthRef.current) synthRef.current.cancel()
       stopListening()
     } else {
@@ -232,6 +233,7 @@ export function AudioCommuteStudio({
   useEffect(() => {
     // Shared audio context handles ambient loops smoothly
     return () => {
+      if (nextCueTimer.current) clearTimeout(nextCueTimer.current)
       if (synthRef.current) synthRef.current.cancel()
       stopListening()
     }
