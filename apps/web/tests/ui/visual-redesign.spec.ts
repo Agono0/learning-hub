@@ -24,6 +24,9 @@ const ROUTES: Array<{ slug: string; url: string }> = [
   { slug: 'settings', url: '/settings' },
   { slug: 'backup', url: '/backup' },
   { slug: 'focus', url: '/focus' },
+  { slug: 'online', url: '/online' },
+  { slug: 'tasks', url: '/tasks' },
+  { slug: 'notes', url: '/notes' },
 ]
 
 async function prepare(
