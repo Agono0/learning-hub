@@ -277,7 +277,8 @@ test.describe('nav disclosure follows the route', () => {
     )
     await page.goto('/palace-3d')
     await settle(page)
-    const nav = page.locator('nav[aria-label="Main"]')
+    // Sidebar and Rail both render a "Main" nav (one is hidden by CSS); use the visible one.
+    const nav = page.locator('nav[aria-label="Main"]:visible')
     await expect(nav.getByRole('button', { name: /^Explore/ })).toHaveAttribute(
       'aria-expanded',
       'true',
