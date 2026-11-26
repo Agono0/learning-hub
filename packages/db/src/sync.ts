@@ -92,6 +92,15 @@ function pairIds(row: Record<string, unknown>): string {
   const b = Number(row['card_b_id'])
   return a <= b ? `${a}:${b}` : `${b}:${a}`
 }
+/** Leaf tables where rows identical in every non-id column are safe to collapse. */
+const EXACT_DEDUPE_TABLES = new Set([
+  'quick_captures',
+  'task_views',
+  'task_time_logs',
+  'task_reminders',
+  'task_attachments',
+  'simple_counter_logs',
+])
 
 /** Stable natural identity key used by `sync_tombstones` and deduplication. */
 export function computeRecordNaturalKey(
@@ -667,10 +676,27 @@ export async function mergeBackup(
       const fks = foreignKeysFor(database, table)
       const uniqueSpecs = uniqueIndexesFor(database, table)
 
-      const localRows = database.prepare(`SELECT * FROM "${table}"`).all() as Record<
+      let localRows = database.prepare(`SELECT * FROM "${table}"`).all() as Record<
         string,
         unknown
       >[]
+      // One-time repair of duplicates left by earlier merges: leaf tables (nothing points at
+      // them) lose rows that equal another row in every column except id. The lowest id stays.
+      if (singleIntPk && EXACT_DEDUPE_TABLES.has(table)) {
+        const seenSig = new Set<string>()
+        const dropIds: number[] = []
+        for (const lr of localRows) {
+          const sig = JSON.stringify(columns.filter((c) => c !== 'id').map((c) => lr[c] ?? null))
+          if (seenSig.has(sig)) dropIds.push(Number(lr['id']))
+          else seenSig.add(sig)
+        }
+        if (dropIds.length > 0) {
+          const del = database.prepare(`DELETE FROM "${table}" WHERE id = ?`)
+          for (const id of dropIds) del.run(id)
+          const dropped = new Set(dropIds)
+          localRows = localRows.filter((lr) => !dropped.has(Number(lr['id'])))
+        }
+      }
       const localById = new Map<number, Record<string, unknown>>()
       const localByNaturalKey = new Map<string, Record<string, unknown>>()
 
@@ -686,6 +712,8 @@ export async function mergeBackup(
         seenIncoming.add(k)
       }
 
+      const localByAmbiguousKey = new Map<string, Record<string, unknown>[]>()
+      const claimedLocal = new Set<Record<string, unknown>>()
       for (const lr of localRows) {
         if (singleIntPk && typeof lr['id'] === 'number') {
           localById.set(lr['id'], lr)
@@ -694,6 +722,9 @@ export async function mergeBackup(
         if (nk) {
           if (localByNaturalKey.has(nk)) ambiguousLocal.add(nk)
           localByNaturalKey.set(nk, lr)
+          const bucket = localByAmbiguousKey.get(nk) ?? []
+          bucket.push(lr)
+          localByAmbiguousKey.set(nk, bucket)
         }
       }
 
@@ -789,6 +820,20 @@ export async function mergeBackup(
         let matchedLocal: Record<string, unknown> | undefined
         if (nk && localByNaturalKey.has(nk)) {
           matchedLocal = localByNaturalKey.get(nk)
+        } else if (computedKey && !nk && !APPEND_ONLY_TABLES.has(table)) {
+          // Shared key: pair the incoming row with an identical, not yet paired local row, so
+          // re-merging the same snapshot never inserts the same-millisecond rows again.
+          const sigCols = columns.filter((c) => c !== 'id')
+          matchedLocal = (localByAmbiguousKey.get(computedKey) ?? []).find(
+            (lr) =>
+              !claimedLocal.has(lr) &&
+              sigCols.every(
+                (c) =>
+                  normalizeBackupValue(lr[c] as never) ===
+                  normalizeBackupValue(remapped[c] as never),
+              ),
+          )
+          if (matchedLocal) claimedLocal.add(matchedLocal)
         }
         if (!matchedLocal && uniqueSpecs.length > 0) {
           for (const spec of uniqueSpecs) {

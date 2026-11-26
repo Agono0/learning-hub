@@ -143,3 +143,29 @@ describe('rows sharing a created_at are not merged into one', () => {
     expect(n(b, 'task_items')).toBe(2)
   })
 })
+
+describe('same-millisecond rows and old duplicates', () => {
+  it('re-merging the same snapshot does not grow same-ms rows', async () => {
+    const a = device()
+    const b = device()
+    const ins = `INSERT INTO task_items (title, created_at, updated_at) VALUES (?, '${T0}', '${T0}')`
+    a.sqlite.prepare(ins).run('first')
+    a.sqlite.prepare(ins).run('second')
+    const snap = backupAll(a.raw)
+    await mergeBackup(snap, b.raw)
+    await mergeBackup(snap, b.raw)
+    await mergeBackup(snap, b.raw)
+    expect(n(b, 'task_items')).toBe(2)
+  })
+
+  it('collapses exact duplicate leaf rows left by older merges, keeps distinct ones', async () => {
+    const a = device()
+    const b = device()
+    const ins = `INSERT INTO quick_captures (text, created_at) VALUES (?, ?)`
+    for (let i = 0; i < 3; i++) b.sqlite.prepare(ins).run('same', T0)
+    b.sqlite.prepare(ins).run('other', T0)
+    a.sqlite.prepare(ins).run('same', T0)
+    await mergeBackup(backupAll(a.raw), b.raw)
+    expect(n(b, 'quick_captures')).toBe(2)
+  })
+})
