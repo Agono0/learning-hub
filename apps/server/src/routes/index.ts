@@ -24,6 +24,7 @@ import { implementationIntentionRoutes } from './implementation-intentions'
 import { leaguesRoutes } from './leagues'
 import { feedbackRoutes } from './feedback'
 import { shareChannelRoutes } from './share-channels'
+import { tasksRoutes } from './tasks'
 import { type Route } from './shared'
 
 /**
@@ -51,6 +52,7 @@ export const routes: Route[] = [
   ...leaguesRoutes,
   ...feedbackRoutes,
   ...shareChannelRoutes,
+  ...tasksRoutes,
 ]
 
 export async function prototypeExemplarRouteJson(
