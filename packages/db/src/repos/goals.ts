@@ -5,6 +5,7 @@
  */
 import { rowLimit } from '../limits'
 import { and, desc, eq } from 'drizzle-orm'
+import { pendingTombstone } from '../sync'
 import { getDb, type LearningHubDB } from '../index'
 import { goals, goalsQuotes, ifthenPlans } from '../schema'
 import { withTransaction } from '../transaction'
@@ -149,11 +150,14 @@ export function updateGoal(
  * Delete a goal and any quote bindings atomically.
  */
 export function deleteGoal(id: number, opts: { db?: LearningHubDB } = {}): boolean {
-  return withTransaction((tx) => {
+  const commit = pendingTombstone('goals', id, Boolean(opts.db))
+  const ok = withTransaction((tx) => {
     tx.delete(goalsQuotes).where(eq(goalsQuotes.goalId, id)).run()
     const res = tx.delete(goals).where(eq(goals.id, id)).run()
     return (res.changes ?? 0) > 0
   }, opts.db)
+  if (ok) commit()
+  return ok
 }
 
 /**

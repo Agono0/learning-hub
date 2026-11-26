@@ -10,6 +10,7 @@ import {
   type IdeaLinkType,
   type IdeaStage,
 } from '@learning-hub/core'
+import { pendingTombstone } from '../sync'
 import { getDb, type LearningHubDB } from '../index'
 import { ideaLinks, ideas, projects } from '../schema'
 import { withTransaction } from '../transaction'
@@ -230,13 +231,16 @@ export function updateIdea(
  * Delete an idea and cascade all incoming and outgoing idea_links atomically.
  */
 export function deleteIdea(id: number, opts: { db?: LearningHubDB } = {}): boolean {
-  return withTransaction((tx) => {
+  const commit = pendingTombstone('ideas', id, Boolean(opts.db))
+  const ok = withTransaction((tx) => {
     tx.delete(ideaLinks)
       .where(or(eq(ideaLinks.fromIdeaId, id), eq(ideaLinks.toIdeaId, id)))
       .run()
     const res = tx.delete(ideas).where(eq(ideas.id, id)).run()
     return (res.changes ?? 0) > 0
   }, opts.db)
+  if (ok) commit()
+  return ok
 }
 
 /**

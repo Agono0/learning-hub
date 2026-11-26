@@ -66,6 +66,7 @@ import {
   type TrashEntry,
   type UpdateTaskInput,
 } from '@learning-hub/core'
+import { pendingTombstone } from '../sync'
 import { getDb, type LearningHubDB } from '../index'
 import {
   metricDays,
@@ -694,6 +695,9 @@ export function deleteTaskItem(id: number, database?: DbOrTx): boolean {
       .all()
       .map((r) => r.id)
     const doomed = [id, ...subIds]
+    const commits = doomed.map((taskId) =>
+      pendingTombstone('task_items', taskId, Boolean(database)),
+    )
     for (const taskId of doomed) {
       conn.delete(taskItemTags).where(eq(taskItemTags.itemId, taskId)).run()
       conn.delete(taskReminders).where(eq(taskReminders.taskId, taskId)).run()
@@ -702,6 +706,7 @@ export function deleteTaskItem(id: number, database?: DbOrTx): boolean {
       conn.delete(taskArchiveTiers).where(eq(taskArchiveTiers.taskId, taskId)).run()
     }
     conn.delete(taskItems).where(inArray(taskItems.id, doomed)).run()
+    for (const commit of commits) commit()
     return true
   }, database)
 }
@@ -824,8 +829,10 @@ export function deleteTaskTag(id: number, database?: DbOrTx): boolean {
   return txRun((conn) => {
     const existing = conn.select().from(taskTags).where(eq(taskTags.id, id)).get()
     if (!existing) return false
+    const commit = pendingTombstone('task_tags', id, Boolean(database))
     conn.delete(taskItemTags).where(eq(taskItemTags.tagId, id)).run()
     conn.delete(taskTags).where(eq(taskTags.id, id)).run()
+    commit()
     return true
   }, database)
 }
@@ -950,12 +957,14 @@ export function deleteTaskProjectRow(id: number, database?: DbOrTx): boolean {
     const existing = conn.select().from(taskProjects).where(eq(taskProjects.id, id)).get()
     if (!existing) return false
     const now = new Date().toISOString()
+    const commit = pendingTombstone('task_projects', id, Boolean(database))
     conn
       .update(taskItems)
       .set({ projectId: null, updatedAt: now })
       .where(eq(taskItems.projectId, id))
       .run()
     conn.delete(taskProjects).where(eq(taskProjects.id, id)).run()
+    commit()
     return true
   }, database)
 }
@@ -1453,8 +1462,10 @@ export function deleteSection(id: number, database?: DbOrTx): boolean {
   return txRun((conn) => {
     const existing = conn.select().from(taskSections).where(eq(taskSections.id, id)).get()
     if (!existing) return false
+    const commit = pendingTombstone('task_sections', id, Boolean(database))
     conn.update(taskItems).set({ sectionId: null }).where(eq(taskItems.sectionId, id)).run()
     conn.delete(taskSections).where(eq(taskSections.id, id)).run()
+    commit()
     return true
   }, database)
 }
@@ -1813,8 +1824,10 @@ export function deleteCounterRow(id: number, database?: DbOrTx): boolean {
   return txRun((conn) => {
     const existing = conn.select().from(simpleCounters).where(eq(simpleCounters.id, id)).get()
     if (!existing) return false
+    const commit = pendingTombstone('simple_counters', id, Boolean(database))
     conn.delete(simpleCounterLogs).where(eq(simpleCounterLogs.counterId, id)).run()
     conn.delete(simpleCounters).where(eq(simpleCounters.id, id)).run()
+    commit()
     return true
   }, database)
 }

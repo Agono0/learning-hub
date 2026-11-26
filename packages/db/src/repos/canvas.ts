@@ -4,6 +4,7 @@
  */
 import { rowLimit } from '../limits'
 import { desc, eq } from 'drizzle-orm'
+import { pendingTombstone } from '../sync'
 import { getDb, type LearningHubDB } from '../index'
 import { canvases, chatSessions } from '../schema'
 
@@ -124,8 +125,11 @@ export function updateCanvas(
  */
 export function deleteCanvas(id: number, opts: { db?: LearningHubDB } = {}): boolean {
   const db = opts.db ?? getDb()
+  const commit = pendingTombstone('canvases', id, Boolean(opts.db))
   const res = db.delete(canvases).where(eq(canvases.id, id)).run()
-  return (res.changes ?? 0) > 0
+  const ok = (res.changes ?? 0) > 0
+  if (ok) commit()
+  return ok
 }
 
 // ─── Chat Sessions ──────────────────────────────────────────────────────────

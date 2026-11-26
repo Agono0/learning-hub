@@ -11,6 +11,7 @@ import {
   type MindmapData,
   type MindmapNode,
 } from '@learning-hub/core/visual'
+import { pendingTombstone } from '../sync'
 import { getDb, type LearningHubDB } from '../index'
 import { cardAttemptImages, cards, decks, mindmaps } from '../schema'
 import { withTransaction } from '../transaction'
@@ -70,7 +71,9 @@ export function deleteMindmap(id: number, database?: LearningHubDB): boolean {
   const conn = database ?? getDb()
   const existing = conn.select().from(mindmaps).where(eq(mindmaps.id, id)).get()
   if (!existing) return false
+  const commit = pendingTombstone('mindmaps', id, Boolean(database))
   conn.delete(mindmaps).where(eq(mindmaps.id, id)).run()
+  commit()
   return true
 }
 

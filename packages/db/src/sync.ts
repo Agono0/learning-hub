@@ -31,6 +31,7 @@ import {
 } from './backup'
 import { getRawDb, type RawSqliteHandle } from './index'
 import { ValidationError } from './review-service'
+import { recordDeletionTombstone } from './repos/sync-meta'
 
 export interface MergeResult {
   tablesProcessed: number
@@ -1126,6 +1127,34 @@ export async function mergeBackup(
     updated: syncOutcome.updated,
     tombstoned: syncOutcome.tombstoned,
     rescheduledCards,
+  }
+}
+
+/**
+ * Snapshot a row's natural key BEFORE it is deleted and return a function that records
+ * its deletion tombstone. Call the returned function only after the delete succeeded.
+ * Without a tombstone, a delete on one device is undone by the next sync from another
+ * device that still holds the row. A caller-supplied `db` (tests) is a different
+ * database from the global one the tombstone would be written to, so it is skipped.
+ */
+export function pendingTombstone(table: string, id: number, customDb = false): () => void {
+  if (customDb) return () => {}
+  let key: string | null = null
+  try {
+    const row = getRawDb().prepare(`SELECT * FROM "${table}" WHERE id = ?`).get(id) as
+      Record<string, unknown> | undefined
+    key = row ? computeRecordNaturalKey(table, row) : null
+  } catch {
+    key = null
+  }
+  if (!key) return () => {}
+  const k = key
+  return () => {
+    try {
+      recordDeletionTombstone(table, k)
+    } catch {
+      // best effort: a failed tombstone must never fail the user's delete
+    }
   }
 }
 

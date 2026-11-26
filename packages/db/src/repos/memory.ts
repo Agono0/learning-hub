@@ -4,6 +4,7 @@
  */
 import { asc, eq, max } from 'drizzle-orm'
 import { palaceWalkOrder } from '@learning-hub/core'
+import { pendingTombstone } from '../sync'
 import { getDb, withTransaction, type LearningHubDB } from '../index'
 import { mnemonicTables, palaceItems, palaces } from '../schema'
 
@@ -243,11 +244,14 @@ export function updatePalace(
  * Delete a memory palace and all its loci.
  */
 export function deletePalace(palaceId: number, opts: { db?: LearningHubDB } = {}): boolean {
-  return withTransaction((tx) => {
+  const commit = pendingTombstone('palaces', palaceId, Boolean(opts.db))
+  const ok = withTransaction((tx) => {
     tx.delete(palaceItems).where(eq(palaceItems.palaceId, palaceId)).run()
     const res = tx.delete(palaces).where(eq(palaces.id, palaceId)).run()
     return (res?.changes ?? 0) > 0
   }, opts.db)
+  if (ok) commit()
+  return ok
 }
 
 /**

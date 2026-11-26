@@ -4,6 +4,7 @@
  */
 import { and, eq, gte, sql } from 'drizzle-orm'
 import { dayKey, solidifying, stackChainOrder, XP_REWARDS } from '@learning-hub/core'
+import { pendingTombstone } from '../sync'
 import { getDb, type LearningHubDB } from '../index'
 import { habitLogs, habits } from '../schema'
 import { withTransaction } from '../transaction'
@@ -165,8 +166,10 @@ export function deleteHabit(
   opts: { db?: LearningHubDB } = {},
 ): { ok: boolean; archived: boolean } {
   const db = opts.db ?? getDb()
+  const commit = pendingTombstone('habits', id, Boolean(opts.db))
   try {
     db.delete(habits).where(eq(habits.id, id)).run()
+    commit()
     return { ok: true, archived: false }
   } catch {
     db.update(habits).set({ archived: true }).where(eq(habits.id, id)).run()

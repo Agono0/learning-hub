@@ -6,6 +6,7 @@
 import { rowLimit } from '../limits'
 import { and, desc, eq, not, sql } from 'drizzle-orm'
 import { cosineSimilarity } from '@learning-hub/core/embeddings'
+import { pendingTombstone } from '../sync'
 import { getDb } from '../index'
 import { cardEmbeddings, cards, quickCaptures, embeddings } from '../schema'
 
@@ -69,7 +70,9 @@ export function markQuickCaptureProcessed(id: number, processed = true): boolean
 
 export function deleteQuickCapture(id: number): boolean {
   const db = getDb()
+  const commit = pendingTombstone('quick_captures', id)
   const result = db.delete(quickCaptures).where(eq(quickCaptures.id, id)).run()
+  if (result.changes > 0) commit()
   return result.changes > 0
 }
 
