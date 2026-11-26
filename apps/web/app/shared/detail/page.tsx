@@ -3,9 +3,14 @@
 /**
  * Channel detail: renders a hosted channel (or a local subscription copy)
  * with its current items and full version history.
+ *
+ * Route: /shared/detail?channelId=<id>. A query parameter, not a [channelId] segment,
+ * because the native apps ship a STATIC export that cannot pre-render ids that only
+ * exist at runtime (same convention as /tasks/projects/detail?id=).
  */
-import { use, useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { apiSend } from '@/lib/transport'
 import { Badge, Callout, Panel, PageHeader } from '@/ui'
 
@@ -47,8 +52,16 @@ function itemPreview(content: Record<string, unknown>): string {
     .join(' · ')
 }
 
-export default function ChannelDetailPage({ params }: { params: Promise<{ channelId: string }> }) {
-  const { channelId } = use(params)
+export default function ChannelDetailPage() {
+  return (
+    <Suspense fallback={null}>
+      <ChannelDetail />
+    </Suspense>
+  )
+}
+
+function ChannelDetail() {
+  const channelId = useSearchParams().get('channelId') ?? ''
   const [manifest, setManifest] = useState<Manifest | null>(null)
   const [source, setSource] = useState<'hosted' | 'subscription' | null>(null)
   const [localVersion, setLocalVersion] = useState<number | null>(null)
@@ -58,6 +71,10 @@ export default function ChannelDetailPage({ params }: { params: Promise<{ channe
   useEffect(() => {
     let cancelled = false
     async function load() {
+      if (!channelId) {
+        setError('No channel id was given.')
+        return
+      }
       try {
         const res = await apiSend<{ ok: boolean; manifest?: Manifest }>(
           '/api/share-channels',

@@ -13,6 +13,7 @@ import {
   SyncCoordinator,
   TransportError,
   type ChannelManifest,
+  type HttpChannelTransportOptions,
   type SyncRecord,
 } from '@learning-hub/core'
 
@@ -21,6 +22,13 @@ import type { DbChannelSyncStore } from './repos/share-channels'
 import { refreshSubscriptionManifestView } from './repos/share-channels'
 
 export type { FetchLike }
+
+/**
+ * Transport options a host may pass. Default is none: https only, no loopback.
+ * The only supported opt-in is loopback for local dev and tests; a caller must
+ * derive it from an explicit local setting, never from request input.
+ */
+export type SyncTransportOptions = Pick<HttpChannelTransportOptions, 'allowHttpLoopback'>
 
 function failureRecord(
   store: DbChannelSyncStore,
@@ -52,6 +60,7 @@ export async function syncSubscriptionOverHttp(
   channelId: string,
   hostBaseUrl: string | null,
   fetchFn: FetchLike,
+  transportOptions: SyncTransportOptions = {},
 ): Promise<SyncRecord> {
   const at = new Date().toISOString()
   if (!hostBaseUrl) {
@@ -63,7 +72,11 @@ export async function syncSubscriptionOverHttp(
       'no host recorded for this channel; pass hostBaseUrl when subscribing or syncing',
     )
   }
-  const http = new HttpChannelTransport({ baseUrl: hostBaseUrl, fetchFn })
+  const http = new HttpChannelTransport({
+    baseUrl: hostBaseUrl,
+    fetchFn,
+    allowHttpLoopback: transportOptions.allowHttpLoopback === true,
+  })
   let manifest: ChannelManifest | null
   try {
     manifest = await http.fetchManifest(channelId)
@@ -109,6 +122,7 @@ export async function syncAllSubscriptions(
   store: DbChannelSyncStore,
   rows: { channelId: string; hostBaseUrl: string | null }[],
   fetchFn: FetchLike,
+  transportOptions: SyncTransportOptions = {},
 ): Promise<{
   at: string
   checked: number
@@ -119,7 +133,15 @@ export async function syncAllSubscriptions(
 }> {
   const records: SyncRecord[] = []
   for (const row of rows) {
-    records.push(await syncSubscriptionOverHttp(store, row.channelId, row.hostBaseUrl, fetchFn))
+    records.push(
+      await syncSubscriptionOverHttp(
+        store,
+        row.channelId,
+        row.hostBaseUrl,
+        fetchFn,
+        transportOptions,
+      ),
+    )
   }
   return {
     at: new Date().toISOString(),

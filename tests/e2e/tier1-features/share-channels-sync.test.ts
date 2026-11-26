@@ -24,9 +24,15 @@ let remote: Server
 let remoteUrl: string
 let testDb: TestDbContext
 let remoteManifest: ChannelManifest
+const LOOPBACK_ENV = 'LH_SHARE_ALLOW_HTTP_LOOPBACK'
+let priorLoopbackEnv: string | undefined
 
 beforeAll(async () => {
   testDb = createIsolatedTestDb('share-channels-sync')
+  // The stub publisher below is an http loopback server. The server's host policy
+  // refuses that by default, so this suite opts in through the server's own env.
+  priorLoopbackEnv = process.env[LOOPBACK_ENV]
+  process.env[LOOPBACK_ENV] = '1'
 
   // The subscriber hub under test.
   server = createServer((req, res) => {
@@ -68,6 +74,8 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
+  if (priorLoopbackEnv === undefined) delete process.env[LOOPBACK_ENV]
+  else process.env[LOOPBACK_ENV] = priorLoopbackEnv
   await new Promise<void>((resolve) => server.close(() => resolve()))
   await new Promise<void>((resolve) => remote.close(() => resolve()))
   testDb.cleanup()
@@ -181,5 +189,62 @@ describe('share-channels sync routes', () => {
     expect(data.ok).toBe(false)
     expect(data.record.outcome).toBe('failed')
     expect(data.record.errorCode).toBeTruthy()
+  })
+
+  describe('loopback host opt-in gate', () => {
+    const syncAgainstLoopback = () =>
+      post('/share/channels/sync', { channelId: 'ch-remote-deck', hostBaseUrl: remoteUrl })
+
+    it('refuses an http loopback host by default (flag unset)', async () => {
+      const saved = process.env[LOOPBACK_ENV]
+      delete process.env[LOOPBACK_ENV]
+      try {
+        const { data } = await syncAgainstLoopback()
+        expect(data.ok).toBe(false)
+        expect(data.record.errorCode).toBe('host-refused')
+      } finally {
+        if (saved !== undefined) process.env[LOOPBACK_ENV] = saved
+      }
+    })
+
+    it('refuses the same host in production even when the flag is set', async () => {
+      const savedEnv = process.env['NODE_ENV']
+      process.env[LOOPBACK_ENV] = '1'
+      process.env['NODE_ENV'] = 'production'
+      try {
+        const { data } = await syncAgainstLoopback()
+        expect(data.ok).toBe(false)
+        expect(data.record.errorCode).toBe('host-refused')
+      } finally {
+        if (savedEnv === undefined) delete process.env['NODE_ENV']
+        else process.env['NODE_ENV'] = savedEnv
+      }
+    })
+
+    it('does not enable the flag from NODE_ENV, and restores the environment', async () => {
+      const saved = process.env[LOOPBACK_ENV]
+      delete process.env[LOOPBACK_ENV]
+      const savedEnv = process.env['NODE_ENV']
+      process.env['NODE_ENV'] = 'development'
+      try {
+        const { data } = await syncAgainstLoopback()
+        expect(data.record.errorCode).toBe('host-refused')
+      } finally {
+        if (savedEnv === undefined) delete process.env['NODE_ENV']
+        else process.env['NODE_ENV'] = savedEnv
+        if (saved !== undefined) process.env[LOOPBACK_ENV] = saved
+      }
+      expect(process.env[LOOPBACK_ENV]).toBe('1')
+      expect(process.env['NODE_ENV']).toBe(savedEnv)
+    })
+
+    it('never opens private LAN hosts even with the flag set', async () => {
+      const { data } = await post('/share/channels/sync', {
+        channelId: 'ch-remote-deck',
+        hostBaseUrl: 'http://192.168.1.20:4173',
+      })
+      expect(data.ok).toBe(false)
+      expect(data.record.errorCode).toBe('host-refused')
+    })
   })
 })

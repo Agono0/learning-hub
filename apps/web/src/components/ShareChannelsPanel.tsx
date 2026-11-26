@@ -810,7 +810,7 @@ export function ShareChannelsPanel() {
                       </div>
                       <div className="flex items-center gap-2">
                         <Link
-                          href={`/shared/${c.channelId}`}
+                          href={`/shared/detail?channelId=${encodeURIComponent(c.channelId)}`}
                           className="text-xs text-indigo-600 underline"
                           data-testid={`browse-${c.channelId}`}
                         >
