@@ -16,7 +16,7 @@ import {
   type SessionMode,
 } from '@learning-hub/core'
 import { getDb, type LearningHubDB } from '../index'
-import { CardNotFoundError } from '../review-service'
+import { CardNotFoundError, ValidationError } from '../review-service'
 import { cards, decks, revlog, revlogUndos, userSettings } from '../schema'
 import { withTransaction } from '../transaction'
 
@@ -253,9 +253,62 @@ export async function optimizeAndPersistFsrs(
 }
 
 /**
+ * Thrown by `undoCardReview` when the undo no longer applies: the revlog row is
+ * not this card's, is already undone, or is not the card's latest active
+ * review (a newer review happened, or the request is a replay). The card row is
+ * left untouched (→ 409).
+ */
+export class UndoConflictError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'UndoConflictError'
+  }
+}
+
+function assertValidSnapshot(cardId: number, snap: PreReviewSnapshot): void {
+  const bad = (what: string): never => {
+    throw new ValidationError(`Invalid preReview: ${what}`)
+  }
+  const int = (v: unknown, min: number, max = Number.MAX_SAFE_INTEGER) =>
+    typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max
+  const num = (v: unknown, min: number, max = Number.MAX_VALUE) =>
+    typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max
+  if (!snap || typeof snap !== 'object') bad('missing snapshot')
+  if (snap.id !== cardId) bad('id must match cardId')
+  if (!int(snap.state, 0, 3)) bad('state must be an integer 0-3')
+  if (!num(snap.stability, 0)) bad('stability must be a finite number >= 0')
+  if (!num(snap.difficulty, 0, 10)) bad('difficulty must be a finite number 0-10')
+  if (!int(snap.elapsedDays, 0)) bad('elapsedDays must be an integer >= 0')
+  if (!int(snap.scheduledDays, 0)) bad('scheduledDays must be an integer >= 0')
+  if (!int(snap.reps, 0)) bad('reps must be an integer >= 0')
+  if (!int(snap.lapses, 0)) bad('lapses must be an integer >= 0')
+  if (!int(snap.learningStep, 0)) bad('learningStep must be an integer >= 0')
+  if (typeof snap.due !== 'string' || Number.isNaN(Date.parse(snap.due)))
+    bad('due must be an ISO date')
+  if (
+    snap.lastReview !== null &&
+    (typeof snap.lastReview !== 'string' || Number.isNaN(Date.parse(snap.lastReview)))
+  )
+    bad('lastReview must be an ISO date or null')
+}
+
+/**
  * Atomically undo a card review: restores `cards` to `preReview` AND records an
  * append-only tombstone in `revlog_undos` (never runs `DELETE FROM revlog`,
  * strictly upholding Hard Rule #8).
+ *
+ * The snapshot is client-supplied, so its fields are validated strictly
+ * (`ValidationError`, → 400) and cross-checked against what is recorded: its
+ * state must equal the revlog's recorded pre-review state, and its reps,
+ * lapses and lastReview must not exceed the card's current values / the review
+ * time (a pre-review value cannot be newer than the review). The revlog does
+ * not store stability, difficulty or due, so those stay client-trusted within
+ * the validated ranges.
+ *
+ * Only the card's latest ACTIVE (non-undone) review can be undone. A stale or
+ * replayed request (older review, already-undone review, another card's
+ * revlog id, nothing to undo) throws `UndoConflictError` before any write, so
+ * the card row can never diverge from its active revlog.
  */
 export function undoCardReview(
   payload: { cardId: number; revlogId?: number; preReview: PreReviewSnapshot },
@@ -263,10 +316,41 @@ export function undoCardReview(
 ): { card: typeof cards.$inferSelect; revlogUndone: boolean; revlogId: number | null } {
   const database = opts.db ?? getDb()
   const snap = payload.preReview
+  assertValidSnapshot(payload.cardId, snap)
 
   return withTransaction((tx) => {
     const existing = tx.select().from(cards).where(eq(cards.id, payload.cardId)).limit(1).get()
     if (!existing) throw new CardNotFoundError(payload.cardId)
+
+    const notUndone = sql`NOT EXISTS (SELECT 1 FROM revlog_undos u WHERE u.revlog_id = ${revlog.id})`
+    const latestActive = tx
+      .select({ id: revlog.id, state: revlog.state, reviewedAt: revlog.reviewedAt })
+      .from(revlog)
+      .where(and(eq(revlog.cardId, payload.cardId), notUndone))
+      .orderBy(desc(revlog.id))
+      .limit(1)
+      .get()
+
+    if (!latestActive) throw new UndoConflictError('No active review to undo for this card')
+    if (payload.revlogId !== undefined) {
+      if (latestActive.id !== payload.revlogId) {
+        throw new UndoConflictError(
+          'revlogId is not the latest active review of this card (stale or already undone)',
+        )
+      }
+    } else if (latestActive.state !== snap.state) {
+      throw new UndoConflictError('preReview does not match the latest active review')
+    }
+    if (
+      snap.state !== latestActive.state ||
+      snap.reps > existing.reps ||
+      snap.lapses > existing.lapses ||
+      (snap.lastReview !== null &&
+        Date.parse(snap.lastReview) > Date.parse(latestActive.reviewedAt))
+    ) {
+      throw new ValidationError('Invalid preReview: inconsistent with the recorded review')
+    }
+    const targetRevlogId = latestActive.id
 
     tx.update(cards)
       .set({
@@ -284,37 +368,16 @@ export function undoCardReview(
       .where(eq(cards.id, payload.cardId))
       .run()
 
-    let targetRevlogId: number | null = payload.revlogId ?? null
-    if (!targetRevlogId) {
-      const latestMatching = tx
-        .select({ id: revlog.id })
-        .from(revlog)
-        .where(
-          and(
-            eq(revlog.cardId, payload.cardId),
-            eq(revlog.state, snap.state),
-            sql`NOT EXISTS (SELECT 1 FROM revlog_undos u WHERE u.revlog_id = ${revlog.id})`,
-          ),
-        )
-        .orderBy(desc(revlog.id))
-        .limit(1)
-        .get()
-      targetRevlogId = latestMatching?.id ?? null
-    }
-
-    let revlogUndone = false
-    if (targetRevlogId !== null) {
-      const res = tx
-        .insert(revlogUndos)
-        .values({
-          revlogId: targetRevlogId,
-          cardId: payload.cardId,
-          undoneAt: new Date().toISOString(),
-        })
-        .onConflictDoNothing()
-        .run()
-      revlogUndone = res.changes > 0
-    }
+    const res = tx
+      .insert(revlogUndos)
+      .values({
+        revlogId: targetRevlogId,
+        cardId: payload.cardId,
+        undoneAt: new Date().toISOString(),
+      })
+      .onConflictDoNothing()
+      .run()
+    const revlogUndone = res.changes > 0
 
     const restored = tx.select().from(cards).where(eq(cards.id, payload.cardId)).limit(1).get()
     return { card: restored!, revlogUndone, revlogId: targetRevlogId }
