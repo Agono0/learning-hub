@@ -156,7 +156,7 @@ jobs:
         run: npm run web:tauri
 
       - name: Upload web export artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: tauri-web-export
           path: apps/web/.next-tauri
@@ -252,7 +252,7 @@ jobs:
         run: npm run android:build -- --target ${{ matrix.tauri-target }}
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: apk-${{ matrix.abi }}
           path: apps/native/src-tauri/gen/android/app/build/outputs/apk/**/Learning-HUB-${{ matrix.abi }}.apk
@@ -566,7 +566,7 @@ jobs:
           done
 
       - name: Upload workflow artifact (always, for inspection)
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: nightly-${{ needs.meta.outputs.version }}
           path: |
