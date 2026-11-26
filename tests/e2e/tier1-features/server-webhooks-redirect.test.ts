@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import {
   dispatchWebhook,
+  parseWebhookSpec,
   postDigestSummary,
   postJson,
   type WebhookTarget,
@@ -103,27 +104,21 @@ describe('dispatchWebhook', () => {
       await dispatchWebhook(target, { a: 1 }, async () => reply(status, { location: LOCATION }).res)
       const text = out()
       expect(text).toContain(`responded ${status} redirect to elsewhere.example.net:8443`)
-      expect(text).toContain('not delivered')
-      for (const secret of [
-        'very-secret-token',
-        'sig=abc',
-        '/private/path',
-        'token=xyz',
-        'hooks.example.com',
-      ]) {
+      expect(text).toContain('not delivered: https://hooks.example.com responded')
+      for (const secret of ['very-secret-token', 'sig=abc', '/private/path', 'token=xyz']) {
         expect(text, secret).not.toContain(secret)
       }
     },
   )
 
-  it('keeps the existing logs: 2xx silent, 4xx and 5xx logged with the URL, network error logged', async () => {
+  it('keeps the existing logs: 2xx silent, 4xx and 5xx logged with the origin, network error logged', async () => {
     let out = logs()
     await dispatchWebhook(target, {}, async () => reply(200).res)
     expect(out()).toBe('')
     vi.restoreAllMocks()
     out = logs()
     await dispatchWebhook(target, {}, async () => reply(503).res)
-    expect(out()).toContain(`review.completed → ${URL_SECRET} responded 503`)
+    expect(out()).toContain('review.completed → https://hooks.example.com responded 503')
     vi.restoreAllMocks()
     out = logs()
     await dispatchWebhook(target, {}, async () => {
@@ -149,10 +144,109 @@ describe('postDigestSummary', () => {
     })
     expect(seen).toEqual(targets.map((t) => t.url))
     const text = out()
-    expect(text).toContain('not delivered: 307 redirect to elsewhere.example.net:8443')
+    expect(text).toContain(
+      'not delivered: https://a.example.com responded 307 redirect to elsewhere.example.net:8443',
+    )
     expect(text).not.toContain('k=1')
     expect(text).not.toContain('/private/path')
-    expect(text).toContain('[digest] https://b.example.com/y → 200')
-    expect(text).toContain('[digest] https://c.example.com/z → 500')
+    expect(text).toContain('[digest] https://b.example.com → 200')
+    expect(text).toContain('[digest] https://c.example.com → 500')
+  })
+})
+
+/**
+ * Logs name a target by origin only. The URL below carries a secret in userinfo, path, query and
+ * fragment; no log line on any path may contain any part of it.
+ */
+const SECRET_URL =
+  'https://hookuser:pa55w0rd-xyz@hooks.example.com:9443/services/T0/B0/very-secret-token?sig=abc123&k=sekret#frag-secret'
+const SECRET_PARTS = [
+  'hookuser',
+  'pa55w0rd-xyz',
+  '/services',
+  'very-secret-token',
+  'abc123',
+  'sekret',
+  'frag-secret',
+  'T0/B0',
+]
+const secretTarget: WebhookTarget = { event: 'review.completed', url: SECRET_URL }
+const expectClean = (text: string) => {
+  expect(text).not.toBe('')
+  for (const part of SECRET_PARTS) expect(text, part).not.toContain(part)
+  expect(text).toContain('https://hooks.example.com:9443')
+}
+/** An error the way a transport can raise it: message and cause both repeat the URL. */
+const leakyError = () =>
+  Object.assign(
+    new Error(`connect ECONNREFUSED ${SECRET_URL} (path /services/T0/B0/very-secret-token)`),
+    {
+      cause: new Error(`inner ${SECRET_URL} token=very-secret-token`),
+    },
+  )
+
+describe('no log line carries any part of a secret-bearing URL', () => {
+  const leakyLocation = {
+    location: 'https://hookuser:pa55w0rd-xyz@next.example.org/very-secret-token?sig=abc123',
+  }
+  const cases: [string, () => Promise<Response>][] = [
+    ['404', async () => reply(404).res],
+    ['503', async () => reply(503).res],
+    ['redirect', async () => reply(307, leakyLocation).res],
+    [
+      'network error',
+      async () => {
+        throw leakyError()
+      },
+    ],
+  ]
+
+  it.each(cases)('dispatchWebhook %s', async (_name, fetchFn) => {
+    const out = logs()
+    await dispatchWebhook(secretTarget, {}, fetchFn)
+    expectClean(out())
+  })
+
+  it.each(cases)('postDigestSummary %s', async (_name, fetchFn) => {
+    const out = logs()
+    await postDigestSummary([secretTarget], {}, fetchFn)
+    expectClean(out())
+  })
+
+  it('a 2xx digest line names the origin only', async () => {
+    const out = logs()
+    await postDigestSummary([secretTarget], {}, async () => reply(200).res)
+    expectClean(out())
+  })
+
+  it('parseWebhookSpec warnings never echo a URL, even for a malformed or unknown entry', () => {
+    const out = logs()
+    parseWebhookSpec(
+      [
+        '=https://h.example.com/very-secret-token?sig=abc123',
+        'https://hookuser:pa55w0rd-xyz@h.example.com/very-secret-token?sig=abc123',
+        'nosuchevent=https://h.example.com/very-secret-token',
+        'review.completed=',
+      ].join(','),
+    )
+    const text = out()
+    expect(text).not.toBe('')
+    for (const part of ['hookuser', 'pa55w0rd-xyz', 'very-secret-token', 'abc123']) {
+      expect(text, part).not.toContain(part)
+    }
+  })
+
+  it('an unparseable URL is logged as a placeholder, not echoed', async () => {
+    const out = logs()
+    await dispatchWebhook(
+      { event: 'review.completed', url: 'not a url secret-zzz' },
+      {},
+      async () => {
+        throw new Error('bad url not a url secret-zzz')
+      },
+    )
+    const text = out()
+    expect(text).toContain('invalid-url')
+    expect(text).not.toContain('secret-zzz')
   })
 })

@@ -236,6 +236,8 @@ LEARNING_HUB_WEBHOOKS="review.completed=http://127.0.0.1:8787/hook,streak.broken
   host only. Put the final URL in `LEARNING_HUB_WEBHOOKS` (for example the `https` address, with the
   exact path). Before this change a `307` or `308` was re-sent and a `301`, `302` or `303` was
   turned into a body-less `GET`.
+- Logs name a webhook target by origin only (scheme, host, port), never the path, query or
+  credentials, because a webhook URL often carries a token.
 - Delivery: `POST` with `Content-Type: application/json`, body = the event
   payload as-is (e.g. `{"cardId":42,"grade":3,"xpEarned":12}` for
   `review.completed`).

@@ -61,7 +61,9 @@ export function parseWebhookSpec(spec: string | undefined): WebhookTarget[] {
     if (!entry) continue
     const eq = entry.indexOf('=')
     if (eq <= 0 || eq === entry.length - 1) {
-      console.warn(`[webhooks] ignoring malformed entry "${entry}" (expected eventName=url)`)
+      console.warn(
+        '[webhooks] ignoring a malformed entry (expected eventName=url); not shown, it may hold a secret',
+      )
       continue
     }
     const rawEvent = entry.slice(0, eq).trim()
@@ -69,7 +71,8 @@ export function parseWebhookSpec(spec: string | undefined): WebhookTarget[] {
     const event = webhookEventSchema.safeParse(rawEvent)
     if (!event.success) {
       console.warn(
-        `[webhooks] unknown event "${rawEvent}" — skipped (subscribable: ${KNOWN_EVENTS.join(', ')})`,
+        `[webhooks] unknown event "${/^[\w.:-]{1,64}$/.test(rawEvent) ? rawEvent : '<not shown>'}" — skipped ` +
+          `(subscribable: ${KNOWN_EVENTS.join(', ')})`,
       )
       continue
     }
@@ -79,6 +82,43 @@ export function parseWebhookSpec(spec: string | undefined): WebhookTarget[] {
 }
 
 type FetchFn = (url: string, init?: RequestInit) => Promise<Response>
+
+/**
+ * A configured webhook URL can carry a secret (a token in the path or query, userinfo), so logs
+ * name the target by origin only. A URL that does not parse is shown as a fixed placeholder.
+ */
+export function originOf(url: string): string {
+  try {
+    const u = new URL(url)
+    return u.host ? `${u.protocol}//${u.host}` : 'invalid-url'
+  } catch {
+    return 'invalid-url'
+  }
+}
+
+/**
+ * An error message with every part of the target URL that could be a secret removed: the full
+ * URL, userinfo, path, query and fragment. Only the error name and the cleaned message are kept
+ * (never the cause chain or stack, which may repeat the URL).
+ */
+export function describeFailure(err: unknown, url: string): string {
+  const raw = err instanceof Error ? `${err.name}: ${err.message}` : 'non-error thrown'
+  const secrets = [url]
+  try {
+    const u = new URL(url)
+    secrets.push(u.href, u.username, u.password, u.search, u.hash)
+    for (const seg of u.pathname.split('/')) secrets.push(seg)
+    for (const [k, v] of u.searchParams) secrets.push(k, v)
+    secrets.push(decodeURIComponent(u.pathname))
+  } catch {
+    // keep the raw URL only
+  }
+  let out = raw
+  for (const part of secrets.filter((x) => x.length >= 3).sort((a, b) => b.length - a.length)) {
+    out = out.split(part).join('[redacted]')
+  }
+  return out
+}
 
 /** What one POST to a configured URL came to. A redirect is never followed or counted as delivery. */
 export type PostOutcome =
@@ -135,14 +175,17 @@ export async function dispatchWebhook(
     const out = await postJson(target.url, payload, { timeoutMs: WEBHOOK_TIMEOUT_MS, fetchFn })
     if (out.kind === 'redirect') {
       console.error(
-        `[webhooks] ${target.event} not delivered: responded ${out.status} redirect to ` +
-          `${out.locationHost}; redirects are not followed, set the final URL in LEARNING_HUB_WEBHOOKS`,
+        `[webhooks] ${target.event} not delivered: ${originOf(target.url)} responded ` +
+          `${out.status} redirect to ${out.locationHost}; redirects are not followed, set the final URL in LEARNING_HUB_WEBHOOKS`,
       )
     } else if (!out.ok) {
-      console.error(`[webhooks] ${target.event} → ${target.url} responded ${out.status}`)
+      console.error(`[webhooks] ${target.event} → ${originOf(target.url)} responded ${out.status}`)
     }
   } catch (err) {
-    console.error(`[webhooks] ${target.event} → ${target.url} delivery failed:`, err)
+    console.error(
+      `[webhooks] ${target.event} → ${originOf(target.url)} delivery failed: ` +
+        describeFailure(err, target.url),
+    )
   }
 }
 
@@ -160,14 +203,15 @@ export async function postDigestSummary(
       const out = await postJson(target.url, summary, { timeoutMs: 5000, fetchFn })
       if (out.kind === 'redirect') {
         console.warn(
-          `[digest] not delivered: ${out.status} redirect to ${out.locationHost}; ` +
+          `[digest] not delivered: ${originOf(target.url)} responded ${out.status} redirect to ` +
+            `${out.locationHost}; ` +
             'redirects are not followed, set the final URL in LEARNING_HUB_WEBHOOKS',
         )
       } else {
-        console.log(`[digest] ${target.url} → ${out.status}`)
+        console.log(`[digest] ${originOf(target.url)} → ${out.status}`)
       }
     } catch (err) {
-      console.warn(`[digest] ${target.url} failed:`, (err as Error).message)
+      console.warn(`[digest] ${originOf(target.url)} failed: ${describeFailure(err, target.url)}`)
     }
   }
 }
