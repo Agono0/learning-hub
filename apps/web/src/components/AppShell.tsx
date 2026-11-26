@@ -178,7 +178,7 @@ function Sidebar({ pathname }: { pathname: string | null }) {
   }
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-20 hidden w-56 print:hidden flex-col border-r border-neutral-200 bg-white/80 backdrop-blur lg:flex dark:border-(--hub-border) dark:bg-(--hub-sunken)/90">
+    <aside className="fixed inset-y-0 left-0 z-20 hidden w-60 print:hidden flex-col border-r border-neutral-200 bg-white/80 backdrop-blur lg:flex dark:border-(--hub-border) dark:bg-(--hub-sunken)/90">
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <Brand />
         <span className="flex items-center gap-1">
@@ -242,7 +242,7 @@ function Sidebar({ pathname }: { pathname: string | null }) {
                         aria-current={active ? 'page' : undefined}
                         className={`mb-0.5 flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors ${
                           active
-                            ? 'bg-indigo-600/10 font-medium text-indigo-600 dark:text-indigo-300'
+                            ? 'nav-active font-medium text-indigo-600 dark:text-indigo-300'
                             : 'text-neutral-600 hover:bg-neutral-100 dark:text-faint dark:hover:bg-(--hub-panel-2)'
                         }`}
                       >
@@ -664,9 +664,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main
           id="main-content"
           tabIndex={-1}
-          className="min-w-0 flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 md:pl-16 lg:pl-56 print:p-0"
+          className="min-w-0 flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 md:pl-16 lg:pl-60 print:p-0"
         >
-          <div className="mx-auto max-w-5xl px-4 py-4 sm:px-6 sm:py-6">
+          <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
             <OfflineBanner />
             <UpdateController />
             <StorageWarning />

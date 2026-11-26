@@ -86,6 +86,15 @@ jobs:
         env:
           UI_SMOKE_PORT: 3100
 
+      - name: Upload actual-route screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-screenshots
+          path: apps/web/visual-out/
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Upload Playwright artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
