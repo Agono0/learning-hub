@@ -55,6 +55,7 @@ import { dualcodingTools } from './tools/dualcoding'
 import { taskTools } from './tools/tasks'
 import { leagueTools, remoteLeagueMembershipTools } from './tools/leagues'
 import { checkArgsSize, type RegisteredTool } from './tool-kit'
+import { interferenceTools } from './tools/interference'
 
 // ─── Server ─────────────────────────────────────────────────────────────────
 
@@ -99,6 +100,7 @@ async function main() {
     ...prototypeExemplarTools,
     ...cognitiveLoadTools,
     ...elaborativeInterrogationTools,
+    ...interferenceTools,
     ...contextVariabilityTools,
     ...dualcodingTools,
     ...leagueTools,

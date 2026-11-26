@@ -83,6 +83,13 @@ function rowTimestamp(row: Record<string, unknown>): string {
   )
 }
 
+/** Order-independent card pair, because ids are remapped per device and the smaller id may change. */
+function pairIds(row: Record<string, unknown>): string {
+  const a = Number(row['card_a_id'])
+  const b = Number(row['card_b_id'])
+  return a <= b ? `${a}:${b}` : `${b}:${a}`
+}
+
 /** Stable natural identity key used by `sync_tombstones` and deduplication. */
 export function computeRecordNaturalKey(
   table: string,
@@ -233,6 +240,10 @@ export function computeRecordNaturalKey(
       return `deck:${str(row['deck_id'])}:at:${str(row['created_at'])}`
     case 'rif_dismissals':
       return `card:${str(row['card_id'])}`
+    case 'interference_pairs':
+      return `pair:${pairIds(row)}`
+    case 'interference_drills':
+      return `pair:${pairIds(row)}:day:${str(row['day'])}`
     case 'context_sessions':
       return `start:${str(row['started_at'])}:place:${str(row['place'])}`
     case 'context_goals':
@@ -638,6 +649,15 @@ export async function mergeBackup(
           }
         }
         if (missingParent) continue
+        // Card pairs are stored (smaller, larger); a remap can flip that, so restore it.
+        if (table === 'interference_pairs' || table === 'interference_drills') {
+          const x = remapped['card_a_id']
+          const y = remapped['card_b_id']
+          if (typeof x === 'number' && typeof y === 'number' && x > y) {
+            remapped['card_a_id'] = y
+            remapped['card_b_id'] = x
+          }
+        }
 
         const nk = computeRecordNaturalKey(table, remapped)
 

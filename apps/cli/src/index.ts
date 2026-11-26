@@ -82,6 +82,7 @@ import { cognitiveLoadCommands } from './commands/cognitive-load'
 import { elaborativeInterrogationCommands } from './commands/elaborative-interrogation'
 import { contextVariabilityCommands } from './commands/context-variability'
 import { dualcodingCommands } from './commands/dualcoding'
+import { interferenceCommands } from './commands/interference'
 
 const rawArgs = process.argv.slice(2)
 const scriptArgs =
@@ -155,6 +156,7 @@ const builtinCommands: RegisteredCommand[] = [
   ...shareChannelCommands,
   ...cognitiveLoadCommands,
   ...elaborativeInterrogationCommands,
+  ...interferenceCommands,
   ...contextVariabilityCommands,
   ...dualcodingCommands,
   ...knowledgeSpaceCommands,
