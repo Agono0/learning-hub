@@ -25,7 +25,10 @@ import {
   recordRemoteOutcome,
   reserveNextSeq,
   fetchRemoteState,
+  AUTHORITY_REDIRECT_MESSAGE,
+  isRedirectReply,
   readBoundedReply,
+  REMOTE_REDIRECT_MODE,
   syncRemoteLeague,
   REMOTE_REQUEST_TIMEOUT_MS,
   remoteBase,
@@ -154,15 +157,34 @@ export const POST = withRoute(async (req: Request) => {
   })
 
   let res: Response
+  let redirected = false
   try {
     res = await remoteFetch(`${base}/mutate`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ envelope }),
       signal: AbortSignal.timeout(REMOTE_REQUEST_TIMEOUT_MS),
+      redirect: REMOTE_REDIRECT_MODE,
     })
+    if (isRedirectReply(res)) {
+      await res.body?.cancel().catch(() => undefined)
+      redirected = true
+      throw new Error('authority redirected')
+    }
   } catch {
     recordRemoteOutcome(link.id, 'unreachable')
+    if (redirected) {
+      return Response.json(
+        {
+          ok: false,
+          status: 0,
+          code: 'authority_redirected',
+          seq,
+          remote: { error: AUTHORITY_REDIRECT_MESSAGE },
+        },
+        { status: 502 },
+      )
+    }
     return Response.json({ ok: false, status: 0, code: 'unreachable', seq }, { status: 502 })
   }
   const data = (await readBoundedReply(res)) as { ok?: boolean; code?: string }

@@ -9,7 +9,7 @@
 import { sql } from 'drizzle-orm'
 import { getDb } from '@learning-hub/db'
 import { sendPushToAll } from './push'
-import { parseWebhookSpec } from './webhooks'
+import { parseWebhookSpec, postDigestSummary } from './webhooks'
 
 async function main(): Promise<void> {
   const db = getDb()
@@ -40,19 +40,7 @@ async function main(): Promise<void> {
   }
 
   const targets = parseWebhookSpec(process.env.LEARNING_HUB_WEBHOOKS)
-  for (const target of targets) {
-    try {
-      const res = await fetch(target.url, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(summary),
-        signal: AbortSignal.timeout(5000),
-      })
-      console.log(`[digest] ${target.url} → ${res.status}`)
-    } catch (err) {
-      console.warn(`[digest] ${target.url} failed:`, (err as Error).message)
-    }
-  }
+  await postDigestSummary(targets, summary)
   if (targets.length === 0) {
     console.log('[digest] no LEARNING_HUB_WEBHOOKS targets configured — nothing sent')
   }

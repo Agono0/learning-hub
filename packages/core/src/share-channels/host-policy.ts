@@ -108,6 +108,11 @@ export function classifyIp(address: string): string | null {
     const v4m = [g[6]! >> 8, g[6]! & 255, g[7]! >> 8, g[7]! & 255]
     return ipv4Reason(v4m) ?? 'ipv4-embedded'
   }
+  // IPv4-translated (::ffff:0:a.b.c.d, RFC 2765) embeds an IPv4 address in the same way.
+  if (g.slice(0, 4).every((x) => x === 0) && g[4] === 0xffff && g[5] === 0) {
+    const v4t = [g[6]! >> 8, g[6]! & 255, g[7]! >> 8, g[7]! & 255]
+    return ipv4Reason(v4t) ?? 'ipv4-embedded'
+  }
   // 64:ff9b::/96 NAT64, 2002::/16 6to4, 2001::/32 Teredo, 2001:db8::/32 docs.
   if (g[0] === 0x64 && g[1] === 0xff9b) return 'ipv4-embedded'
   if (g[0] === 0x2002) return 'ipv4-embedded'

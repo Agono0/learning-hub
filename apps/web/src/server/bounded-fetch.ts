@@ -55,7 +55,7 @@ const BLOCKED_NAME_SUFFIXES = ['.localhost', '.local', '.internal', '.localdomai
 export function ipv4Private(host: string): boolean {
   const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host)
   if (!m) return false
-  const [a, b] = [Number(m[1]), Number(m[2])]
+  const [a, b, c] = [Number(m[1]), Number(m[2]), Number(m[3])]
   return (
     a === 0 ||
     a === 10 ||
@@ -64,27 +64,74 @@ export function ipv4Private(host: string): boolean {
     (a === 169 && b === 254) ||
     (a === 172 && b >= 16 && b <= 31) ||
     (a === 192 && b === 168) ||
-    (a === 192 && b === 0) ||
+    (a === 192 && b === 0 && c === 0) || // IETF protocol assignments 192.0.0.0/24, IANA registry
+    (a === 192 && b === 0 && c === 2) || // documentation TEST-NET-1 192.0.2.0/24, IANA registry
+    (a === 198 && (b === 18 || b === 19)) || // benchmarking, RFC 2544
+    (a === 198 && b === 51 && c === 100) || // documentation
+    (a === 203 && b === 0 && c === 113) || // documentation
     a >= 224
   )
 }
 
+/**
+ * Parse an IPv6 literal into eight 16-bit groups. Handles `::` compression and a trailing dotted
+ * IPv4 part. Returns null for anything that is not a well-formed literal.
+ */
+function ipv6Groups(h: string): number[] | null {
+  let text = h
+  const dotted = /^(.*:)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/.exec(text)
+  if (dotted) {
+    const parts = dotted[2]!.split('.').map(Number)
+    if (parts.some((n) => n > 255)) return null
+    text = `${dotted[1]}${((parts[0]! << 8) | parts[1]!).toString(16)}:${((parts[2]! << 8) | parts[3]!).toString(16)}`
+  }
+  const halves = text.split('::')
+  if (halves.length > 2) return null
+  const read = (part: string): number[] | null => {
+    if (part === '') return []
+    const out: number[] = []
+    for (const g of part.split(':')) {
+      if (!/^[0-9a-f]{1,4}$/.test(g)) return null
+      out.push(parseInt(g, 16))
+    }
+    return out
+  }
+  const head = read(halves[0]!)
+  const tail = halves.length === 2 ? read(halves[1]!) : []
+  if (!head || !tail) return null
+  if (halves.length === 1) return head.length === 8 ? head : null
+  const fill = 8 - head.length - tail.length
+  if (fill < 1) return null
+  return [...head, ...new Array<number>(fill).fill(0), ...tail]
+}
+
+const v4From = (hi: number, lo: number) => `${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`
+
 export function ipv6Private(host: string): boolean {
   const h = host.replace(/^\[|\]$/g, '').toLowerCase()
   if (!h.includes(':')) return false
-  if (h === '::' || h === '::1') return true
-  if (/^f[cd]/.test(h) || /^fe[89ab]/.test(h)) return true
-  const mapped = /^::ffff:(.+)$/.exec(h)
-  if (mapped) {
-    const rest = mapped[1]!
-    if (rest.includes('.')) return ipv4Private(rest)
-    const hex = rest.split(':').map((p) => parseInt(p, 16))
-    if (hex.length === 2 && hex.every((n) => Number.isFinite(n))) {
-      const [hi, lo] = hex as [number, number]
-      return ipv4Private(`${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`)
-    }
-    return true
+  const g = ipv6Groups(h)
+  // A literal we cannot parse is not one we can vouch for.
+  if (!g) return true
+  const zeros = (from: number, to: number) => g.slice(from, to).every((n) => n === 0)
+  // ::/96 holds :: (unspecified), ::1 (loopback) and the deprecated IPv4-compatible form.
+  if (zeros(0, 6)) return true
+  // ::ffff:a.b.c.d (IPv4-mapped) and ::ffff:0:a.b.c.d (IPv4-translated).
+  if (zeros(0, 5) && g[5] === 0xffff) return ipv4Private(v4From(g[6]!, g[7]!))
+  if (zeros(0, 4) && g[4] === 0xffff && g[5] === 0) return ipv4Private(v4From(g[6]!, g[7]!))
+  // NAT64 well-known prefix 64:ff9b::/96 embeds an IPv4 address; 64:ff9b:1::/48 is local use.
+  if (g[0] === 0x64 && g[1] === 0xff9b) {
+    if (zeros(2, 6)) return ipv4Private(v4From(g[6]!, g[7]!))
+    if (g[2] === 1) return true
   }
+  // 6to4 2002::/16 embeds the IPv4 address in bits 16..47.
+  if (g[0] === 0x2002) return ipv4Private(v4From(g[1]!, g[2]!))
+  // Teredo 2001::/32 and documentation 2001:db8::/32.
+  if (g[0] === 0x2001 && (g[1] === 0 || g[1] === 0xdb8)) return true
+  // Unique-local fc00::/7, link-local fe80::/10, deprecated site-local fec0::/10, multicast ff00::/8.
+  if ((g[0]! & 0xfe00) === 0xfc00) return true
+  if ((g[0]! & 0xffc0) === 0xfe80 || (g[0]! & 0xffc0) === 0xfec0) return true
+  if ((g[0]! & 0xff00) === 0xff00) return true
   return false
 }
 
@@ -132,6 +179,16 @@ function defaultFetch(): (url: string, init?: RequestInit) => Promise<Response> 
     }
   }
   return (u, i) => remoteFetch(u, i)
+}
+
+/**
+ * The outbound transport for handlers that give a fetch to a library (for example the share
+ * channel transport): the connect-time pinned fetch on a Node server (fail closed when it is not
+ * registered), the native bridge elsewhere. Resolved on every call so a later registration is seen.
+ * Never the bare global fetch: that would skip the address check on what the socket connects to.
+ */
+export function outboundFetch(input: string | URL, init?: RequestInit): Promise<Response> {
+  return defaultFetch()(typeof input === 'string' ? input : input.toString(), init)
 }
 
 export function setPinnedFetch(fn: FetchLike | null): void {
