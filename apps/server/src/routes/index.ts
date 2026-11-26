@@ -19,6 +19,7 @@ import { ideasRoutes } from './ideas'
 import { focusRoutes } from './focus'
 import { habitsRoutes } from './habits'
 import { notesRoutes } from './notes'
+import { embodiedLearningRoutes } from './embodied-learning'
 import { implementationIntentionRoutes } from './implementation-intentions'
 import { leaguesRoutes } from './leagues'
 import { feedbackRoutes } from './feedback'
@@ -45,6 +46,7 @@ export const routes: Route[] = [
   ...focusRoutes,
   ...habitsRoutes,
   ...notesRoutes,
+  ...embodiedLearningRoutes,
   ...implementationIntentionRoutes,
   ...leaguesRoutes,
   ...feedbackRoutes,

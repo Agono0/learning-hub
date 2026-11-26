@@ -376,6 +376,7 @@ export const NAV: NavGroup[] = [
         icon: SlidersHorizontal,
         shortLabel: 'CPS',
       },
+      { href: '/embodied-learning', label: 'Embodied Learning & Gesture Studio', icon: Sparkles },
     ],
   },
   {
