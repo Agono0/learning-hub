@@ -104,4 +104,33 @@ describe('POST /api/review/undo guard', () => {
     expect(res.status).toBe(409)
     expect(cardRow(a)).toEqual(before)
   })
+
+  it('returns 400 for an inconsistent preReview and does not change the card', async () => {
+    const id = newCard()
+    const r = await D.executeReview(
+      { cardId: id, grade: 3 },
+      { now: new Date('2026-06-01T10:00:00Z') },
+    )
+    const before = cardRow(id)
+    const forged = { ...r.preReview, reps: before.reps + 5 }
+    const res = await post({ cardId: id, revlogId: r.revlog.id, preReview: forged })
+    expect(res.status).toBe(400)
+    expect(cardRow(id)).toEqual(before)
+  })
+
+  it('returns 400 for an out-of-range preReview and does not change the card', async () => {
+    const id = newCard()
+    const r = await D.executeReview(
+      { cardId: id, grade: 3 },
+      { now: new Date('2026-06-01T10:00:00Z') },
+    )
+    const before = cardRow(id)
+    const res = await post({
+      cardId: id,
+      revlogId: r.revlog.id,
+      preReview: { ...r.preReview, difficulty: 99 },
+    })
+    expect(res.status).toBe(400)
+    expect(cardRow(id)).toEqual(before)
+  })
 })

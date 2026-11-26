@@ -7,7 +7,7 @@ import * as schema from '../src/schema'
 import { ensureSchemaIndexes, ensureSchemaTables } from '../src/schema-ddl'
 import { MIGRATIONS, runMigrations } from '../src/migrations'
 import type { RawSqliteHandle } from '../src/index'
-import { executeReview } from '../src/review-service'
+import { executeReview, ValidationError } from '../src/review-service'
 import {
   getFsrsStatus,
   loadActiveRevlogs,
@@ -216,6 +216,48 @@ describe('per-deck FSRS presets, append-only Undo, and FSRS persistence repo', (
       expect(() => undoCardReview({ cardId: 1, preReview: snap }, { db: db as never })).toThrow(
         UndoConflictError,
       )
+    })
+
+    it('rejects malformed or inconsistent preReview snapshots and leaves the card untouched', async () => {
+      seedCards()
+      const r1 = await executeReview({ cardId: 1, grade: 3 }, { db: db as never, now: t1 })
+      const good = r1.preReview
+      const before = card(1)
+      const bads: Record<string, Record<string, unknown>> = {
+        'difficulty out of range': { difficulty: 11 },
+        'negative stability': { stability: -1 },
+        'infinite stability': { stability: Infinity },
+        'NaN difficulty': { difficulty: Number.NaN },
+        'state enum': { state: 9 },
+        'fractional reps': { reps: 0.5 },
+        'negative scheduledDays': { scheduledDays: -3 },
+        'unparseable due': { due: 'not-a-date' },
+        'unparseable lastReview': { lastReview: 'nope' },
+        'id mismatch': { id: 2 },
+        'reps above the card current reps': { reps: before.reps + 5 },
+        'lapses above the card current lapses': { lapses: before.lapses + 1 },
+        'lastReview after the review time': { lastReview: '2026-06-02T00:00:00.000Z' },
+      }
+      for (const [name, patch] of Object.entries(bads)) {
+        expect(
+          () =>
+            undoCardReview(
+              { cardId: 1, revlogId: r1.revlog.id, preReview: { ...good, ...patch } as never },
+              { db: db as never },
+            ),
+          name,
+        ).toThrow(ValidationError)
+        expect(card(1), name).toEqual(before)
+      }
+      // state recorded on the revlog (pre-review state) must match
+      expect(() =>
+        undoCardReview(
+          { cardId: 1, revlogId: r1.revlog.id, preReview: { ...good, state: 2 } },
+          { db: db as never },
+        ),
+      ).toThrow(ValidationError)
+      expect(card(1)).toEqual(before)
+      expect(tombstones()).toHaveLength(0)
     })
 
     it('still undoes the latest review, with or without revlogId, newest first', async () => {
