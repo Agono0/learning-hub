@@ -263,3 +263,42 @@ test.describe('nav disclosure', () => {
     await expect(details).toHaveAttribute('open', /.*/)
   })
 })
+
+test.describe('mixed-script review card', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+  test('Arabic-first and English-first cards resolve direction per block', async ({
+    page,
+    context,
+  }) => {
+    await prepare(page, context, 'dark')
+    await page.goto('/review')
+    await settle(page)
+    await page.getByRole('button', { name: /Arabic Mixed Deck/ }).click()
+    await page.getByRole('button', { name: /Start session/ }).click()
+    const rows: Array<Record<string, string>> = []
+    for (let n = 0; n < 2; n++) {
+      const reveal = page.getByRole('button', { name: /Reveal/ })
+      await expect(reveal).toBeVisible({ timeout: 30_000 })
+      await reveal.click()
+      await page.waitForTimeout(700)
+      const measured = await page.evaluate(() => {
+        const blocks = Array.from(document.querySelectorAll('[dir="auto"]'))
+        return blocks.map((b) => ({
+          text: (b.textContent ?? '').slice(0, 60),
+          direction: getComputedStyle(b).direction,
+          textAlign: getComputedStyle(b).textAlign,
+        }))
+      })
+      rows.push({ card: String(n + 1), blocks: JSON.stringify(measured) })
+      await page.screenshot({ path: path.join(OUT, `redesign-review-mixed-script-${n + 1}.png`) })
+      await page.getByRole('button', { name: /Good/ }).first().click()
+    }
+    writeFileSync(path.join(OUT, 'mixed-script.json'), JSON.stringify(rows, null, 2))
+    const all = rows.flatMap(
+      (r) => JSON.parse(r.blocks) as Array<{ text: string; direction: string }>,
+    )
+    // Browser-computed: at least one block resolves RTL (Arabic-first) and one LTR (English-first).
+    expect(all.some((b) => b.direction === 'rtl')).toBe(true)
+    expect(all.some((b) => b.direction === 'ltr')).toBe(true)
+  })
+})
