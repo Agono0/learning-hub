@@ -36,6 +36,12 @@ export function oversizedArgsResult(bytes: number): McpToolResult {
   }
 }
 
+/** Returns an error result when `args` serialize past the cap, else null. */
+export function checkArgsSize(args: unknown): McpToolResult | null {
+  const bytes = Buffer.byteLength(JSON.stringify(args ?? {}), 'utf8')
+  return bytes > MAX_TOOL_ARGS_BYTES ? oversizedArgsResult(bytes) : null
+}
+
 /**
  * Declare a tool: ties the zod raw shape to the handler's parsed-args type so
  * built-ins keep full typing while conforming to the registry shape (where the
@@ -51,10 +57,6 @@ export function tool<S extends z.ZodRawShape>(
     name,
     description,
     inputSchema,
-    handler: (args) => {
-      const bytes = Buffer.byteLength(JSON.stringify(args ?? {}), 'utf8')
-      if (bytes > MAX_TOOL_ARGS_BYTES) return oversizedArgsResult(bytes)
-      return handler(args as z.output<z.ZodObject<S>>)
-    },
+    handler: (args) => checkArgsSize(args) ?? handler(args as z.output<z.ZodObject<S>>),
   }
 }

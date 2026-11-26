@@ -52,7 +52,7 @@ import { elaborativeInterrogationTools } from './tools/elaborative-interrogation
 import { dualcodingTools } from './tools/dualcoding'
 import { taskTools } from './tools/tasks'
 import { leagueTools, remoteLeagueMembershipTools } from './tools/leagues'
-import type { RegisteredTool } from './tool-kit'
+import { checkArgsSize, type RegisteredTool } from './tool-kit'
 
 // ─── Server ─────────────────────────────────────────────────────────────────
 
@@ -115,6 +115,8 @@ async function main() {
       contributed.name,
       { description: contributed.description, inputSchema: contributed.inputSchema },
       async (args) => {
+        const tooLarge = checkArgsSize(args)
+        if (tooLarge) return tooLarge
         try {
           return await contributed.handler(args)
         } catch (err) {

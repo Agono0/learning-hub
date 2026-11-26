@@ -52,9 +52,24 @@ describe('native command argument trust', () => {
     expect(update).toContain('apk_sha_is_verified(&expected_sha256)')
   })
 
+  it('the generic downloader cannot mint installer-trusted APK names, and patches must be listed', () => {
+    expect(update).toContain('is_reserved_download_name(&dest_path)')
+    expect(update).toContain('patch_is_listed(&target, &patch_url, &patch_sha256, patch_size)')
+  })
+
+  it('Dependabot keeps the pinned workflow actions current', () => {
+    expect(read('.github/dependabot.yml')).toMatch(/package-ecosystem:\s*github-actions/)
+  })
+
   it('Android package allowlists are validated before reaching the Kotlin bridge', () => {
     expect(focus).toContain('pub fn sanitize_packages')
     expect(focus.match(/sanitize_packages\(packages\)\?/g)).toHaveLength(2)
+  })
+})
+
+describe('MCP registry', () => {
+  it('plugin tools get the same argument size cap as built-ins', () => {
+    expect(read('apps/mcp/src/index.ts')).toContain('checkArgsSize(args)')
   })
 })
 

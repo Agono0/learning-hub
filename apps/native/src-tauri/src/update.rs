@@ -1354,6 +1354,25 @@ fn path_within(base: &Path, p: &Path) -> bool {
             .any(|c| matches!(c, Component::ParentDir | Component::CurDir))
 }
 
+/// File-name prefix reserved for APKs written by `update_download_android_apk`
+/// (the only path that checks the hash against a signature-verified manifest).
+const APK_FILE_PREFIX: &str = "android-update-";
+
+/// True when `p` has no usable file name or uses the APK-downloader prefix.
+fn is_reserved_download_name(p: &Path) -> bool {
+    p.file_name()
+        .and_then(|n| n.to_str())
+        .map(|n| n.starts_with(APK_FILE_PREFIX))
+        .unwrap_or(true)
+}
+
+/// True when the manifest itself lists this exact patch artifact.
+fn patch_is_listed(m: &UpdateManifest, url: &str, sha256: &str, size: u64) -> bool {
+    m.patches
+        .iter()
+        .any(|p| p.url == url && p.sha256 == sha256 && p.size == size)
+}
+
 /// True when `p` is exactly a file the APK downloader writes:
 /// `<base>/android-update-<sha prefix>.apk`, directly inside the updates dir.
 #[cfg(any(target_os = "android", test))]
@@ -1361,7 +1380,7 @@ fn is_update_apk_path(base: &Path, p: &Path) -> bool {
     let name_ok = p
         .file_name()
         .and_then(|n| n.to_str())
-        .map(|n| n.starts_with("android-update-") && n.ends_with(".apk"))
+        .map(|n| n.starts_with(APK_FILE_PREFIX) && n.ends_with(".apk"))
         .unwrap_or(false);
     name_ok && path_within(base, p) && p.parent() == Some(base)
 }
@@ -1499,6 +1518,11 @@ pub fn update_download_file(
         return Err(format!(
             "update download destination must live under {base:?}"
         ));
+    }
+    // The generic downloader must not be able to mint a file the installer
+    // gate trusts: those names come only from `update_download_android_apk`.
+    if is_reserved_download_name(&dest_path) {
+        return Err("destination file name is reserved for verified APK downloads".to_string());
     }
     let handle = app.clone();
     download_resumable_http(
@@ -1642,6 +1666,11 @@ pub fn update_apply_delta_patch(
         .unwrap_or(false)
     {
         return Err("target manifest was not signature-verified by this app".to_string());
+    }
+    // The patch must be one the verified manifest lists (url, hash and size),
+    // not just any artifact the webview names.
+    if !patch_is_listed(&target, &patch_url, &patch_sha256, patch_size) {
+        return Err("patch is not listed in the verified manifest".to_string());
     }
     let manifest_bytes = serde_json::to_vec_pretty(&target)
         .map_err(|e| format!("serialize target manifest: {e}"))?;
@@ -2793,5 +2822,29 @@ mod verified_registry_tests {
         assert!(reg.manifests.len() <= VerifiedRegistry::MAX_ENTRIES);
         assert!(!reg.manifest_is_verified(&manifest("nightly-0", None)));
         assert!(reg.manifest_is_verified(&manifest("nightly-19", None)));
+    }
+}
+
+#[cfg(test)]
+mod ota_gate_tests {
+    use super::*;
+
+    #[test]
+    fn generic_downloader_cannot_use_the_apk_name_prefix() {
+        let b = std::env::temp_dir().join("lh-gate").join("updates");
+        assert!(is_reserved_download_name(&b.join("android-update-0123456789ab.apk")));
+        assert!(is_reserved_download_name(&b.join("android-update-x")));
+        assert!(!is_reserved_download_name(&b.join("patch-0123456789ab.zip")));
+        assert!(is_reserved_download_name(Path::new("/")));
+    }
+
+    #[test]
+    fn only_listed_patches_are_accepted() {
+        let json = r#"{"manifestVersion":1,"channel":"nightly","version":"n2","buildSha":"abc1234","createdAt":"2026-11-22T10:00:00.000Z","minNativeVersion":"0.1.0","requiresNative":false,"files":[],"patches":[{"fromVersion":"n1","url":"https://example.com/p.zip","sha256":"aa","size":5}],"fullPackageUrl":"https://example.com/app.zip"}"#;
+        let m = parse_manifest(json).unwrap();
+        assert!(patch_is_listed(&m, "https://example.com/p.zip", "aa", 5));
+        assert!(!patch_is_listed(&m, "https://evil.example/p.zip", "aa", 5));
+        assert!(!patch_is_listed(&m, "https://example.com/p.zip", "bb", 5));
+        assert!(!patch_is_listed(&m, "https://example.com/p.zip", "aa", 6));
     }
 }
