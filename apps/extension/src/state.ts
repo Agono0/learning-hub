@@ -8,10 +8,23 @@
 /** Native app loopback bridge default port. */
 export const DEFAULT_PORT = 47615
 
+/**
+ * Where a cached lock came from. Descriptive, not a security assurance for loopback: the
+ * `loopback` bridge response is unauthenticated (the token goes to whichever process owns the
+ * port). `fallback-verified` means a web response whose nonce-bound HMAC proof verified.
+ * `legacy` marks an entry written before provenance existed: it may have come from an unsigned
+ * web response, so it is never relabeled as verified.
+ */
+export type LockSource = 'loopback' | 'fallback-verified' | 'legacy'
+
 export interface StoredLock {
   active: boolean
   endsAt: string | null
   domains: string[]
+  /** Absent in entries written by older versions (read back as `legacy`). */
+  source?: LockSource
+  /** ISO time a legacy entry was first seen by this version; its honoring window starts here. */
+  migratedAt?: string
 }
 
 export interface ExtensionState {
@@ -33,12 +46,20 @@ function parseLock(value: unknown): StoredLock | null {
   if (!value || typeof value !== 'object') return null
   const v = value as Record<string, unknown>
   if (typeof v.active !== 'boolean') return null
+  const source: LockSource =
+    v.source === 'loopback' || v.source === 'fallback-verified' ? v.source : 'legacy'
   return {
     active: v.active,
     endsAt: typeof v.endsAt === 'string' ? v.endsAt : null,
     domains: Array.isArray(v.domains)
       ? v.domains.filter((d): d is string => typeof d === 'string')
       : [],
+    source,
+    ...(source === 'legacy' &&
+    typeof v.migratedAt === 'string' &&
+    Number.isFinite(Date.parse(v.migratedAt))
+      ? { migratedAt: v.migratedAt }
+      : {}),
   }
 }
 

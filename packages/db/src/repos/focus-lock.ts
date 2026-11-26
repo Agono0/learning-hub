@@ -372,6 +372,16 @@ export function getOrCreateFocusBridge(database?: DbOrTx): typeof focusBridge.$i
 }
 
 /**
+ * The current pairing token, or null when no bridge row exists. Read-only: unlike
+ * getOrCreateFocusBridge it never inserts, so a GET can use it without mutating anything.
+ */
+export function getFocusBridgeToken(database?: DbOrTx): string | null {
+  const conn = database ?? getDb()
+  const row = conn.select().from(focusBridge).where(eq(focusBridge.id, 'default')).get()
+  return row?.pairingToken ?? null
+}
+
+/**
  * Rotates the extension pairing token.
  */
 export function rotateFocusBridgeToken(database?: DbOrTx): typeof focusBridge.$inferSelect {
@@ -423,7 +433,11 @@ export function recordFocusBridgeHeartbeat(extensionId?: string, database?: DbOr
  */
 export function getActiveFocusLock(database?: DbOrTx): FocusLockStatus {
   const conn = database ?? getDb()
-  const bridge = getOrCreateFocusBridge(conn)
+  // Read-only: this is called from GET handlers, so it must not create the pairing row. A missing
+  // row just means no heartbeat has been recorded yet.
+  const bridge = conn.select().from(focusBridge).where(eq(focusBridge.id, 'default')).get() ?? {
+    lastHeartbeatAt: null,
+  }
   const activeSession = getOpenFocusSession(conn)
 
   if (!activeSession || activeSession.endedAt) {
