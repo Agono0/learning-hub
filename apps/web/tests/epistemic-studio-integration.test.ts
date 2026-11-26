@@ -6,7 +6,7 @@ import { EpistemicNetworkHUD } from '../src/ui/EpistemicNetworkHUD'
 
 describe('Epistemic Network Analysis (ENA) Studio Integration', () => {
   it('GET /api/epistemic returns initialized model and standard codes', async () => {
-    const res = await GET()
+    const res = await GET(new Request('http://localhost/api/epistemic'))
     expect(res.status).toBe(200)
 
     const data = await res.json()
