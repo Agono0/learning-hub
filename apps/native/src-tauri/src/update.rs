@@ -1444,11 +1444,6 @@ pub async fn update_android_device_info(app: tauri::AppHandle) -> Result<serde_j
     #[cfg(target_os = "android")]
     {
         use tauri::Manager;
-        // Only the APK the downloader wrote (sha256-verified, inside the
-        // updates dir) may reach the installer, never an arbitrary path.
-        if !is_update_apk_path(&slot_updates_dir(&app), Path::new(&apk_path)) {
-            return Err("apk_path must be a downloaded update APK".to_string());
-        }
         let state = app.state::<MaxUpdateAndroid>();
         state
             .0
@@ -1478,6 +1473,11 @@ pub async fn update_install_android_apk(
     #[cfg(target_os = "android")]
     {
         use tauri::Manager;
+        // Only the APK the downloader wrote (sha256-verified, inside the
+        // updates dir) may reach the installer, never an arbitrary path.
+        if !is_update_apk_path(&slot_updates_dir(&app), Path::new(&apk_path)) {
+            return Err("apk_path must be a downloaded update APK".to_string());
+        }
         let state = app.state::<MaxUpdateAndroid>();
         state
             .0
