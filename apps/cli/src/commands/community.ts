@@ -56,6 +56,7 @@ export function debateCommand(args: string[]): void {
       console.error(
         'Usage: learning-hub debate open --topic "..." [--thesis "..."] [--antithesis "..."]',
       )
+      process.exitCode = 1
       return
     }
     const thesis = parseFlag(args, '--thesis') ?? 'Proponent'
@@ -77,6 +78,7 @@ export function debateCommand(args: string[]): void {
       console.error(
         'Usage: learning-hub debate turn <id> --content "..." [--speaker ...] [--name ...]',
       )
+      process.exitCode = 1
       return
     }
     const speaker =
@@ -96,6 +98,7 @@ export function debateCommand(args: string[]): void {
     const updated = appendDialecticTurn(id, turn)
     if (!updated) {
       console.error(`✖ Debate #${id} not found.`)
+      process.exitCode = 1
       return
     }
     console.log(
@@ -109,6 +112,7 @@ export function debateCommand(args: string[]): void {
     const verdict = parseFlag(args, '--verdict')
     if (!Number.isInteger(id) || id <= 0 || !verdict) {
       console.error('Usage: learning-hub debate vote <id> --verdict "..." [--score N] [--xp N]')
+      process.exitCode = 1
       return
     }
     const score = numFlag(parseFlag(args, '--score'), '--score', 80)
@@ -116,6 +120,7 @@ export function debateCommand(args: string[]): void {
     const result = submitDialecticVerdict(id, verdict, score, xp)
     if (!result) {
       console.error(`✖ Debate #${id} not found.`)
+      process.exitCode = 1
       return
     }
     console.log(
@@ -125,6 +130,7 @@ export function debateCommand(args: string[]): void {
   }
 
   console.error(`Unknown subcommand: ${sub}. Usage: learning-hub debate [list|open|turn|vote]`)
+  process.exitCode = 1
 }
 
 export function palaceCommand(args: string[]): void {
@@ -147,6 +153,7 @@ export function palaceCommand(args: string[]): void {
     const name = args[1]
     if (!name) {
       console.error('Usage: learning-hub palace create <name>')
+      process.exitCode = 1
       return
     }
     const created = createPalace({ name })
@@ -161,6 +168,7 @@ export function palaceCommand(args: string[]): void {
       console.error(
         'Usage: learning-hub palace add <palaceId> --locus "name" [--card <id>] [--image "..."]',
       )
+      process.exitCode = 1
       return
     }
     const cardIdStr = parseFlag(args, '--card')
@@ -176,6 +184,7 @@ export function palaceCommand(args: string[]): void {
 
     if (!created) {
       console.error(`✖ Palace #${palaceId} not found.`)
+      process.exitCode = 1
       return
     }
     console.log(
@@ -185,6 +194,7 @@ export function palaceCommand(args: string[]): void {
   }
 
   console.error(`Unknown subcommand: ${sub}. Usage: learning-hub palace [list|add]`)
+  process.exitCode = 1
 }
 
 export function worldCommand(args: string[]): void {
@@ -211,6 +221,7 @@ export function worldCommand(args: string[]): void {
       const itemId = args[2]
       if (!itemId) {
         console.error('Usage: learning-hub world market buy <itemId>')
+        process.exitCode = 1
         return
       }
       try {
@@ -220,6 +231,7 @@ export function worldCommand(args: string[]): void {
         )
       } catch (err: unknown) {
         console.error(`✖ ${(err as Error).message}`)
+        process.exitCode = 1
       }
       return
     }
@@ -235,6 +247,7 @@ export function worldCommand(args: string[]): void {
   }
 
   console.error(`Unknown subcommand: ${sub}. Usage: learning-hub world [status|market]`)
+  process.exitCode = 1
 }
 
 export function guildCommand(args: string[]): void {
@@ -258,6 +271,7 @@ export function guildCommand(args: string[]): void {
     const name = args[1]
     if (!name) {
       console.error('Usage: learning-hub guild create <name> [--tag <tag>] [--leader <alias>]')
+      process.exitCode = 1
       return
     }
     const tag = parseFlag(args, '--tag') ?? name.slice(0, 3).toUpperCase()
@@ -271,12 +285,14 @@ export function guildCommand(args: string[]): void {
     const id = Number(args[1])
     if (!Number.isInteger(id) || id <= 0) {
       console.error('Usage: learning-hub guild join <id> [--alias <alias>]')
+      process.exitCode = 1
       return
     }
     const alias = parseFlag(args, '--alias') ?? 'default'
     const success = joinGuild(id, alias)
     if (!success) {
       console.error(`✖ Guild #${id} not found.`)
+      process.exitCode = 1
       return
     }
     console.log(`✔ ${alias} joined guild #${id}.`)
@@ -295,6 +311,7 @@ export function guildCommand(args: string[]): void {
   }
 
   console.error(`Unknown subcommand: ${sub}. Usage: learning-hub guild [list|join|leave]`)
+  process.exitCode = 1
 }
 
 export const debateCommands: RegisteredCommand[] = [

@@ -206,6 +206,14 @@ main()
       console.error(`error: ${err.message}`)
       exit(2)
     }
+    // Expected domain errors (bad input, missing row) are one line, not a stack trace.
+    if (
+      err instanceof Error &&
+      (err.name === 'ValidationError' || err.name === 'CardNotFoundError')
+    ) {
+      console.error(`error: ${err.message}`)
+      exit(1)
+    }
     console.error(err)
     exit(1)
   })

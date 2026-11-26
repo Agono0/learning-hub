@@ -1,7 +1,7 @@
 /**
  * Habits, Journal, and Physio CLI commands.
  */
-import { numFlag } from '../flags'
+import { numFlag, optNumFlag } from '../flags'
 import { type RegisteredCommand } from './registry'
 import { dayKey } from '@learning-hub/core'
 import {
@@ -54,6 +54,7 @@ export function habitsCommand(args: string[]): void {
     const id = Number(args[1])
     if (!Number.isInteger(id) || id <= 0) {
       console.error('Usage: learning-hub habits checkin <id> [--date YYYY-MM-DD] [--note "note"]')
+      process.exitCode = 1
       return
     }
     const date = parseFlag(args, '--date') ?? dayKey(new Date(), 0)
@@ -61,6 +62,7 @@ export function habitsCommand(args: string[]): void {
     const res = checkinHabit({ habitId: id, date, note })
     if (res.notFound) {
       console.error(`✖ Habit #${id} not found.`)
+      process.exitCode = 1
       return
     }
     if (res.alreadyDone) {
@@ -75,6 +77,7 @@ export function habitsCommand(args: string[]): void {
     const id = Number(args[1])
     if (!Number.isInteger(id) || id <= 0) {
       console.error('Usage: learning-hub habits history <id> [--days N]')
+      process.exitCode = 1
       return
     }
     const days = numFlag(parseFlag(args, '--days'), '--days', 14)
@@ -82,6 +85,7 @@ export function habitsCommand(args: string[]): void {
     const habit = habits.find((h) => h.id === id)
     if (!habit) {
       console.error(`✖ Habit #${id} not found.`)
+      process.exitCode = 1
       return
     }
     const now = new Date()
@@ -105,7 +109,7 @@ export function journalCommand(args: string[]): void {
   if (sub === 'write') {
     const date = parseFlag(args, '--date') ?? dayKey(new Date(), 0)
     const moodStr = parseFlag(args, '--mood')
-    const mood = moodStr ? Number(moodStr) : undefined
+    const mood = optNumFlag(moodStr, '--mood', { int: true, min: 1, max: 5 })
     const smallWins = parseFlag(args, '--wins')
     const gratitude = parseFlag(args, '--gratitude')
     const worryDump = parseFlag(args, '--worry')
@@ -177,12 +181,15 @@ export function physioCommand(args: string[]): void {
   if (hasFlags) {
     upsertPhysioLog({
       date,
-      sleepHours: sleepStr ? Number(sleepStr) : undefined,
-      sleepQuality: qualityStr ? Number(qualityStr) : undefined,
-      exerciseMinutes: exerciseStr ? Number(exerciseStr) : undefined,
-      exerciseHoursAfterLearning: exerciseHoursStr ? Number(exerciseHoursStr) : undefined,
-      caffeineCutoffHour: cutoffStr ? Number(cutoffStr) : undefined,
-      arousal: arousalStr ? Number(arousalStr) : undefined,
+      sleepHours: optNumFlag(sleepStr, '--sleep', { min: 0, max: 24 }),
+      sleepQuality: optNumFlag(qualityStr, '--quality', { min: 0, max: 10 }),
+      exerciseMinutes: optNumFlag(exerciseStr, '--exercise', { min: 0, max: 1440 }),
+      exerciseHoursAfterLearning: optNumFlag(exerciseHoursStr, '--exercise-hours', {
+        min: 0,
+        max: 48,
+      }),
+      caffeineCutoffHour: optNumFlag(cutoffStr, '--cutoff', { min: 0, max: 24 }),
+      arousal: optNumFlag(arousalStr, '--arousal', { min: 0, max: 10 }),
     })
     console.log(`✔ Recorded physiology telemetry.`)
   }

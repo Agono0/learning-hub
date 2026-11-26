@@ -59,3 +59,13 @@ export function limitFlag(
 ): number {
   return numFlag(raw, name, fallback, { int: true, min: 0, max })
 }
+
+/** Like {@link numFlag} but an absent or empty flag stays `undefined` instead of getting a default. */
+export function optNumFlag(
+  raw: string | undefined,
+  name: string,
+  opts: NumFlagOptions = {},
+): number | undefined {
+  if (raw === undefined || raw.trim() === '') return undefined
+  return numFlag(raw, name, 0, opts)
+}

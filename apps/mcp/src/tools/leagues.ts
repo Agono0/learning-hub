@@ -65,7 +65,7 @@ const promptSchema = z.object({
 const answerSchema = z.object({
   promptId: z.string().min(1),
   answer: z.string(),
-  elapsedMs: z.number().nonnegative().describe('Ms from prompt reveal to answer'),
+  elapsedMs: z.number().nonnegative().max(86_400_000).describe('Ms from prompt reveal to answer'),
 })
 
 export const leagueTools: RegisteredTool[] = [
@@ -267,7 +267,11 @@ export const leagueTools: RegisteredTool[] = [
     {
       slug: z.string().min(1),
       event: z.discriminatedUnion('kind', [
-        z.object({ kind: z.literal('reviews'), handle: z.string().min(1), count: z.number() }),
+        z.object({
+          kind: z.literal('reviews'),
+          handle: z.string().min(1),
+          count: z.number().int().min(0).max(1_000_000),
+        }),
         z.object({ kind: z.literal('focus'), handle: z.string().min(1), minutes: z.number() }),
         z.object({
           kind: z.literal('duel'),

@@ -15,6 +15,7 @@ import {
   type HighlightTriage,
   type SourceKind,
 } from '@learning-hub/core'
+import { pendingTombstone } from '../sync'
 import { getDb, type LearningHubDB } from '../index'
 import { cards, decks, highlights, sources, sq3rSessions, type Sq3rQuestionItem } from '../schema'
 import { withTransaction } from '../transaction'
@@ -197,12 +198,15 @@ export function updateSource(
  * Delete a reading source and all associated highlights and SQ3R sessions atomically.
  */
 export function deleteSource(id: number, opts: { db?: LearningHubDB } = {}): boolean {
-  return withTransaction((tx) => {
+  const commit = pendingTombstone('sources', id, Boolean(opts.db))
+  const ok = withTransaction((tx) => {
     tx.delete(sq3rSessions).where(eq(sq3rSessions.sourceId, id)).run()
     tx.delete(highlights).where(eq(highlights.sourceId, id)).run()
     const result = tx.delete(sources).where(eq(sources.id, id)).run()
     return (result.changes ?? 0) > 0
   }, opts.db)
+  if (ok) commit()
+  return ok
 }
 
 /**

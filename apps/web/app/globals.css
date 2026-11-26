@@ -1152,3 +1152,13 @@ html.theme-e-ink body {
   text-underline-offset: 2px;
   border-radius: 2px;
 }
+
+/* Free-text fields follow the direction of what is typed (Arabic/Hebrew right-to-left, English
+   left-to-right) and align to the start of that direction. */
+textarea,
+input[type='text'],
+input[type='search'],
+input:not([type]) {
+  unicode-bidi: plaintext;
+  text-align: start;
+}

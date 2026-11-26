@@ -66,11 +66,13 @@ function notesShowCommand(args: string[]): void {
   const id = Number(args[1])
   if (!Number.isInteger(id) || id <= 0) {
     console.error('Usage: learning-hub notes show <id>')
+    process.exitCode = 1
     return
   }
   const detail = getNoteDetail(id)
   if (!detail) {
     console.error(`✖ Note #${id} not found.`)
+    process.exitCode = 1
     return
   }
   console.log(`--- #${detail.note.id} [${detail.note.status}] ${detail.note.title} ---`)
@@ -93,6 +95,7 @@ function notesCreateCommand(args: string[]): void {
   const supertag = parseFlag(args, '--supertag')
   if (supertag !== undefined && !SUPERTAGS.includes(supertag as (typeof SUPERTAGS)[number])) {
     console.error(`✖ Unknown supertag "${supertag}". Available: ${SUPERTAGS.join(', ')}`)
+    process.exitCode = 1
     return
   }
   const res = createNote({
@@ -113,11 +116,13 @@ function notesUpdateCommand(args: string[]): void {
     console.error(
       'Usage: learning-hub notes update <id> [--title s] [--content s] [--status inbox|project|area|resource|archive]',
     )
+    process.exitCode = 1
     return
   }
   const status = parseFlag(args, '--status')
   if (status !== undefined && !NOTE_STATUSES.includes(status as (typeof NOTE_STATUSES)[number])) {
     console.error(`✖ Unknown status "${status}". Available: ${NOTE_STATUSES.join(', ')}`)
+    process.exitCode = 1
     return
   }
   const supertag = parseFlag(args, '--supertag')
@@ -129,6 +134,7 @@ function notesUpdateCommand(args: string[]): void {
   })
   if (!res.note) {
     console.error(`✖ Note #${id} not found.`)
+    process.exitCode = 1
     return
   }
   console.log(
@@ -140,10 +146,14 @@ function notesDeleteCommand(args: string[]): void {
   const id = Number(args[1])
   if (!Number.isInteger(id) || id <= 0) {
     console.error('Usage: learning-hub notes delete <id>')
+    process.exitCode = 1
     return
   }
   if (deleteNote(id)) console.log(`✔ Deleted note #${id} (bullets and links cascaded).`)
-  else console.error(`✖ Note #${id} not found.`)
+  else {
+    console.error(`✖ Note #${id} not found.`)
+    process.exitCode = 1
+  }
 }
 
 export function notesCommand(args: string[]): void {
@@ -159,6 +169,7 @@ export function notesCommand(args: string[]): void {
   console.error(
     'Usage: learning-hub notes [list [--limit N] | search "<q>" | show <id> | create "<title>" […] | update <id> […] | delete <id>]',
   )
+  process.exitCode = 1
 }
 
 export const notesCommands: RegisteredCommand[] = [

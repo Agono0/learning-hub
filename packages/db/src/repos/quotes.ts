@@ -4,6 +4,7 @@
  */
 import { desc, eq } from 'drizzle-orm'
 import { dailyQuote, dayKey, type QuoteLike } from '@learning-hub/core'
+import { pendingTombstone } from '../sync'
 import { getDb, type LearningHubDB } from '../index'
 import { quotes } from '../schema'
 
@@ -160,6 +161,9 @@ export function updateQuote(
  */
 export function deleteQuote(id: number, opts: { db?: LearningHubDB } = {}): boolean {
   const db = opts.db ?? getDb()
+  const commit = pendingTombstone('quotes', id, Boolean(opts.db))
   const res = db.delete(quotes).where(eq(quotes.id, id)).run()
-  return (res.changes ?? 0) > 0
+  const ok = (res.changes ?? 0) > 0
+  if (ok) commit()
+  return ok
 }

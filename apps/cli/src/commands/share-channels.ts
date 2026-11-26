@@ -11,6 +11,7 @@
  */
 
 import { readBoundedJson } from '../bounded-input'
+import { numFlag } from '../flags'
 import { type RegisteredCommand } from './registry'
 import {
   applyAllPendingVersions,
@@ -409,7 +410,7 @@ function shareChannelsCommand(args: string[]): void {
       }
       const result = deckIdRaw
         ? publishDeckAsChannel({
-            deckId: Number(deckIdRaw),
+            deckId: numFlag(deckIdRaw, '--deck', 0, { int: true, min: 1 }),
             channelId,
             title: parseFlag(args, '--title') ?? `Channel ${channelId}`,
             authorHandle: author,
@@ -419,7 +420,7 @@ function shareChannelsCommand(args: string[]): void {
               : {}),
           })
         : publishCourseAsChannel({
-            courseId: Number(courseIdRaw),
+            courseId: numFlag(courseIdRaw, '--course', 0, { int: true, min: 1 }),
             channelId,
             authorHandle: author,
             visibility,
@@ -677,6 +678,7 @@ function shareChannelsCommand(args: string[]): void {
     }
     default:
       console.error(`unknown subcommand: ${sub}`)
+      process.exitCode = 1
       console.error(
         'usage: share-channels [create|publish|apply|apply-all|diff|verify|describe|status|migrate-v1|invite|check-access|subscribe|subscriptions|sync|sync-all|sync-records] [--json]',
       )

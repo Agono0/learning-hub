@@ -73,6 +73,7 @@ import {
 import { DIVISION_ORDER, type DivisionTier } from '@learning-hub/core'
 import { existsSync, writeFileSync } from 'node:fs'
 import { readBoundedText } from '../bounded-input'
+import { numFlag, optNumFlag } from '../flags'
 import { panel } from './ui'
 import type { RegisteredCommand } from './registry'
 
@@ -143,7 +144,7 @@ function createLeagueCommand(args: string[]): void {
 }
 
 function num(v: string | undefined): number | undefined {
-  return v === undefined ? undefined : Number(v)
+  return optNumFlag(v, 'numeric option')
 }
 
 function joinCommand(args: string[]): void {
@@ -379,7 +380,7 @@ function duelCommand(args: string[]): void {
     try {
       const d = createDuelFromDeck({
         slug,
-        deckId: Number(deckId),
+        deckId: numFlag(deckId, '<deckId>', 0, { int: true, min: 1 }),
         playerA,
         playerB,
         leagueSlug: parseFlag(args, '--league'),
@@ -398,7 +399,7 @@ function duelCommand(args: string[]): void {
       const [promptId, answer, ms] = raw.split('::')
       if (!promptId || answer === undefined || !ms)
         throw new Error('--answer must be "promptId::answer::ms"')
-      return { promptId, answer, elapsedMs: Number(ms) }
+      return { promptId, answer, elapsedMs: numFlag(ms, '--answer elapsed ms', 0, { min: 0 }) }
     })
     if (!slug || (side !== 'A' && side !== 'B') || answers.length === 0) {
       return fail(
@@ -470,7 +471,7 @@ function tournamentCommand(args: string[]): void {
     const [, slug, title] = args
     const league = parseFlag(args, '--league')
     const sizeRaw = parseFlag(args, '--size')
-    const size = sizeRaw ? Number.parseInt(sizeRaw, 10) : undefined
+    const size = optNumFlag(sizeRaw, '--size', { int: true, min: 2, max: 1024 })
     if (!slug || !title?.trim() || !league) {
       return fail(
         'Usage: learning-hub leagues tournament seed <slug> "<title>" --league <slug> [--size N]',
@@ -510,8 +511,8 @@ function tournamentCommand(args: string[]): void {
     try {
       const t = recordTournamentMatchResult(
         slug,
-        Number(round),
-        Number(position),
+        numFlag(round, '<round>', 0, { int: true, min: 1 }),
+        numFlag(position, '<position>', 0, { int: true, min: 0 }),
         winner,
         parseFlag(args, '--duel'),
       )

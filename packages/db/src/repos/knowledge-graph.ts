@@ -7,6 +7,7 @@ import { rowLimit } from '../limits'
 import { and, desc, eq, or, sql } from 'drizzle-orm'
 import type { AnkiSyncMode } from '@learning-hub/core/anki-connect'
 import { willCreateCycle } from '@learning-hub/core/knowledge-graph'
+import { pendingTombstone } from '../sync'
 import { getDb, type LearningHubDB } from '../index'
 import {
   ankiSyncMappings,
@@ -103,7 +104,9 @@ export function listConceptDependencies(concept?: string): ConceptDependencyRow[
 
 export function removeConceptDependency(id: number): boolean {
   const db = getDb()
+  const commit = pendingTombstone('concept_dependencies', id)
   const res = db.delete(conceptDependencies).where(eq(conceptDependencies.id, id)).run()
+  if (res.changes > 0) commit()
   return res.changes > 0
 }
 

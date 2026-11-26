@@ -18,10 +18,10 @@ const querySchema = z.object({
 })
 
 /** GET /api/tasks-metrics. */
-export async function GET(req: Request) {
+export const GET = withRoute(async (req: Request) => {
   const q = readQuery(req, querySchema)
   return Response.json({ days: listMetricDays({ from: q.from, to: q.to }) })
-}
+})
 
 const bodySchema = z.object({
   day: calendarDay,

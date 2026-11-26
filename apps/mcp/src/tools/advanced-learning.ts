@@ -203,7 +203,12 @@ export const advancedLearningTools: RegisteredTool[] = [
         .number()
         .positive()
         .describe('Time spent in current relearning trial (seconds).'),
-      daysElapsed: z.number().positive().default(7).describe('Days elapsed since last session.'),
+      daysElapsed: z
+        .number()
+        .positive()
+        .max(3650)
+        .default(7)
+        .describe('Days elapsed since last session.'),
       initialTrialsCount: z
         .number()
         .int()
@@ -907,7 +912,7 @@ export const advancedLearningTools: RegisteredTool[] = [
           'theory_revision',
         ])
         .default('theory_revision'),
-      falsificationTrialCount: z.number().int().min(0).default(1),
+      falsificationTrialCount: z.number().int().min(0).max(1000).default(1),
       finalHypothesisCapturesInvariant: z.boolean().default(true),
     },
     async ({
@@ -2014,7 +2019,7 @@ export const advancedLearningTools: RegisteredTool[] = [
     {
       domainId: z.string().default('elementary-algebra'),
       stateId: z.string().optional(),
-      maxCards: z.number().int().positive().default(12),
+      maxCards: z.number().int().positive().max(500).default(12),
     },
     async ({ domainId, stateId, maxCards }) => {
       const spaces = getCanonicalKnowledgeSpaces()

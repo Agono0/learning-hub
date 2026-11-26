@@ -3,6 +3,7 @@
  * structured routines (morning/evening rituals), and time-boxed routine steps.
  */
 import { asc, desc, eq } from 'drizzle-orm'
+import { pendingTombstone } from '../sync'
 import { getDb, withTransaction, type LearningHubDB } from '../index'
 import { distractionApps, routines, routineSteps } from '../schema'
 
@@ -196,11 +197,14 @@ export function updateRoutine(
  * Delete a routine and all its nested steps.
  */
 export function deleteRoutine(id: number, opts: { db?: LearningHubDB } = {}): boolean {
-  return withTransaction((tx) => {
+  const commit = pendingTombstone('routines', id, Boolean(opts.db))
+  const ok = withTransaction((tx) => {
     tx.delete(routineSteps).where(eq(routineSteps.routineId, id)).run()
     const res = tx.delete(routines).where(eq(routines.id, id)).run()
     return (res?.changes ?? 0) > 0
   }, opts.db)
+  if (ok) commit()
+  return ok
 }
 
 /**

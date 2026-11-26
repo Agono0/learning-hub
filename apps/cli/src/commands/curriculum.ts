@@ -19,16 +19,19 @@ const USAGE = `usage:
 function importFile(path: string | undefined, dryRun: boolean): number {
   if (!path) {
     console.error(USAGE)
+    process.exitCode = 1
     return 2
   }
   const parsed = parseCurriculum(readBoundedText(path), { filename: basename(path) })
   for (const w of parsed.warnings) console.warn(`  ! ${w.path}: ${w.message}`)
   if (!parsed.ok) {
     console.error(`✖ ${basename(path)} is not a valid course (${parsed.format}):`)
+    process.exitCode = 1
     for (const e of parsed.errors)
       console.error(
         `  - ${e.path || '(document)'}: ${e.message}${e.hint ? `\n    → ${e.hint}` : ''}`,
       )
+    process.exitCode = 1
     return 1
   }
   const s = lhcfStats(parsed.course)
@@ -75,6 +78,7 @@ export function curriculumCommand(args: string[]): number {
     const topic = rest.join(' ').trim()
     if (!topic) {
       console.error(USAGE)
+      process.exitCode = 1
       return 2
     }
     console.log(buildCurriculumPrompt({ topic }))

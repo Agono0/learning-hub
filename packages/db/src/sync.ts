@@ -31,6 +31,7 @@ import {
 } from './backup'
 import { getRawDb, type RawSqliteHandle } from './index'
 import { ValidationError } from './review-service'
+import { recordDeletionTombstone } from './repos/sync-meta'
 
 export interface MergeResult {
   tablesProcessed: number
@@ -64,6 +65,8 @@ const SKIP_TABLES = new Set([
   'online_identity',
   // This browser's Web Push endpoint and keys: never exported, never merged in.
   'push_subscriptions',
+  // Per-device presence prefs (active room code): a singleton, merging added a second row.
+  'online_prefs',
 ])
 
 function str(val: unknown): string {
@@ -89,6 +92,15 @@ function pairIds(row: Record<string, unknown>): string {
   const b = Number(row['card_b_id'])
   return a <= b ? `${a}:${b}` : `${b}:${a}`
 }
+/** Leaf tables where rows identical in every non-id column are safe to collapse. */
+const EXACT_DEDUPE_TABLES = new Set([
+  'quick_captures',
+  'task_views',
+  'task_time_logs',
+  'task_reminders',
+  'task_attachments',
+  'simple_counter_logs',
+])
 
 /** Stable natural identity key used by `sync_tombstones` and deduplication. */
 export function computeRecordNaturalKey(
@@ -248,6 +260,74 @@ export function computeRecordNaturalKey(
       return `start:${str(row['started_at'])}:place:${str(row['place'])}`
     case 'context_goals':
       return `label:${str(row['label']).toLowerCase()}:place:${str(row['place'])}`
+
+    // Keys use only fields that never change after creation (created_at, parent ids): a key that
+    // included a title, text or name broke on rename (the renamed row stopped matching its twin
+    // and tombstones keyed to the old text missed). Two rows sharing one key (same-millisecond
+    // creation) are detected in mergeBackup and fall back to id matching.
+    // Tables below had no natural key: every re-merge of the same snapshot inserted
+    // them again once ids collided across devices. Keys use stable content plus the
+    // (already remapped) parent ids.
+    case 'study_plans':
+      return `created:${str(row['created_at'])}`
+    case 'reminder_log':
+      return `kind:${str(row['kind'])}:at:${str(row['sent_at'])}:title:${str(row['title'])}`
+    case 'reminder_clicks':
+      return `log:${str(row['reminder_log_id'])}:at:${str(row['clicked_at'])}`
+    case 'notification_log':
+      return `ch:${str(row['channel'])}:at:${str(row['created_at'])}:title:${str(row['title'])}`
+    case 'mindmaps':
+      return `created:${str(row['created_at'])}`
+    case 'boss_battles':
+      return `boss:${str(row['boss_key'])}:started:${str(row['started_at'])}`
+    case 'online_servers':
+      return `url:${str(row['url'])}`
+    case 'online_inbox':
+      return `kind:${str(row['kind'])}:from:${str(row['sender_alias'])}:at:${str(row['received_at'])}`
+    case 'audio_sessions':
+      return `deck:${str(row['deck_id'])}:mode:${str(row['mode'])}:at:${str(row['created_at'])}`
+    case 'quick_captures':
+      return `created:${str(row['created_at'])}`
+    case 'concept_dependencies':
+      return `src:${str(row['source_concept'])}:tgt:${str(row['target_concept'])}`
+    case 'seasonal_progress':
+      return `season:${str(row['season_id'])}`
+    case 'review_duels':
+      return `p1:${str(row['player1_alias'])}:p2:${str(row['player2_alias'])}:at:${str(row['completed_at'])}`
+    case 'exposure_events':
+      return `tok:${str(row['token'])}:src:${str(row['source_type'])}:${str(row['source_id'])}:at:${str(row['created_at'])}`
+    case 'prototype_exemplar_sessions':
+      return `set:${str(row['set_id'])}:phase:${str(row['phase'])}:at:${str(row['created_at'])}`
+    case 'share_channel_sync_records':
+      return `ch:${str(row['channel_id'])}:at:${str(row['at'])}:to:${str(row['to_version'])}`
+    case 'task_projects':
+      return `created:${str(row['created_at'])}`
+    case 'task_tags':
+      return `name:${str(row['name'])}`
+    case 'task_repeat_cfgs':
+      return `created:${str(row['created_at'])}`
+    case 'task_items':
+      return `created:${str(row['created_at'])}`
+    case 'task_item_tags':
+      return `item:${str(row['item_id'])}:tag:${str(row['tag_id'])}`
+    case 'task_reminders':
+      return `task:${str(row['task_id'])}:created:${str(row['created_at'])}`
+    case 'task_time_logs':
+      return `task:${str(row['task_id'])}:created:${str(row['created_at'])}`
+    case 'task_sections':
+      return `created:${str(row['created_at'])}`
+    case 'task_attachments':
+      return `task:${str(row['task_id'])}:created:${str(row['created_at'])}`
+    case 'task_archive_tiers':
+      return `task:${str(row['task_id'])}`
+    case 'simple_counters':
+      return `created:${str(row['created_at'])}`
+    case 'simple_counter_logs':
+      return `counter:${str(row['counter_id'])}:day:${str(row['day'])}`
+    case 'metric_days':
+      return `day:${str(row['day'])}`
+    case 'task_views':
+      return `created:${str(row['created_at'])}`
     default:
       return null
   }
@@ -320,6 +400,28 @@ const LOGICAL_FOREIGN_KEYS: Record<string, ForeignKeySpec[]> = {
   ],
   elo_events: [{ fromCol: 'skill_id', toTable: 'skills', strictParent: false }],
   friction_events: [{ fromCol: 'session_id', toTable: 'focus_sessions', strictParent: false }],
+  focus_sessions: [{ fromCol: 'allowlist_id', toTable: 'focus_allowlists', strictParent: false }],
+  forest_plots: [{ fromCol: 'focus_session_id', toTable: 'focus_sessions', strictParent: false }],
+  audio_sessions: [{ fromCol: 'deck_id', toTable: 'decks', strictParent: false }],
+  reminder_clicks: [{ fromCol: 'reminder_log_id', toTable: 'reminder_log', strictParent: false }],
+  // Task system: the columns carry no SQLite REFERENCES, so without these entries ids
+  // collided across devices and children (tags, time logs, subtasks) attached to the
+  // wrong task after a merge.
+  task_items: [
+    { fromCol: 'parent_id', toTable: 'task_items', strictParent: false },
+    { fromCol: 'project_id', toTable: 'task_projects', strictParent: false },
+    { fromCol: 'repeat_cfg_id', toTable: 'task_repeat_cfgs', strictParent: false },
+    { fromCol: 'section_id', toTable: 'task_sections', strictParent: false },
+  ],
+  task_item_tags: [
+    { fromCol: 'item_id', toTable: 'task_items', strictParent: true },
+    { fromCol: 'tag_id', toTable: 'task_tags', strictParent: true },
+  ],
+  task_reminders: [{ fromCol: 'task_id', toTable: 'task_items', strictParent: true }],
+  task_time_logs: [{ fromCol: 'task_id', toTable: 'task_items', strictParent: true }],
+  task_attachments: [{ fromCol: 'task_id', toTable: 'task_items', strictParent: true }],
+  task_archive_tiers: [{ fromCol: 'task_id', toTable: 'task_items', strictParent: true }],
+  simple_counter_logs: [{ fromCol: 'counter_id', toTable: 'simple_counters', strictParent: true }],
 }
 
 function foreignKeysFor(database: RawSqliteHandle, table: string): ForeignKeySpec[] {
@@ -574,19 +676,58 @@ export async function mergeBackup(
       const fks = foreignKeysFor(database, table)
       const uniqueSpecs = uniqueIndexesFor(database, table)
 
-      const localRows = database.prepare(`SELECT * FROM "${table}"`).all() as Record<
+      let localRows = database.prepare(`SELECT * FROM "${table}"`).all() as Record<
         string,
         unknown
       >[]
+      // One-time repair of duplicates left by earlier merges: leaf tables (nothing points at
+      // them) lose rows that equal another row in every column except id. The lowest id stays.
+      // No tombstone is written: a device that still holds the duplicates can re-add extras until
+      // it has merged once itself. Rows identical down to the millisecond are one record here.
+      if (singleIntPk && EXACT_DEDUPE_TABLES.has(table)) {
+        const seenSig = new Set<string>()
+        const dropIds: number[] = []
+        for (const lr of localRows) {
+          const sig = JSON.stringify(columns.filter((c) => c !== 'id').map((c) => lr[c] ?? null))
+          if (seenSig.has(sig)) dropIds.push(Number(lr['id']))
+          else seenSig.add(sig)
+        }
+        if (dropIds.length > 0) {
+          const del = database.prepare(`DELETE FROM "${table}" WHERE id = ?`)
+          for (const id of dropIds) del.run(id)
+          const dropped = new Set(dropIds)
+          localRows = localRows.filter((lr) => !dropped.has(Number(lr['id'])))
+        }
+      }
       const localById = new Map<number, Record<string, unknown>>()
       const localByNaturalKey = new Map<string, Record<string, unknown>>()
 
+      // Keys shared by two rows (e.g. created in the same millisecond) cannot identify either
+      // one: matching on them would merge two different rows into one.
+      const ambiguousLocal = new Set<string>()
+      const ambiguousIncoming = new Set<string>()
+      const seenIncoming = new Set<string>()
+      for (const ir of incomingRows) {
+        const k = computeRecordNaturalKey(table, ir)
+        if (!k) continue
+        if (seenIncoming.has(k)) ambiguousIncoming.add(k)
+        seenIncoming.add(k)
+      }
+
+      const localByAmbiguousKey = new Map<string, Record<string, unknown>[]>()
+      const claimedLocal = new Set<Record<string, unknown>>()
       for (const lr of localRows) {
         if (singleIntPk && typeof lr['id'] === 'number') {
           localById.set(lr['id'], lr)
         }
         const nk = computeRecordNaturalKey(table, lr)
-        if (nk) localByNaturalKey.set(nk, lr)
+        if (nk) {
+          if (localByNaturalKey.has(nk)) ambiguousLocal.add(nk)
+          localByNaturalKey.set(nk, lr)
+          const bucket = localByAmbiguousKey.get(nk) ?? []
+          bucket.push(lr)
+          localByAmbiguousKey.set(nk, bucket)
+        }
       }
 
       // Prune local mutable rows that have a newer deletion tombstone
@@ -594,7 +735,7 @@ export async function mergeBackup(
         const delStmt = database.prepare(`DELETE FROM "${table}" WHERE id = ?`)
         for (const lr of localRows) {
           const nk = computeRecordNaturalKey(table, lr)
-          if (!nk) continue
+          if (!nk || ambiguousLocal.has(nk)) continue
           const deletedAt = tombstoneMap.get(`${table}::${nk}`)
           if (deletedAt && deletedAt > (rowTimestamp(lr) || '0')) {
             delStmt.run(Number(lr['id']))
@@ -659,7 +800,14 @@ export async function mergeBackup(
           }
         }
 
-        const nk = computeRecordNaturalKey(table, remapped)
+        const rawKey = computeRecordNaturalKey(table, rawInc)
+        const computedKey = computeRecordNaturalKey(table, remapped)
+        const nk =
+          computedKey &&
+          !ambiguousLocal.has(computedKey) &&
+          !(rawKey && ambiguousIncoming.has(rawKey))
+            ? computedKey
+            : null
 
         // 2. Skip incoming mutable rows tombstoned more recently
         if (!APPEND_ONLY_TABLES.has(table) && nk) {
@@ -674,6 +822,20 @@ export async function mergeBackup(
         let matchedLocal: Record<string, unknown> | undefined
         if (nk && localByNaturalKey.has(nk)) {
           matchedLocal = localByNaturalKey.get(nk)
+        } else if (computedKey && !nk && !APPEND_ONLY_TABLES.has(table)) {
+          // Shared key: pair the incoming row with an identical, not yet paired local row, so
+          // re-merging the same snapshot never inserts the same-millisecond rows again.
+          const sigCols = columns.filter((c) => c !== 'id')
+          matchedLocal = (localByAmbiguousKey.get(computedKey) ?? []).find(
+            (lr) =>
+              !claimedLocal.has(lr) &&
+              sigCols.every(
+                (c) =>
+                  normalizeBackupValue(lr[c] as never) ===
+                  normalizeBackupValue(remapped[c] as never),
+              ),
+          )
+          if (matchedLocal) claimedLocal.add(matchedLocal)
         }
         if (!matchedLocal && uniqueSpecs.length > 0) {
           for (const spec of uniqueSpecs) {
@@ -1038,6 +1200,34 @@ export async function mergeBackup(
     updated: syncOutcome.updated,
     tombstoned: syncOutcome.tombstoned,
     rescheduledCards,
+  }
+}
+
+/**
+ * Snapshot a row's natural key BEFORE it is deleted and return a function that records
+ * its deletion tombstone. Call the returned function only after the delete succeeded.
+ * Without a tombstone, a delete on one device is undone by the next sync from another
+ * device that still holds the row. A caller-supplied `db` (tests) is a different
+ * database from the global one the tombstone would be written to, so it is skipped.
+ */
+export function pendingTombstone(table: string, id: number, customDb = false): () => void {
+  if (customDb) return () => {}
+  let key: string | null = null
+  try {
+    const row = getRawDb().prepare(`SELECT * FROM "${table}" WHERE id = ?`).get(id) as
+      Record<string, unknown> | undefined
+    key = row ? computeRecordNaturalKey(table, row) : null
+  } catch {
+    key = null
+  }
+  if (!key) return () => {}
+  const k = key
+  return () => {
+    try {
+      recordDeletionTombstone(table, k)
+    } catch {
+      // best effort: a failed tombstone must never fail the user's delete
+    }
   }
 }
 

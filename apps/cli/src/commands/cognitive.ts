@@ -89,6 +89,7 @@ export function generationCommand(args: string[]): void {
       console.error(
         'Usage: learning-hub generation eval --concept <name> --expected <text> --attempt <text> [--tier stem_completion|semantic_anagram|reverse_query|analogy_synthesis]',
       )
+      process.exitCode = 1
       return
     }
 
@@ -113,6 +114,7 @@ export function generationCommand(args: string[]): void {
   }
 
   console.error(`Unknown subcommand: ${sub}. Usage: learning-hub generation [challenge|eval]`)
+  process.exitCode = 1
 }
 
 export function feynmanCommand(args: string[]): void {
@@ -159,6 +161,7 @@ export function feynmanCommand(args: string[]): void {
   console.error(
     `Unknown subcommand: ${sub}. Usage: learning-hub feynman eval --concept <name> --explanation <text>`,
   )
+  process.exitCode = 1
 }
 
 export async function metacognitionCommand(args: string[]): Promise<void> {
@@ -224,6 +227,7 @@ export async function metacognitionCommand(args: string[]): Promise<void> {
   console.error(
     `Unknown subcommand: ${sub}. Usage: learning-hub metacognition [stats|hypercorrection]`,
   )
+  process.exitCode = 1
 }
 
 /**
@@ -239,6 +243,7 @@ export async function difficultyCommand(args: string[]): Promise<void> {
     console.error(
       `Unknown subcommand: ${sub}. Usage: learning-hub difficulty audit [--testing 90] [--reread 120] …`,
     )
+    process.exitCode = 1
     return
   }
 
@@ -294,6 +299,7 @@ export async function pretestCommand(args: string[]): Promise<void> {
   const sub = args[0] || 'questions'
   if (sub !== 'questions') {
     console.error(`Unknown subcommand: ${sub}. Usage: learning-hub pretest questions [--limit 8]`)
+    process.exitCode = 1
     return
   }
   const limit = limitFlag(parseFlag(args, '--limit'), 8)
@@ -442,6 +448,7 @@ export function analogyCommand(args: string[]): void {
   const sub = args[0] || 'plan'
   if (sub !== 'plan') {
     console.error(`Unknown subcommand: ${sub}. Usage: learning-hub analogy plan [--suite <key>]`)
+    process.exitCode = 1
     return
   }
   const suiteKey = parseFlag(args, '--suite')
@@ -452,6 +459,7 @@ export function analogyCommand(args: string[]): void {
       console.error(
         `Unknown suite "${key}". Available: ${Object.keys(CALIBRATED_ANALOGICAL_SUITES).join(', ')}`,
       )
+      process.exitCode = 1
       continue
     }
     console.log(`
@@ -479,6 +487,7 @@ export function flexibilityCommand(args: string[]): void {
     console.error(
       `Unknown subcommand: ${sub}. Usage: learning-hub flexibility plan [--suite <key>]`,
     )
+    process.exitCode = 1
     return
   }
   const suiteKey = parseFlag(args, '--suite') || 'distributed_chaos_cascade'
@@ -487,6 +496,7 @@ export function flexibilityCommand(args: string[]): void {
     console.error(
       `Unknown suite "${suiteKey}". Available: ${Object.keys(CALIBRATED_FLEXIBILITY_SUITES).join(', ')}`,
     )
+    process.exitCode = 1
     return
   }
   const hats = ['white_hat', 'red_hat', 'black_hat', 'yellow_hat', 'green_hat', 'blue_hat']
@@ -536,6 +546,7 @@ export function interactivityCommand(args: string[]): void {
     console.error(
       `Unknown subcommand: ${sub}. Usage: learning-hub interactivity analyze [--suite <key>]`,
     )
+    process.exitCode = 1
     return
   }
   const suiteKey = parseFlag(args, '--suite') || 'raft_consensus_protocol'
@@ -544,6 +555,7 @@ export function interactivityCommand(args: string[]): void {
     console.error(
       `Unknown suite "${suiteKey}". Available: ${Object.keys(CALIBRATED_INTERACTIVITY_SUITES).join(', ')}`,
     )
+    process.exitCode = 1
     return
   }
   const extraneous = numFlag(parseFlag(args, '--extraneous'), '--extraneous', 1)
@@ -591,6 +603,7 @@ export function equilibriumCommand(args: string[]): void {
     console.error(
       `Unknown subcommand: ${sub}. Usage: learning-hub equilibrium evaluate --suite <key>`,
     )
+    process.exitCode = 1
     return
   }
   const suiteKey = parseFlag(args, '--suite') || 'distributed_consensus_wre'
@@ -599,6 +612,7 @@ export function equilibriumCommand(args: string[]): void {
     console.error(
       `Unknown suite "${suiteKey}". Available: ${Object.keys(CALIBRATED_EQUILIBRIUM_SUITES).join(', ')}`,
     )
+    process.exitCode = 1
     return
   }
 
