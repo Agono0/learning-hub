@@ -124,6 +124,8 @@ describe('context variability surfaces', () => {
     expect(bad.ok).toBe(false)
     expect((await callTool('ctxv_audit', {})).audit.windowDays).toBe(60)
     await callTool('ctxv_session', { action: 'end' })
+    expect((await callTool('ctxv_goal', { action: 'archive', id: 9999 })).ok).toBe(false)
+    expect((await callTool('ctxv_audit', { tzOffsetMinutes: 120 })).audit.windowDays).toBe(60)
   })
 
   it('CLI starts, reports status, audits and rejects bad input', async () => {

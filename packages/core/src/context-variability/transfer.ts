@@ -6,8 +6,8 @@
  * it is not confused by some cards simply being harder than others, but it is
  * still observational.
  */
-import { CTX_DEFAULTS, round3, type ReviewContext } from './cues'
-import { contextLabel, normalizedEntropy, wilson } from './stats'
+import { CTX_DEFAULTS, UNLOGGED, round3, type ReviewContext } from './cues'
+import { contextLabel, normalizedEntropy } from './stats'
 
 export interface TransferResult {
   cardsCompared: number
@@ -20,7 +20,7 @@ export interface TransferResult {
   /** 95% interval on the gap (normal approximation on Wilson-centred rates). */
   gapLow: number | null
   gapHigh: number | null
-  verdict: 'context-bound' | 'transfers' | 'insufficient'
+  verdict: 'context-bound' | 'transfers' | 'inconclusive' | 'insufficient'
 }
 
 export interface CardContextProfile {
@@ -73,14 +73,49 @@ export function cardProfiles(
   return out.sort((a, b) => b.topShare - a.topShare || b.reviews - a.reviews || a.cardId - b.cardId)
 }
 
-/** Within-card home vs away comparison. The first two reviews of a card define its home and are not counted. */
+/** Smallest gap worth acting on. The interval must clear it for "context-bound" and sit under it for "transfers". */
+export const GAP_THRESHOLD = 0.03
+const BOOTSTRAP_RESAMPLES = 500
+
+/** Small deterministic PRNG so the same data always gives the same interval. */
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0
+    let t = a
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+interface CardTally {
+  homeN: number
+  homeS: number
+  awayN: number
+  awayS: number
+}
+
+/**
+ * Within-card home vs away comparison.
+ *
+ * Home is the place and time-of-day bucket held by a card's first two reviews
+ * (ties go to the alphabetically first label); those two reviews define home
+ * and are not counted. Reviews outside any logged session carry no place, so
+ * they are left out: counting them as "away" would invent a gap.
+ *
+ * Reviews of one card are not independent, so the interval resamples whole
+ * cards (a percentile bootstrap, 500 draws, fixed seed) instead of treating
+ * every review as its own observation. It is still an observational comparison.
+ */
 export function transferGap(rows: ReviewContext[], minCardReviews = 4): TransferResult {
+  const tallies: CardTally[] = []
   let homeN = 0
   let homeS = 0
   let awayN = 0
   let awayS = 0
   let cards = 0
-  for (const list of byCard(rows).values()) {
+  for (const list of byCard(rows.filter((r) => r.place !== UNLOGGED)).values()) {
     if (list.length < minCardReviews) continue
     const setup = list.slice(0, 2)
     const counts = new Map<string, number>()
@@ -88,20 +123,24 @@ export function transferGap(rows: ReviewContext[], minCardReviews = 4): Transfer
     const home = [...counts.entries()].sort(
       (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
     )[0]![0]
-    let usedHome = false
-    let usedAway = false
+    const t: CardTally = { homeN: 0, homeS: 0, awayN: 0, awayS: 0 }
     for (const r of list.slice(2)) {
       if (contextLabel(r) === home) {
-        homeN++
-        if (r.success) homeS++
-        usedHome = true
+        t.homeN++
+        if (r.success) t.homeS++
       } else {
-        awayN++
-        if (r.success) awayS++
-        usedAway = true
+        t.awayN++
+        if (r.success) t.awayS++
       }
     }
-    if (usedHome && usedAway) cards++
+    homeN += t.homeN
+    homeS += t.homeS
+    awayN += t.awayN
+    awayS += t.awayS
+    if (t.homeN > 0 && t.awayN > 0) {
+      cards++
+      tallies.push(t)
+    }
   }
   const empty: TransferResult = {
     cardsCompared: cards,
@@ -115,23 +154,45 @@ export function transferGap(rows: ReviewContext[], minCardReviews = 4): Transfer
     verdict: 'insufficient',
   }
   if (homeN < 10 || awayN < 10 || cards < 3) return empty
-  const h = homeS / homeN
-  const a = awayS / awayN
-  const wh = wilson(homeS, homeN)
-  const wa = wilson(awayS, awayN)
-  const gap = h - a
-  const se = Math.sqrt(((wh.high - wh.low) / 3.92) ** 2 + ((wa.high - wa.low) / 3.92) ** 2)
-  const low = gap - 1.96 * se
-  const high = gap + 1.96 * se
+  const gapOf = (list: CardTally[]): number | null => {
+    let hn = 0
+    let hs = 0
+    let an = 0
+    let as = 0
+    for (const t of list) {
+      hn += t.homeN
+      hs += t.homeS
+      an += t.awayN
+      as += t.awayS
+    }
+    return hn > 0 && an > 0 ? hs / hn - as / an : null
+  }
+  const gap = homeS / homeN - awayS / awayN
+  // Only cards seen both at home and away carry the comparison, so only they are resampled.
+  const rand = mulberry32(0x5eed + cards * 31 + homeN)
+  const draws: number[] = []
+  for (let i = 0; i < BOOTSTRAP_RESAMPLES; i++) {
+    const pick: CardTally[] = []
+    for (let k = 0; k < tallies.length; k++)
+      pick.push(tallies[Math.floor(rand() * tallies.length)]!)
+    const g = gapOf(pick)
+    if (g !== null) draws.push(g)
+  }
+  draws.sort((x, y) => x - y)
+  const q = (p: number) =>
+    draws[Math.min(draws.length - 1, Math.max(0, Math.floor(p * draws.length)))] ?? gap
+  const low = Math.min(q(0.025), gap)
+  const high = Math.max(q(0.975), gap)
   return {
     cardsCompared: cards,
     homeReviews: homeN,
     awayReviews: awayN,
-    homeRate: round3(h),
-    awayRate: round3(a),
+    homeRate: round3(homeS / homeN),
+    awayRate: round3(awayS / awayN),
     gap: round3(gap),
     gapLow: round3(low),
     gapHigh: round3(high),
-    verdict: low > 0.03 ? 'context-bound' : 'transfers',
+    verdict:
+      low > GAP_THRESHOLD ? 'context-bound' : high < GAP_THRESHOLD ? 'transfers' : 'inconclusive',
   }
 }

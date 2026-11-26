@@ -63,6 +63,19 @@ describe('sessions', () => {
     startContextSession({ place: 'cafe', now: NOW })
     expect(getOpenContextSession(new Date(NOW.getTime() + 4 * 3_600_000))).toBeNull()
   })
+  it('closes a forgotten open session at its cap, not at the later time', () => {
+    startContextSession({ place: 'cafe', now: NOW })
+    const much = new Date(NOW.getTime() + 20 * 3_600_000)
+    const next = startContextSession({ place: 'library', now: much })
+    expect(next.created).toBe(true)
+    const old = listContextSessions().find((s) => s.place === 'cafe')!
+    expect(old.endedAt).toBe(new Date(NOW.getTime() + 3 * 3_600_000).toISOString())
+  })
+  it('ending a forgotten session also stops at the cap', () => {
+    startContextSession({ place: 'cafe', now: NOW })
+    const ended = endContextSession(undefined, new Date(NOW.getTime() + 30 * 3_600_000))
+    expect(ended!.endedAt).toBe(new Date(NOW.getTime() + 3 * 3_600_000).toISOString())
+  })
   it('validates place, noise and time ranges', () => {
     expect(() => startContextSession({ place: ' ! ' })).toThrow(ContextValidationError)
     expect(() => startContextSession({ place: 'home', noise: 'deafening' })).toThrow(
@@ -129,6 +142,13 @@ describe('goals', () => {
     expect(listContextGoals()).toEqual([])
     const c = addContextGoal(goal)
     expect(c.goal.id).toBe(a.goal.id)
+    expect(listContextGoals()).toHaveLength(1)
+  })
+  it('matches a goal label case-insensitively', () => {
+    const a = addContextGoal(goal)
+    const b = addContextGoal({ ...goal, label: 'FINAL EXAM' })
+    expect(b.created).toBe(false)
+    expect(b.goal.id).toBe(a.goal.id)
     expect(listContextGoals()).toHaveLength(1)
   })
   it('validates hours and caps active goals', () => {

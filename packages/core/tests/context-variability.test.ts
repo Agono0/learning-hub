@@ -160,6 +160,37 @@ describe('transfer gap and card profiles', () => {
     )
     expect(transferGap(flat).verdict).toBe('transfers')
   })
+  it('is inconclusive when the interval spans the threshold', () => {
+    // 5 cards, 3 reviews each way. Two cards fail away, three do not, so resampled cards give a wide interval.
+    const mixed = attributeReviews(
+      Array.from({ length: 5 }, (_, i) => i + 1).flatMap((c) => [
+        rv(c, 3, iso(1, 9)),
+        rv(c, 3, iso(2, 9)),
+        ...[3, 4].map((d) => rv(c, 3, iso(d, 9))),
+        rv(c, 3, iso(5, 9)),
+        ...[7, 8].map((d) => rv(c, c <= 2 ? 1 : 3, iso(d, 20))),
+        rv(c, 3, iso(9, 20)),
+      ]),
+      sess,
+    )
+    const t = transferGap(mixed)
+    expect(t.verdict).toBe('inconclusive')
+    expect(t.gapLow!).toBeLessThanOrEqual(0.03)
+    expect(t.gapHigh!).toBeGreaterThanOrEqual(0.03)
+  })
+  it('ignores unlogged reviews instead of counting them as away', () => {
+    const noSessions = attributeReviews(
+      Array.from({ length: 5 }, (_, i) => i + 1).flatMap((c) => [
+        ...[1, 2, 3, 4, 5, 6, 7, 8].map((d) => rv(c, d < 5 ? 3 : 1, iso(d, 9))),
+      ]),
+      [],
+    )
+    expect(transferGap(noSessions).verdict).toBe('insufficient')
+    expect(cardProfiles(noSessions.filter((r) => r.place !== 'unlogged'))).toHaveLength(0)
+  })
+  it('uses whole-card resampling: the same data gives the same interval', () => {
+    expect(transferGap(rows)).toEqual(transferGap(rows))
+  })
   it('profiles cards by context share', () => {
     const p = cardProfiles(rows)
     expect(p).toHaveLength(5)

@@ -234,7 +234,7 @@ export function computeRecordNaturalKey(
     case 'context_sessions':
       return `start:${str(row['started_at'])}:place:${str(row['place'])}`
     case 'context_goals':
-      return `label:${str(row['label'])}:place:${str(row['place'])}`
+      return `label:${str(row['label']).toLowerCase()}:place:${str(row['place'])}`
     default:
       return null
   }

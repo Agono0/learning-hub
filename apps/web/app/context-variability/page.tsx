@@ -172,9 +172,17 @@ export default function ContextVariabilityPage() {
                 At home {pct(data.audit.transfer.homeRate)}, away{' '}
                 {pct(data.audit.transfer.awayRate)}. Gap {pct(data.audit.transfer.gap)} (95% range{' '}
                 {pct(data.audit.transfer.gapLow)} to {pct(data.audit.transfer.gapHigh)}), over{' '}
-                {data.audit.transfer.cardsCompared} cards.
+                {data.audit.transfer.cardsCompared} cards.{' '}
+                {data.audit.transfer.verdict === 'inconclusive'
+                  ? 'The range includes both no difference and a real one, so this is inconclusive.'
+                  : null}
               </p>
             )}
+            <p className="mt-1 text-xs text-neutral-500">
+              Home is the place and time of day of a card&apos;s first two reviews. Reviews outside
+              a logged session are left out. The range resamples cards, but this is still
+              observational: easier cards may simply be reviewed in easier places.
+            </p>
             <div className="mt-3 grid gap-4 sm:grid-cols-2">
               <RateTable title="By place" rows={data.audit.byPlace} />
               <RateTable title="By time of day" rows={data.audit.byBucket} />

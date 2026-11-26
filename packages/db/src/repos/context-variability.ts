@@ -3,7 +3,7 @@
  * goals, and the audit that joins them to the review log. Cards, schedules and
  * reviews are never written.
  */
-import { and, asc, count, desc, eq, gte, isNull, lte, notInArray, or } from 'drizzle-orm'
+import { sql, and, asc, count, desc, eq, gte, isNull, lte, notInArray, or } from 'drizzle-orm'
 import {
   CTX_DEFAULTS,
   NOISE_LEVELS,
@@ -88,6 +88,13 @@ function sessionCount(db: Db): number {
   return db.select({ n: count() }).from(contextSessions).get()?.n ?? 0
 }
 
+/** End time for an open session closed at `now`: never before its start, never more than the open-session cap after it. */
+function cappedEnd(startedAt: string, now: Date): string {
+  const start = Date.parse(startedAt)
+  const capped = Math.min(now.getTime(), start + CTX_DEFAULTS.openSessionHours * 3_600_000)
+  return new Date(Math.max(capped, start)).toISOString()
+}
+
 export function getOpenContextSession(now = new Date(), database?: Db): CtxSession | null {
   const db = database ?? getDb()
   const row = db
@@ -126,10 +133,13 @@ export function startContextSession(
   if (sessionCount(db) >= CTX_DEFAULTS.maxSessions)
     throw new ContextLimitError('study sessions', CTX_DEFAULTS.maxSessions)
   const stamp = now.toISOString()
-  db.update(contextSessions)
-    .set({ endedAt: stamp, updatedAt: stamp })
-    .where(isNull(contextSessions.endedAt))
-    .run()
+  // Close every open session at its own cap, never at "now": a forgotten session must not stretch over the gap.
+  for (const o of db.select().from(contextSessions).where(isNull(contextSessions.endedAt)).all()) {
+    db.update(contextSessions)
+      .set({ endedAt: cappedEnd(o.startedAt, now), updatedAt: stamp })
+      .where(eq(contextSessions.id, o.id))
+      .run()
+  }
   const existing = db
     .select()
     .from(contextSessions)
@@ -166,7 +176,7 @@ export function endContextSession(id?: number, now = new Date(), database?: Db):
     .orderBy(desc(contextSessions.startedAt))
     .get()
   if (!target) return null
-  const end = Date.parse(stamp) < Date.parse(target.startedAt) ? target.startedAt : stamp
+  const end = cappedEnd(target.startedAt, now)
   const [row] = db
     .update(contextSessions)
     .set({ endedAt: end, updatedAt: stamp })
@@ -269,7 +279,12 @@ export function addContextGoal(
   const existing = db
     .select()
     .from(contextGoals)
-    .where(and(eq(contextGoals.label, label), eq(contextGoals.place, place)))
+    .where(
+      and(
+        sql`lower(${contextGoals.label}) = ${label.toLowerCase()}`,
+        eq(contextGoals.place, place),
+      ),
+    )
     .get()
   if (existing) {
     const [row] = db

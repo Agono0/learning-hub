@@ -38,6 +38,11 @@ export function summarizeContext(a: CtxAudit): CtxReport {
     headline =
       'Recall holds up when you change place or time of day. No sign of context-bound memory.'
     advice.push('Keep varying where and when you review. Variety is cheap insurance.')
+  } else if (t.verdict === 'inconclusive') {
+    headline = `Home and away recall differ by ${Math.round((t.gap ?? 0) * 100)} points, but the data cannot tell that from no difference yet (${Math.round((t.gapLow ?? 0) * 100)} to ${Math.round((t.gapHigh ?? 0) * 100)} points).`
+    advice.push(
+      'Keep logging sessions and reviewing in more than one place. The answer firms up with more cards.',
+    )
   } else {
     headline = `Context spread is ${Math.round(a.diversity * 100)}% across ${a.reviews} reviews. Too little variety to compare home and away yet.`
     advice.push(

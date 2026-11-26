@@ -39,8 +39,18 @@ export const contextVariabilityTools: RegisteredTool[] = [
   tool(
     'ctxv_audit',
     'Audit recall by study place and time of day: success rates with intervals, the home-versus-away gap, cards tied to one context, and readiness for performance goals. Observational, not causal.',
-    { windowDays: z.number().int().min(7).max(365).default(60) },
-    ({ windowDays = 60 }) => json({ ok: true, ...runContextAuditDb({ windowDays }) }),
+    {
+      windowDays: z.number().int().min(7).max(365).default(60),
+      tzOffsetMinutes: z
+        .number()
+        .int()
+        .min(-720)
+        .max(840)
+        .optional()
+        .describe('Minutes east of UTC for time-of-day buckets. Defaults to the server offset.'),
+    },
+    ({ windowDays = 60, tzOffsetMinutes }) =>
+      json({ ok: true, ...runContextAuditDb({ windowDays, tzOffsetMinutes }) }),
   ),
   tool(
     'ctxv_session',
@@ -78,7 +88,9 @@ export const contextVariabilityTools: RegisteredTool[] = [
       guard(() => {
         if (action === 'archive') {
           if (!id) throw new ContextValidationError('id is required')
-          return { archived: archiveContextGoal(id) }
+          if (!archiveContextGoal(id))
+            throw new ContextValidationError('Goal not found or already archived.')
+          return { archived: true }
         }
         if (!label || !place || startHour === undefined || endHour === undefined)
           throw new ContextValidationError('label, place, startHour and endHour are required')

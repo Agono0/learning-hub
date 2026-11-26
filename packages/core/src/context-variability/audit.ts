@@ -77,7 +77,8 @@ export function runContextAudit(
   for (const r of rows)
     joint.set(`${r.place}|${r.bucket}`, (joint.get(`${r.place}|${r.bucket}`) ?? 0) + 1)
 
-  const profiles = cardProfiles(rows)
+  // Unlogged reviews have no place, so a card's "context" is only meaningful over logged ones.
+  const profiles = cardProfiles(rows.filter((r) => r.place !== UNLOGGED))
   const places = [...new Set(sessions.map((s) => s.place))]
   const bound = profiles
     .filter((p) => p.bound)
