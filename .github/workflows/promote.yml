@@ -62,6 +62,9 @@ env:
 jobs:
   promote:
     name: Point ${{ inputs.channel }} at ${{ inputs.source_tag }}
+    # Write-authorized manual workflow: only run from main (or a version tag)
+    # so a dispatch from a feature branch can't move production pointers.
+    if: ${{ github.ref_name == 'main' || startsWith(github.ref_name, 'v') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

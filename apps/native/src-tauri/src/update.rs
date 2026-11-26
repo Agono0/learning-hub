@@ -2782,6 +2782,42 @@ mod patch_tests {
         fs::remove_dir_all(&base).ok();
     }
 
+    /// Deletion-only release (CI now emits a ZERO-FILE patch bundle via
+    /// update-manifest.mjs' allowEmpty opt-in): the slot clear plus the target
+    /// manifest perform the deletion; every remaining file is reused unchanged
+    /// from the active slot. The empty archive must be accepted.
+    #[test]
+    fn deletion_only_patch_with_empty_zip_applies() {
+        let base = temp_base();
+        let (m1, bytes1) = manifest_for(
+            "20261121-del01",
+            vec![("a.txt", b"A1"), ("gone.txt", b"GONE")],
+        );
+        download_to_inactive_slot(&base, &m1, &bytes1, "https://example.com/rel", |f| {
+            Ok(match f.path.as_str() {
+                "a.txt" => b"A1".to_vec(),
+                _ => b"GONE".to_vec(),
+            })
+        })
+        .expect("v1 download");
+        promote_inactive_slot(&base).expect("v1 promote");
+
+        // v2 deletes gone.txt; a.txt is byte-identical — an EMPTY patch zip.
+        let (m2, bytes2) = manifest_for("20261122-del02", vec![("a.txt", b"A1")]);
+        let empty_patch = zip_bundle(&[]);
+        apply_patch_bundle(&base, &m1, &m2, &bytes2, &empty_patch).expect("empty patch applies");
+        promote_inactive_slot(&base).expect("v2 promote");
+
+        assert_eq!(
+            lookup_in_active_slot(&base, "a.txt"),
+            Some(b"A1".to_vec())
+        );
+        assert_eq!(lookup_in_active_slot(&base, "gone.txt"), None);
+        let status = list_current(&base).expect("status");
+        assert_eq!(status.active_version.as_deref(), Some("20261122-del02"));
+        fs::remove_dir_all(&base).ok();
+    }
+
     #[test]
     fn patch_with_file_missing_from_target_manifest_is_rejected() {
         let base = temp_base();

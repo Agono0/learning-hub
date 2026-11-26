@@ -20,6 +20,23 @@ async function forceTheme(page: import('@playwright/test').Page, theme: 'dark' |
   expect(isDark).toBe(theme === 'dark')
 }
 
+/** Patch the GET /api/settings reply so the persisted theme MATCHES the theme this
+ * test forces. The fixture DB settings row defaults to theme 'dark', and ThemeSync
+ * re-applies it the moment the settings query resolves — on a cold CI shard (dev
+ * server still compiling the route) that override lands INSIDE forceTheme's assert
+ * window and flips the page back to dark (shard race seen in run 45900585357).
+ * With the persisted theme equal to the forced one, a late override is a no-op.
+ * Other settings fields pass through from the real reply. */
+async function stubSettingsTheme(page: import('@playwright/test').Page, theme: 'dark' | 'light') {
+  await page.route('**/api/settings', async (route) => {
+    if (route.request().method() !== 'GET') return route.continue()
+    const res = await route.fetch()
+    const json = (await res.json()) as { settings?: Record<string, unknown> }
+    json.settings = { ...(json.settings ?? {}), theme }
+    return route.fulfill({ response: res, json })
+  })
+}
+
 test.beforeEach(async ({ context }) => {
   fs.mkdirSync(OUT, { recursive: true })
   await context.addInitScript(() => {
@@ -29,6 +46,7 @@ test.beforeEach(async ({ context }) => {
 })
 
 test('search hits are links and highlight the query terms (mock-backed hits)', async ({ page }) => {
+  await stubSettingsTheme(page, 'light')
   await page.route('**/api/search?**', (route) =>
     route.fulfill({
       json: {
@@ -105,6 +123,7 @@ for (const vp of [
   test(`courses hero + stats, ${vp.name} (mock-backed catalog)`, async ({ page }) => {
     await page.setViewportSize({ width: vp.width, height: vp.height })
     await page.addInitScript((t) => window.localStorage.setItem('lh-theme', t), vp.theme)
+    await stubSettingsTheme(page, vp.theme as 'dark' | 'light')
     await page.route('**/api/curriculum/courses', (route) =>
       route.fulfill({ json: { courses: MOCK_COURSES } }),
     )
@@ -141,6 +160,7 @@ for (const vp of [
   test(`decks card rows reflow, ${vp.name} (real fixtures)`, async ({ page }) => {
     await page.setViewportSize({ width: vp.width, height: vp.height })
     await page.addInitScript((t) => window.localStorage.setItem('lh-theme', t), vp.theme)
+    await stubSettingsTheme(page, vp.theme as 'dark' | 'light')
     await page.goto('/decks')
     const edit = page.getByRole('button', { name: /^Edit card:/ }).first()
     await expect(edit).toBeVisible({ timeout: 60_000 })
@@ -180,6 +200,7 @@ test('decks header actions: disabled with All decks, enabled with a deck (comput
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.addInitScript(() => window.localStorage.setItem('lh-theme', 'dark'))
+  await stubSettingsTheme(page, 'dark')
   await page.goto('/decks')
   const newCard = page.getByRole('button', { name: /New card/ })
   const ai = page.getByRole('button', { name: /AI generate/ })

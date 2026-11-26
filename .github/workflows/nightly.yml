@@ -114,16 +114,18 @@ jobs:
           NIGHT_DATE="$(date -u +%Y%m%d)"
           VERSION="${NIGHT_DATE}-${SHORT_SHA}"
           TAG="nightly-${VERSION}"
-          # Native-shell version: 0.1.<UTC date * 100 + run_number % 100>.
-          # Semver-numeric patch; Android versionCode-safe under Tauri's
-          # derivation (major*1e6 + minor*1e3 + patch <= ~99.2M, far below the
-          # 2.1e9 cap). The date dominates so versions increase across days;
-          # the run number breaks same-day ties — two same-day builds used to
-          # share a version, so the second was never offered via the
-          # latest.json compare and Android saw an equal-version reinstall.
-          # Date-based so this pipeline and native.yml's `latest` APKs share
-          # one scale. Wraps only past 100 runs of one workflow per UTC day.
-          SHELL_VERSION="0.1.$(( $(date -u +%y%m%d) * 100 + (${GITHUB_RUN_NUMBER:-0} % 100) ))"
+          # Native-shell version: 0.1.<UTC date * 1000 + minutes-of-day / 2>.
+          # One clock-based formula shared with native.yml, so nightly and
+          # `latest` shells order against EACH OTHER and never wrap (the old
+          # run_number % 100 suffix could go 99 -> 0, and per-workflow run
+          # numbers are not ordered across workflows). The date dominates
+          # across days; the 2-minute tick breaks same-day ties — two
+          # builds of one workflow inside one tick can't happen (jobs take
+          # minutes), and a same-tick tie across channels is equivalent
+          # content-wise. Semver-numeric patch; Android versionCode-safe
+          # under Tauri's derivation (major*1e6 + minor*1e3 + patch, max
+          # ~991.2M vs the 2.1e9 cap).
+          SHELL_VERSION="0.1.$(( 10#$(date -u +%y%m%d) * 1000 + (10#$(date -u +%H) * 60 + 10#$(date -u +%M)) / 2 ))"
 
           REQUIRES_NATIVE=false
           # Manual dispatch from a branch that is not main (or a version tag)
