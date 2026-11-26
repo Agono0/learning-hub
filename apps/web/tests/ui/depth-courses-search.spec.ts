@@ -98,7 +98,7 @@ for (const vp of [
     await page.goto('/courses')
     const hero = page.locator('#courses-continue-title')
     await expect(hero).toHaveText('Why retrieval beats rereading', { timeout: 60_000 })
-    await expect(page.getByText('Lessons done')).toBeVisible()
+    await expect(page.getByText('Lessons done', { exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: /Resume/ })).toHaveAttribute(
       'href',
       '/courses/lesson?id=5',
