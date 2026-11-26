@@ -24,7 +24,7 @@ export class InputTooLargeError extends Error {
  * as paths are refused (stdin may legitimately be a pipe).
  */
 export function readBoundedText(
-  source: string | 0,
+  source: string | number,
   maxBytes: number = MAX_CLI_INPUT_BYTES,
 ): string {
   const isFd = typeof source === 'number'
@@ -65,7 +65,7 @@ export function readBoundedText(
 
 /** {@link readBoundedText} then `JSON.parse`, with the source named in the error. */
 export function readBoundedJson(
-  source: string | 0,
+  source: string | number,
   maxBytes: number = MAX_CLI_INPUT_BYTES,
 ): unknown {
   const text = readBoundedText(source, maxBytes)
