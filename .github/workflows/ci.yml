@@ -123,15 +123,6 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      - name: Upload UI screenshots
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ui-screenshots
-          path: apps/web/ui-screenshots/
-          if-no-files-found: ignore
-          retention-days: 7
-
       - name: Cache Next.js build cache
         if: github.event_name != 'pull_request'
         uses: actions/cache@v4
