@@ -116,3 +116,4 @@ playwright/.cache/
 **/target/release/
 # Local helper scripts
 scripts/.commit-helper.sh
+apps/web/ui-screenshots/
