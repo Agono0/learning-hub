@@ -2,6 +2,7 @@
  * BossRaid Durable Object — manages real-time multiplayer co-op boss raids.
  */
 import { type PartyRaidMember, type PartyRaidState } from '@learning-hub/core/online'
+import { RAID_LIMITS, frameByteLength, parseRaidJoin } from './raid-validation'
 
 interface RaidAttachment {
   memberId?: string
@@ -65,6 +66,10 @@ export class BossRaid {
   }
 
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
+    if (frameByteLength(message) > RAID_LIMITS.maxFrameBytes) {
+      this.refuse(ws, 'frame_too_large')
+      return
+    }
     if (typeof message !== 'string') return
 
     try {
@@ -72,14 +77,33 @@ export class BossRaid {
 
       switch (data.type) {
         case 'join': {
-          const member: PartyRaidMember = {
-            id: data.member.id,
-            alias: data.member.alias,
-            damageDealt: 0,
-            isAlive: true,
+          const parsed = parseRaidJoin(data)
+          if (!parsed.ok) {
+            this.refuse(ws, parsed.error)
+            break
           }
-          ws.serializeAttachment({ memberId: member.id } as RaidAttachment)
-          this.raid.members = [...this.raid.members.filter((m) => m.id !== member.id), member]
+          const { id, alias } = parsed.value
+          const attach = (ws.deserializeAttachment() as RaidAttachment | null) ?? {}
+          // Joining again as the same member on the same socket changes nothing.
+          if (attach.memberId === id && this.raid.members.some((m) => m.id === id)) break
+          // A live socket's member is never replaced by another socket.
+          const taken = this.state.getWebSockets().some((w) => {
+            if (w === ws) return false
+            return (w.deserializeAttachment() as RaidAttachment | null)?.memberId === id
+          })
+          if (taken) {
+            this.refuse(ws, 'id_in_use')
+            break
+          }
+          // This socket's previous identity (if any) leaves; it does not stay behind as a ghost.
+          const others = this.raid.members.filter((m) => m.id !== attach.memberId && m.id !== id)
+          if (others.length >= RAID_LIMITS.maxMembers) {
+            this.refuse(ws, 'room_full')
+            break
+          }
+          const member: PartyRaidMember = { id, alias, damageDealt: 0, isAlive: true }
+          ws.serializeAttachment({ memberId: id } as RaidAttachment)
+          this.raid.members = [...others, member]
           if (this.raid.status === 'waiting' && this.raid.members.length >= 1) {
             this.raid.status = 'fighting'
           }
@@ -121,6 +145,14 @@ export class BossRaid {
       }
     } catch {
       // Ignore
+    }
+  }
+
+  private refuse(ws: WebSocket, code: string): void {
+    try {
+      ws.send(JSON.stringify({ type: 'error', code }))
+    } catch {
+      // socket already gone
     }
   }
 

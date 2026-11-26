@@ -5,6 +5,7 @@
 import { deriveUserId } from './identity-id'
 import { communityItemSchema, filterContentSafety, makeRoomCode } from '@learning-hub/core/online'
 import { BOSS_ROSTER } from '@learning-hub/core/boss'
+import { isOwnBossKey } from './raid-validation'
 import { BossRaid } from './boss-raid'
 import { StudyRoom } from './study-room'
 import { readBytesCapped } from './body'
@@ -248,7 +249,10 @@ export default {
           bossKey?: string
         }
         const bossKey = body.bossKey ?? 'chronos'
-        const boss = BOSS_ROSTER[bossKey] ?? BOSS_ROSTER['chronos']!
+        if (!isOwnBossKey(BOSS_ROSTER, bossKey)) {
+          return jsonResponse({ error: 'Unknown bossKey' }, 400)
+        }
+        const boss = BOSS_ROSTER[bossKey]!
         const raidId = `raid_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
 
         const id = env.BOSS_RAID.idFromName(raidId)
