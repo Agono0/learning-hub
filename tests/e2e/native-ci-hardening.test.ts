@@ -49,12 +49,24 @@ describe('native command argument trust', () => {
     expect(update).toContain('struct VerifiedRegistry')
     expect(update).toMatch(/update_fetch_verified_manifest[\s\S]*?reg\.remember\(&manifest\)/)
     expect(update).toContain('manifest_is_verified(&target)')
-    expect(update).toContain('apk_sha_is_verified(&expected_sha256)')
+    expect(update).toContain('apk_is_verified(&expected_sha256, total)')
   })
 
   it('the generic downloader cannot mint installer-trusted APK names, and patches must be listed', () => {
     expect(update).toContain('is_reserved_download_name(&dest_path)')
     expect(update).toContain('patch_is_listed(&target, &patch_url, &patch_sha256, patch_size)')
+  })
+
+  it('patch zip entries are read with a bound derived from the signed manifest size', () => {
+    expect(update).toContain('fn read_bounded')
+    expect(update).toContain('read_bounded(&mut entry, target_file.size)')
+    expect(update).not.toContain(
+      '.read_to_end(&mut bytes)\n            .map_err(|e| UpdateError::Parse(format!("patch entry',
+    )
+  })
+
+  it('the JS caller passes the manifest APK size as total, not a transport length', () => {
+    expect(read('apps/web/src/platform/updater.ts')).toContain('total: pkg.size')
   })
 
   it('Dependabot keeps the pinned workflow actions current', () => {
@@ -64,6 +76,36 @@ describe('native command argument trust', () => {
   it('Android package allowlists are validated before reaching the Kotlin bridge', () => {
     expect(focus).toContain('pub fn sanitize_packages')
     expect(focus.match(/sanitize_packages\(packages\)\?/g)).toHaveLength(2)
+  })
+})
+
+describe('signing and dependencies', () => {
+  it('release signing has no built-in password or auto-generated keystore', () => {
+    for (const f of [
+      'scripts/tauri-android.mjs',
+      'apps/native/src-tauri/gen/android/app/build.gradle.kts',
+    ]) {
+      const src = read(f)
+      expect(src, f).not.toContain('learninghub123')
+      expect(src, f).not.toMatch(/-genkeypair/)
+    }
+    expect(read('apps/native/src-tauri/gen/android/app/build.gradle.kts')).toContain(
+      'Release signing is not configured',
+    )
+  })
+
+  it('Cargo.lock carries the patched url and cookie releases', () => {
+    const lock = read('apps/native/src-tauri/Cargo.lock')
+    const ver = (name: string) =>
+      lock.match(new RegExp(`name = "${name}"\\nversion = "([^"]+)"`))?.[1] ?? '0'
+    const gte = (v: string, min: string) => {
+      const a = v.split('.').map(Number)
+      const b = min.split('.').map(Number)
+      for (let i = 0; i < 3; i++) if ((a[i] ?? 0) !== (b[i] ?? 0)) return (a[i] ?? 0) > (b[i] ?? 0)
+      return true
+    }
+    expect(gte(ver('url'), '2.5.9')).toBe(true)
+    expect(gte(ver('cookie'), '0.18.3')).toBe(true)
   })
 })
 

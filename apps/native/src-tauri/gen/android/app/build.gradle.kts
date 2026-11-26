@@ -16,29 +16,30 @@ val tauriProperties = Properties().apply {
 }
 
 val defaultKeystore = file("release.keystore")
-if (!defaultKeystore.exists() && System.getenv("KEYSTORE_FILE") == null) {
-    try {
-        val javaHome = System.getProperty("java.home") ?: System.getenv("JAVA_HOME")
-        val isWindows = System.getProperty("os.name").lowercase().contains("windows")
-        val keytoolExe = if (isWindows) "keytool.exe" else "keytool"
-        val keytoolBin = if (javaHome != null && File(javaHome, "bin/$keytoolExe").exists()) {
-            File(javaHome, "bin/$keytoolExe").absolutePath
-        } else {
-            keytoolExe
-        }
-        ProcessBuilder(
-            keytoolBin,
-            "-genkeypair", "-v",
-            "-keystore", defaultKeystore.absolutePath,
-            "-alias", "learninghub",
-            "-keyalg", "RSA",
-            "-keysize", "2048",
-            "-validity", "10000",
-            "-storepass", "learninghub123",
-            "-keypass", "learninghub123",
-            "-dname", "CN=LearningHUB, OU=Mobile, O=LearningHUB, C=US"
-        ).inheritIO().start().waitFor()
-    } catch (_: Exception) {}
+
+fun signingValue(name: String): String? =
+    System.getenv(name) ?: (if (project.hasProperty(name)) project.property(name)?.toString() else null)
+
+// Release signing never falls back to a built-in password or an auto-generated
+// keystore: a release build without the real keystore and passwords fails loudly
+// instead of shipping an APK signed with a publicly known default (O1-22).
+val releaseKeystoreFile: String? =
+    signingValue("KEYSTORE_FILE") ?: defaultKeystore.takeIf { it.exists() }?.absolutePath
+// Any task that resolves to a release variant: *Release tasks, and the variant-less
+// lifecycle tasks (assemble, bundle, build), which build release as well as debug.
+val releaseRequested = gradle.startParameter.taskNames.any {
+    it.contains("release", ignoreCase = true) ||
+        it.substringAfterLast(':') in setOf("assemble", "bundle", "build")
+}
+if (releaseRequested) {
+    val missing = buildList {
+        if (releaseKeystoreFile == null || !file(releaseKeystoreFile).exists()) add("KEYSTORE_FILE or release.keystore")
+        if (signingValue("KEYSTORE_PASSWORD").isNullOrEmpty()) add("KEYSTORE_PASSWORD")
+        if (signingValue("KEY_PASSWORD").isNullOrEmpty()) add("KEY_PASSWORD")
+    }
+    if (missing.isNotEmpty()) {
+        throw GradleException("Release signing is not configured (missing: ${missing.joinToString()}). See docs/updates.md, Android signing.")
+    }
 }
 
 android {
@@ -55,17 +56,11 @@ android {
 
     signingConfigs {
         create("release") {
-            val keystoreFile = System.getenv("KEYSTORE_FILE")
-                ?: (if (project.hasProperty("KEYSTORE_FILE")) project.property("KEYSTORE_FILE")?.toString() else null)
-                ?: defaultKeystore.takeIf { it.exists() }?.absolutePath
-            if (keystoreFile != null && file(keystoreFile).exists()) {
-                storeFile = file(keystoreFile)
-                storePassword = System.getenv("KEYSTORE_PASSWORD")
-                    ?: (if (project.hasProperty("KEYSTORE_PASSWORD")) project.property("KEYSTORE_PASSWORD")?.toString() else null) ?: "learninghub123"
-                keyAlias = System.getenv("KEY_ALIAS")
-                    ?: (if (project.hasProperty("KEY_ALIAS")) project.property("KEY_ALIAS")?.toString() else null) ?: "learninghub"
-                keyPassword = System.getenv("KEY_PASSWORD")
-                    ?: (if (project.hasProperty("KEY_PASSWORD")) project.property("KEY_PASSWORD")?.toString() else null) ?: "learninghub123"
+            if (releaseKeystoreFile != null && file(releaseKeystoreFile).exists()) {
+                storeFile = file(releaseKeystoreFile)
+                storePassword = signingValue("KEYSTORE_PASSWORD")
+                keyAlias = signingValue("KEY_ALIAS") ?: "learninghub"
+                keyPassword = signingValue("KEY_PASSWORD")
                 enableV1Signing = true
                 enableV2Signing = true
             }
@@ -86,10 +81,7 @@ android {
             }
         }
         getByName("release") {
-            val resolvedKeystore = System.getenv("KEYSTORE_FILE")
-                ?: (if (project.hasProperty("KEYSTORE_FILE")) project.property("KEYSTORE_FILE")?.toString() else null)
-                ?: defaultKeystore.takeIf { it.exists() }?.absolutePath
-            if (resolvedKeystore != null && file(resolvedKeystore).exists()) {
+            if (releaseKeystoreFile != null && file(releaseKeystoreFile).exists()) {
                 signingConfig = signingConfigs.getByName("release")
             }
             isMinifyEnabled = true

@@ -44,7 +44,24 @@ const browserAliases: Record<string, { browser: string }> = {
   ),
 }
 
+/**
+ * Response headers for the Node web target (`next build`; a static export has no
+ * server to send them). The CSP here is frame-ancestors ONLY, so it blocks
+ * clickjacking without restricting scripts, styles or connections: the app's
+ * inline hydration scripts, sqlite-wasm workers and user-chosen AI endpoints are
+ * untouched.
+ */
+export const securityHeaders = [
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'Content-Security-Policy', value: "frame-ancestors 'none'" },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'Permissions-Policy', value: 'geolocation=(), payment=(), usb=()' },
+]
+
 const nextConfig: NextConfig = {
+  // Do not advertise the framework version on every response.
+  poweredByHeader: false,
   // better-sqlite3 is auto-externalized, but be explicit (harmless)
   serverExternalPackages: ['better-sqlite3', 'unpdf'],
   // Transpile the workspace TS packages (no build step needed)
@@ -63,6 +80,17 @@ const nextConfig: NextConfig = {
     LH_APP_VERSION: appVersion(),
   },
   turbopack: { resolveAlias: browserAliases },
+  ...(isTauri
+    ? {}
+    : {
+        async headers() {
+          return [
+            { source: '/:path*', headers: securityHeaders },
+            // API responses carry personal study data: never store them in a shared cache.
+            { source: '/api/:path*', headers: [{ key: 'Cache-Control', value: 'no-store' }] },
+          ]
+        },
+      }),
   ...(isTauri
     ? {
         output: 'export' as const,

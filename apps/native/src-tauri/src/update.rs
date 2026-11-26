@@ -1088,6 +1088,15 @@ impl RangeFetcher for HttpRangeFetcher {
 
 // ─── Hot-patch application (O1-19) ───────────────────────────────────────────
 
+/// Reads at most `limit + 1` bytes, so a zip entry that inflates past the size
+/// the signed manifest declares (a decompression bomb) is cut off and then fails
+/// the caller's exact-size check, instead of filling memory first.
+fn read_bounded<R: Read>(reader: &mut R, limit: u64) -> std::io::Result<Vec<u8>> {
+    let mut bytes = Vec::new();
+    reader.take(limit.saturating_add(1)).read_to_end(&mut bytes)?;
+    Ok(bytes)
+}
+
 /// Applies a hot-patch bundle (the zip of CHANGED files emitted by
 /// `scripts/update-manifest.mjs`, O1-07) plus the target manifest into the
 /// INACTIVE slot, returning the slot id. The pointer is not touched —
@@ -1218,9 +1227,7 @@ pub fn apply_patch_bundle_internal(
                     "patch contains {name:?} which is not in the target manifest"
                 ))
             })?;
-        let mut bytes = Vec::new();
-        entry
-            .read_to_end(&mut bytes)
+        let bytes = read_bounded(&mut entry, target_file.size)
             .map_err(|e| UpdateError::Parse(format!("patch entry {name}: {e}")))?;
         if bytes.len() as u64 != target_file.size {
             return Err(UpdateError::Hash(format!(
@@ -1295,7 +1302,8 @@ pub fn lookup_in_active_slot(base_dir: &Path, rel_path: &str) -> Option<Vec<u8>>
 #[derive(Default)]
 struct VerifiedRegistry {
     manifests: Vec<serde_json::Value>,
-    apk_shas: Vec<String>,
+    /// (lowercase sha256, size) of every APK listed by a verified manifest.
+    apks: Vec<(String, u64)>,
 }
 
 impl VerifiedRegistry {
@@ -1313,12 +1321,12 @@ impl VerifiedRegistry {
         }
         if let Some(pkgs) = &manifest.android_packages {
             for pkg in pkgs.values() {
-                let sha = pkg.sha256.to_ascii_lowercase();
-                if !self.apk_shas.contains(&sha) {
-                    if self.apk_shas.len() >= Self::MAX_ENTRIES * 4 {
-                        self.apk_shas.remove(0);
+                let entry = (pkg.sha256.to_ascii_lowercase(), pkg.size);
+                if !self.apks.contains(&entry) {
+                    if self.apks.len() >= Self::MAX_ENTRIES * 4 {
+                        self.apks.remove(0);
                     }
-                    self.apk_shas.push(sha);
+                    self.apks.push(entry);
                 }
             }
         }
@@ -1331,8 +1339,8 @@ impl VerifiedRegistry {
     }
 
     #[cfg(any(target_os = "android", test))]
-    fn apk_sha_is_verified(&self, sha256: &str) -> bool {
-        self.apk_shas.contains(&sha256.to_ascii_lowercase())
+    fn apk_is_verified(&self, sha256: &str, size: u64) -> bool {
+        self.apks.contains(&(sha256.to_ascii_lowercase(), size))
     }
 }
 
@@ -1608,10 +1616,10 @@ pub fn update_download_android_apk(
         use tauri::Emitter;
         if !VERIFIED
             .lock()
-            .map(|reg| reg.apk_sha_is_verified(&expected_sha256))
+            .map(|reg| reg.apk_is_verified(&expected_sha256, total))
             .unwrap_or(false)
         {
-            return Err("APK hash is not in a signature-verified manifest".to_string());
+            return Err("APK hash and size are not in a signature-verified manifest".to_string());
         }
         let base = slot_updates_dir(&app);
         let _ = fs::create_dir_all(&base);
@@ -2806,11 +2814,13 @@ mod verified_registry_tests {
     fn apk_hashes_come_only_from_verified_manifests() {
         let sha = "ab".repeat(32);
         let mut reg = VerifiedRegistry::default();
-        assert!(!reg.apk_sha_is_verified(&sha));
+        assert!(!reg.apk_is_verified(&sha, 10));
         reg.remember(&manifest("nightly-1", Some(&sha)));
-        assert!(reg.apk_sha_is_verified(&sha));
-        assert!(reg.apk_sha_is_verified(&sha.to_uppercase()));
-        assert!(!reg.apk_sha_is_verified(&"cd".repeat(32)));
+        assert!(reg.apk_is_verified(&sha, 10));
+        assert!(reg.apk_is_verified(&sha.to_uppercase(), 10));
+        assert!(!reg.apk_is_verified(&"cd".repeat(32), 10));
+        // The size must match too: a huge webview-supplied total cannot fill the disk.
+        assert!(!reg.apk_is_verified(&sha, u64::MAX));
     }
 
     #[test]
@@ -2846,5 +2856,31 @@ mod ota_gate_tests {
         assert!(!patch_is_listed(&m, "https://evil.example/p.zip", "aa", 5));
         assert!(!patch_is_listed(&m, "https://example.com/p.zip", "bb", 5));
         assert!(!patch_is_listed(&m, "https://example.com/p.zip", "aa", 6));
+    }
+}
+
+#[cfg(test)]
+mod bounded_read_tests {
+    use super::*;
+
+    /// Endless zero stream: reading it unbounded would never return.
+    struct Endless;
+    impl Read for Endless {
+        fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            buf.fill(0);
+            Ok(buf.len())
+        }
+    }
+
+    #[test]
+    fn read_bounded_stops_one_byte_past_the_limit() {
+        let got = read_bounded(&mut Endless, 1000).unwrap();
+        assert_eq!(got.len(), 1001);
+    }
+
+    #[test]
+    fn read_bounded_returns_short_streams_whole() {
+        let mut src = std::io::Cursor::new(vec![7u8; 10]);
+        assert_eq!(read_bounded(&mut src, 1000).unwrap().len(), 10);
     }
 }

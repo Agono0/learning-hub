@@ -52,11 +52,15 @@ export const backupFileSchema = z.object({
  * never leave it. Exported as empty, never deleted or overwritten by a restore.
  * `online_identity` holds the ECDSA private key (`priv_key`) and the matching
  * `pub_key`/mode, so the whole row stays together on one device.
+ * `push_subscriptions` are this browser's Web Push endpoints and their auth keys:
+ * exporting them leaks the credentials, and restoring a foreign row would send
+ * this user's reminders to an endpoint someone else chose.
  */
 export const DEVICE_LOCAL_TABLES: ReadonlySet<string> = new Set([
   'sync_configs',
   'focus_bridge',
   'online_identity',
+  'push_subscriptions',
 ])
 
 /**
