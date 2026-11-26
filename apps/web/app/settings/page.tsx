@@ -285,7 +285,7 @@ function SectionJumpNav({ onJump }: { onJump: (id: string) => void }) {
   return (
     <nav
       aria-label="Jump to a settings section"
-      className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-20 bg-(--hub-bg) pb-1.5 pt-1 md:top-3"
+      className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-20 bg-neutral-50 dark:bg-(--hub-bg) pb-1.5 pt-1 md:top-3"
     >
       <div
         ref={chipsRef}
