@@ -151,3 +151,4 @@ export * from './a11y'
 
 // ── OTA update contracts (manifest, pointer, channels) ──
 export * from './update'
+export * from './retention-planner'

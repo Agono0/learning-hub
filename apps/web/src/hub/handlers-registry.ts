@@ -213,6 +213,7 @@ import * as curriculumSkillsWeaknessV2 from '../server/handlers/curriculum/skill
 import * as tutorVoiceSession from '../server/handlers/tutor/voice-session/route'
 import * as curriculumExamSimulator from '../server/handlers/curriculum/exam/simulator/route'
 import * as workload from '../server/handlers/workload/route'
+import * as retentionPlanner from '../server/handlers/retention-planner/route'
 import * as readingExposure from '../server/handlers/reading/exposure/route'
 import * as skills from '../server/handlers/skills/route'
 import * as practiceSuccessiveRelearning from '../server/handlers/practice/successive-relearning/route'
@@ -475,6 +476,7 @@ add('curriculum/skills/weakness-v2', curriculumSkillsWeaknessV2)
 add('tutor/voice-session', tutorVoiceSession)
 add('curriculum/exam/simulator', curriculumExamSimulator)
 add('workload', workload)
+add('retention-planner', retentionPlanner)
 add('reading/exposure', readingExposure)
 add('skills', skills)
 add('practice/successive-relearning', practiceSuccessiveRelearning)
