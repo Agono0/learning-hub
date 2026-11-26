@@ -17,7 +17,7 @@ import { ArrowDown, ArrowUp, RotateCcw, Sparkles, Sprout } from 'lucide-react'
 import { levelFromXp } from '@learning-hub/core/xp'
 import { nextFreshStart, streakBrokeWithinDays } from '@learning-hub/core/freshStart'
 import { apiGet } from '@/lib/transport'
-import { BentoGrid, Badge, Button, Callout, IconButton, PageHeader, Skeleton } from '@/ui'
+import { BentoGrid, Button, Callout, IconButton, PageHeader, Skeleton } from '@/ui'
 import { TodayHeroTile, TodayStatTiles } from '@/components/dashboard/TodayHero'
 import { DEFAULT_ORDER, useDashboardWidgets } from '@/components/dashboard/widgets'
 import { ErrorBoundary } from '@/ui'
@@ -202,16 +202,14 @@ export default function DashboardPage() {
           subtitle={`${d.dateKey} · Level ${level} · ${d.xpToday} XP earned today`}
           actions={
             <div className="flex items-center gap-2">
-              <Badge tone="accent" data-ota-test>
-                OTA verified — DELTA-V8 live
-              </Badge>
               <button
                 type="button"
-                className="btn-ghost border text-xs"
-                title={ORDER_KEY_HINT}
+                className="btn-ghost inline-flex min-h-[44px] min-w-[44px] items-center justify-center"
+                title={`Reset layout. ${ORDER_KEY_HINT}`}
+                aria-label="Reset layout"
                 onClick={() => setOrder(DEFAULT_ORDER)}
               >
-                <RotateCcw className="h-3.5 w-3.5" /> Reset layout
+                <RotateCcw className="h-4 w-4" aria-hidden />
               </button>
             </div>
           }

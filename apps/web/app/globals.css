@@ -950,9 +950,14 @@ html.theme-e-ink .panel {
   grid-column: span 12;
   min-width: 0;
 }
+/* Narrow containers: status tiles follow the learning content instead of pushing it down. */
+.bento > .bento-stat {
+  order: 2;
+}
 @container (min-width: 36rem) {
   .bento > .bento-stat {
     grid-column: span 4;
+    order: 0;
   }
   .bento > .bento-sm {
     grid-column: span 6;

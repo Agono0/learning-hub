@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { expect, test } from '@playwright/test'
 
@@ -40,6 +40,13 @@ async function prepare(
 
 async function settle(page: import('@playwright/test').Page, theme: 'dark' | 'light' = 'dark') {
   await expect(page.locator('h1').first()).toBeVisible({ timeout: 60_000 })
+  // Wait for skeletons to resolve so the shot shows loaded content (the first render captured
+  // the planner's loading skeleton). A route that never resolves is still captured after 15s.
+  await page
+    .waitForFunction(() => document.querySelector('.animate-pulse') === null, undefined, {
+      timeout: 15_000,
+    })
+    .catch(() => undefined)
   await page.waitForTimeout(900)
   // The persisted settings row (default dark) wins over localStorage after load, so the light
   // capture flips the root class directly. CSS variables are mode-scoped, so this is the real
@@ -70,9 +77,19 @@ for (const mode of [
     for (const r of ROUTES) {
       test(`${r.slug}`, async ({ page, context }) => {
         await prepare(page, context, mode.theme)
+        // Record real runtime errors apart from the Next dev overlay badge.
+        const errors: string[] = []
+        page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`))
+        page.on('console', (m) => {
+          if (m.type() === 'error') errors.push(`console.error: ${m.text().slice(0, 300)}`)
+        })
         await page.goto(r.url)
         await settle(page, mode.theme)
         await noHorizontalOverflow(page)
+        writeFileSync(
+          path.join(OUT, `errors-${r.slug}-${mode.name}.json`),
+          JSON.stringify(errors, null, 2),
+        )
         await page.screenshot({ path: path.join(OUT, `redesign-${r.slug}-${mode.name}.png`) })
         if (mode.w < 500) {
           await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
