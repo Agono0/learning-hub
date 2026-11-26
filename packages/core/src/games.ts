@@ -3,6 +3,7 @@
  * from card content. Pure module — safe for client bundles.
  */
 import type { CardContent, Grade } from './types'
+import { replaceClozeMarkers } from './cards'
 import { XP_REWARDS } from './xp'
 
 /** Minimal card row the game generators need. */
@@ -39,7 +40,7 @@ export function cardSides(content: CardContent): { left: string; right: string }
     return { left: content.typein.question, right }
   }
   if (content.cloze) {
-    const left = content.cloze.text.replace(/\{\{c\d+::.*?\}\}/g, '___')
+    const left = replaceClozeMarkers(content.cloze.text, () => '___')
     const right = content.cloze.answers.join(', ')
     return { left, right }
   }

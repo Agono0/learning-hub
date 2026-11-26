@@ -8,7 +8,7 @@
 import { lintDeck, type LintCardInput, type LintResult } from './linter'
 import type { CardContent, CardFormat } from './types'
 import { createGenerationLadder, type GenerationLadder, type GenerationTier } from './generation'
-import { cardPreviewText } from './cards'
+import { cardPreviewText, findClozeMarkers, replaceClozeMarkers } from './cards'
 
 /** A single mechanical or guided remediation action emitted by Deck Doctor. */
 export type DoctorAction =
@@ -366,9 +366,9 @@ export function suggestGenerationLadderForCard(
     contextText = card.content.basic.back.trim() || concept
   } else if (card.type === 'cloze' && card.content.cloze) {
     const raw = card.content.cloze.text.trim()
-    const match = raw.match(/\{\{c\d+::(.*?)\}\}/)
-    concept = match ? match[1].trim() : (cardPreviewText(card.type, card.content) ?? 'Concept')
-    contextText = raw.replace(/\{\{c\d+::(.*?)\}\}/g, '$1')
+    const first = findClozeMarkers(raw)[0]
+    concept = first ? first.inner.trim() : (cardPreviewText(card.type, card.content) ?? 'Concept')
+    contextText = replaceClozeMarkers(raw, (inner) => inner)
   } else {
     concept = cardPreviewText(card.type, card.content) ?? `Card #${card.id}`
     contextText = concept

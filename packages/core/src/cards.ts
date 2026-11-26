@@ -80,6 +80,20 @@ export function findClozeMarkers(text: string): ClozeMarker[] {
   return out
 }
 
+/**
+ * Replace every `{{cN::…}}` marker (same matches as {@link findClozeMarkers}) with
+ * `replace(inner)`, in linear time. Stands in for `text.replace(/\{\{c\d+::(.*?)\}\}/g, …)`.
+ */
+export function replaceClozeMarkers(text: string, replace: (inner: string) => string): string {
+  let out = ''
+  let cursor = 0
+  for (const m of findClozeMarkers(text)) {
+    out += text.slice(cursor, m.index) + replace(m.inner)
+    cursor = m.end
+  }
+  return out + text.slice(cursor)
+}
+
 /** True when `text` holds at least one `{{cN::…}}` marker. */
 export function hasClozeMarker(text: string): boolean {
   return findClozeMarkers(text).length > 0
@@ -293,7 +307,7 @@ const contentSchemas = {
     text: z
       .string()
       .min(1)
-      .refine((t) => /\{\{c\d+::.*?\}\}/.test(t), 'text must contain {{cN::answer}} markers'),
+      .refine((t) => hasClozeMarker(t), 'text must contain {{cN::answer}} markers'),
     answers: z.array(z.string().min(1)).min(1),
     mode: z.enum(['basic', 'typein', 'enumeration']),
     hint: z.string().optional(),
@@ -565,7 +579,7 @@ export function syncBulletCard(
   fallbackBack = '...',
 ): { cardId: number; type: CardFormat; content: CardContent } {
   const text = stripBulletMarker(bulletContent)
-  if (/\{\{c\d+::.*?\}\}/.test(text)) {
+  if (hasClozeMarker(text)) {
     const cloze = parseCloze(text)
     return { cardId, type: 'cloze', content: { cloze } }
   }
