@@ -1273,7 +1273,10 @@ export const onlineServers = table('online_servers', {
     .$defaultFn(() => new Date().toISOString()),
 })
 
-/** Device-local identity table — stripped from sync/backup export for privacy. */
+/**
+ * Device-local identity (holds the private key). backupAll exports it empty and
+ * restoreAll/mergeBackup ignore incoming rows, so it never leaves this device.
+ */
 export const onlineIdentity = table('online_identity', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   mode: text('mode').$type<'device_key' | 'magic_link' | 'offline'>().notNull().default('offline'),

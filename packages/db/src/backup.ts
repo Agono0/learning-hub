@@ -41,6 +41,18 @@ export const backupFileSchema = z.object({
   ),
 })
 
+/**
+ * Device-local tables: they hold this device's credentials or private key and
+ * never leave it. Exported as empty, never deleted or overwritten by a restore.
+ * `online_identity` holds the ECDSA private key (`priv_key`) and the matching
+ * `pub_key`/mode, so the whole row stays together on one device.
+ */
+export const DEVICE_LOCAL_TABLES: ReadonlySet<string> = new Set([
+  'sync_configs',
+  'focus_bridge',
+  'online_identity',
+])
+
 /** Tables defined by the drizzle schema — the restore whitelist. */
 export const KNOWN_TABLES: ReadonlySet<string> = new Set(
   Object.values(schema)
@@ -110,8 +122,8 @@ export function backupAll(database: RawSqliteHandle = getRawDb()): BackupFile {
     tables: {},
   }
   for (const name of topologicalOrder(database, presentTables(database))) {
-    if (name === 'sync_configs' || name === 'focus_bridge') {
-      // Device-local credentials NEVER leave the device in backups or cloud sync
+    if (DEVICE_LOCAL_TABLES.has(name)) {
+      // Device-local credentials and keys NEVER leave the device in backups or cloud sync
       out.tables[name] = []
       continue
     }
@@ -189,13 +201,15 @@ export function restoreAll(data: unknown, database: RawSqliteHandle = getRawDb()
       : []
 
     for (const table of [...order].reverse()) {
-      if (table === 'sync_configs') continue
+      if (DEVICE_LOCAL_TABLES.has(table)) continue
       database.prepare(`DELETE FROM "${table}"`).run()
     }
 
     let rowCount = 0
     for (const [table, rows] of Object.entries(backupTables)) {
-      if (table === 'sync_configs' || rows.length === 0) continue
+      // Device-local rows in a backup (an older one may carry the private key, or another
+      // device's pairing token) are never imported.
+      if (DEVICE_LOCAL_TABLES.has(table) || rows.length === 0) continue
       const columns = (database.pragma(`table_info("${table}")`) as { name: string }[]).map(
         (c) => c.name,
       )
