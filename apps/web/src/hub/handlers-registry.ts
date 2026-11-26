@@ -62,6 +62,7 @@ import * as fsrsOptimize from '../server/handlers/fsrs/optimize/route'
 import * as gamesBoss from '../server/handlers/games/boss/route'
 import * as games from '../server/handlers/games/route'
 import * as search from '../server/handlers/search/route'
+import * as shareChannels from '../server/handlers/share-channels/route'
 import * as searchNl from '../server/handlers/search/nl/route'
 import * as insights from '../server/handlers/insights/route'
 import * as insightsUntested from '../server/handlers/insights/untested/route'
@@ -510,6 +511,7 @@ add('apprenticeship', apprenticeship)
 add('conceptual-change', conceptualChange)
 add('deliberate', deliberate)
 add('scaffolding', scaffolding)
+add('share-channels', shareChannels)
 add('update/notes', updateNotes)
 add('calendar/import', calendarImport)
 add('feedback-studio', feedbackStudioRoute)
