@@ -26,7 +26,6 @@ export const RAID_LIMITS = {
   combatLogEntries: 25,
 } as const
 
-// eslint-disable-next-line no-control-regex
 const CONTROL = /[\u0000-\u001f\u007f-\u009f]/
 
 const encoder = new TextEncoder()
@@ -69,4 +68,70 @@ export function isOwnBossKey(roster: object, key: unknown): key is string {
     key.length <= RAID_LIMITS.bossKeyMax &&
     Object.hasOwn(roster, key)
   )
+}
+
+export const RAID_INIT_LIMITS = { hpMax: 100_000, nameMax: 60 } as const
+const INIT_STATUSES = ['waiting', 'fighting', 'victory', 'defeat'] as const
+const INIT_KEYS = [
+  'id',
+  'bossKey',
+  'bossName',
+  'bossHp',
+  'bossMaxHp',
+  'partyHp',
+  'partyMaxHp',
+  'status',
+] as const
+
+export interface RaidInit {
+  id: string
+  bossKey: string
+  bossName: string
+  bossHp: number
+  bossMaxHp: number
+  partyHp: number
+  partyMaxHp: number
+  status: (typeof INIT_STATUSES)[number]
+}
+
+function intIn(v: unknown, min: number, max: number): number | null {
+  return typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max ? v : null
+}
+
+/**
+ * Validates the body of the DO `/init` call. Every field the create route sends is required
+ * and nothing else is accepted, so a body cannot inject `members` or `combatLog`. Hit points
+ * are finite integers (NaN, Infinity, null and strings fail `Number.isInteger`).
+ */
+export function parseRaidInit(raw: unknown, roster: object): Validated<RaidInit> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { ok: false, error: 'invalid_init' }
+  }
+  const b = raw as Record<string, unknown>
+  if (Object.keys(b).some((k) => !(INIT_KEYS as readonly string[]).includes(k))) {
+    return { ok: false, error: 'invalid_init' }
+  }
+  const id = cleanText(b.id, RAID_LIMITS.idMax)
+  const bossName = cleanText(b.bossName, RAID_INIT_LIMITS.nameMax)
+  const bossMaxHp = intIn(b.bossMaxHp, 1, RAID_INIT_LIMITS.hpMax)
+  const partyMaxHp = intIn(b.partyMaxHp, 1, RAID_INIT_LIMITS.hpMax)
+  const bossHp = bossMaxHp === null ? null : intIn(b.bossHp, 0, bossMaxHp)
+  const partyHp = partyMaxHp === null ? null : intIn(b.partyHp, 0, partyMaxHp)
+  const status = INIT_STATUSES.find((s) => s === b.status)
+  if (
+    id === null ||
+    bossName === null ||
+    !isOwnBossKey(roster, b.bossKey) ||
+    bossMaxHp === null ||
+    partyMaxHp === null ||
+    bossHp === null ||
+    partyHp === null ||
+    status === undefined
+  ) {
+    return { ok: false, error: 'invalid_init' }
+  }
+  return {
+    ok: true,
+    value: { id, bossKey: b.bossKey, bossName, bossHp, bossMaxHp, partyHp, partyMaxHp, status },
+  }
 }

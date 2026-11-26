@@ -246,9 +246,9 @@ export default {
           return jsonResponse({ error: 'Boss raids are not enabled on this worker' }, 503)
         }
         const body = ((await request.json().catch(() => ({}))) ?? {}) as {
-          bossKey?: string
+          bossKey?: unknown
         }
-        const bossKey = body.bossKey ?? 'chronos'
+        const bossKey = body.bossKey === undefined ? 'chronos' : body.bossKey
         if (!isOwnBossKey(BOSS_ROSTER, bossKey)) {
           return jsonResponse({ error: 'Unknown bossKey' }, 400)
         }

@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import worker from '../src/index'
 import { BossRaid } from '../src/boss-raid'
-import { RAID_LIMITS, frameByteLength, isOwnBossKey, parseRaidJoin } from '../src/raid-validation'
+import {
+  RAID_LIMITS,
+  frameByteLength,
+  isOwnBossKey,
+  parseRaidInit,
+  parseRaidJoin,
+} from '../src/raid-validation'
+import { BOSS_ROSTER } from '@learning-hub/core/boss'
 
 class FakeSocket {
   attachment: unknown = null
@@ -320,5 +327,148 @@ describe('raid create bossKey', () => {
     expect((await create({})).status).toBe(200)
     expect(isOwnBossKey({ a: 1 }, 'a')).toBe(true)
     expect(isOwnBossKey({}, 'toString')).toBe(false)
+  })
+})
+
+const validInit = {
+  id: 'raid_1_abcd',
+  bossKey: 'hydra',
+  bossName: 'Hydra of Distraction',
+  bossHp: 800,
+  bossMaxHp: 800,
+  partyHp: 500,
+  partyMaxHp: 500,
+  status: 'waiting',
+}
+const initReq = (body: unknown) =>
+  new Request('http://do/init', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: typeof body === 'string' ? body : JSON.stringify(body),
+  })
+
+describe('raid /init validation', () => {
+  it('accepts exactly what the create route sends and stores only those fields', async () => {
+    const h = makeRaid()
+    const res = await h.raid.fetch(initReq(validInit))
+    expect(res.status).toBe(200)
+    expect(h.store.get('raid')).toMatchObject(validInit)
+    expect(h.members()).toEqual([])
+  })
+
+  it('accepts the bounds exactly and refuses one beyond', () => {
+    const at = { ...validInit, bossHp: 100_000, bossMaxHp: 100_000, partyHp: 0, partyMaxHp: 1 }
+    expect(parseRaidInit(at, BOSS_ROSTER).ok).toBe(true)
+    expect(parseRaidInit({ ...at, bossHp: 100_001, bossMaxHp: 100_001 }, BOSS_ROSTER).ok).toBe(
+      false,
+    )
+    expect(parseRaidInit({ ...validInit, bossName: 'n'.repeat(60) }, BOSS_ROSTER).ok).toBe(true)
+    expect(parseRaidInit({ ...validInit, bossName: 'n'.repeat(61) }, BOSS_ROSTER).ok).toBe(false)
+    expect(parseRaidInit({ ...validInit, bossMaxHp: 0, bossHp: 0 }, BOSS_ROSTER).ok).toBe(false)
+    expect(parseRaidInit({ ...validInit, bossHp: 801 }, BOSS_ROSTER).ok).toBe(false)
+    expect(parseRaidInit({ ...validInit, partyHp: 501 }, BOSS_ROSTER).ok).toBe(false)
+  })
+
+  it('refuses malformed bodies before any mutation or storage write', async () => {
+    const bad: unknown[] = [
+      { ...validInit, bossMaxHp: null },
+      { ...validInit, bossHp: -1 },
+      { ...validInit, bossHp: 1.5 },
+      { ...validInit, bossName: '' },
+      { ...validInit, bossName: 'x'.repeat(200_000) },
+      { ...validInit, bossName: ['a'] },
+      { ...validInit, bossKey: '__proto__' },
+      { ...validInit, bossKey: 'nope' },
+      { ...validInit, status: 'won' },
+      { ...validInit, id: 'a\nb' },
+      { ...validInit, members: [{ id: 'x', alias: 'y', damageDealt: 0, isAlive: true }] },
+      { ...validInit, combatLog: ['x'] },
+      { ...validInit, bossHp: 'Infinity' },
+      { id: 'raid_x' },
+      [],
+      null,
+      '{not json',
+    ]
+    for (const body of bad) {
+      const h = makeRaid()
+      const before = h.snapshot()
+      const res = await h.raid.fetch(initReq(body === null ? 'null' : (body as never)))
+      expect(res.status, JSON.stringify(body)?.slice(0, 80)).toBe(400)
+      expect(h.snapshot()).toBe(before)
+      expect(h.store.has('raid')).toBe(false)
+    }
+    // NaN and Infinity serialise to null in JSON, so they arrive as null and are refused above.
+    expect(parseRaidInit({ ...validInit, bossHp: NaN }, BOSS_ROSTER).ok).toBe(false)
+    expect(parseRaidInit({ ...validInit, bossMaxHp: Infinity }, BOSS_ROSTER).ok).toBe(false)
+  })
+
+  it('is not reachable from the public worker: only create and the ws path reach the DO', async () => {
+    const urls: string[] = []
+    const env = {
+      BOSS_RAID: {
+        idFromName: (n: string) => ({ toString: () => n }),
+        get: () => ({
+          fetch: async (r: Request | string) => {
+            urls.push(typeof r === 'string' ? r : r.url)
+            return Response.json({ ok: true })
+          },
+        }),
+      },
+    }
+    for (const [method, path] of [
+      ['POST', '/api/v1/raids/abc/init'],
+      ['GET', '/api/v1/raids/abc/info'],
+      ['POST', '/api/v1/raids/abc/ws/init'],
+    ] as const) {
+      const res = await worker.fetch(
+        new Request(`http://worker.local${path}`, {
+          method,
+          body: method === 'POST' ? '{}' : undefined,
+        }),
+        env as never,
+      )
+      expect(res.status).toBe(404)
+    }
+    expect(urls).toEqual([])
+    // The ws route forwards the original request, whose path ends in /ws, never /init or /info.
+    await worker.fetch(new Request('http://worker.local/api/v1/raids/abc/ws?x=/init'), env as never)
+    expect(new URL(urls[0]!).pathname.endsWith('/ws')).toBe(true)
+  })
+})
+
+describe('raid create bossKey omission', () => {
+  const seen: any[] = []
+  const env = () =>
+    ({
+      BOSS_RAID: {
+        idFromName: (n: string) => ({ toString: () => n }),
+        get: () => ({
+          fetch: async (_u: string, init: RequestInit) => {
+            seen.push(JSON.parse(String(init.body)))
+            return Response.json({ ok: true })
+          },
+        }),
+      },
+    }) as never
+  const post = (body: string) =>
+    worker.fetch(
+      new Request('http://worker.local/api/v1/raids/create', { method: 'POST', body }),
+      env(),
+    )
+
+  it('defaults an absent bossKey to chronos and refuses null or invalid ones', async () => {
+    expect((await post('{}')).status).toBe(200)
+    expect(seen.at(-1)).toMatchObject({ bossKey: 'chronos', bossHp: 400 })
+    expect((await post('')).status).toBe(200)
+    const n = seen.length
+    for (const raw of [
+      '{"bossKey":null}',
+      '{"bossKey":""}',
+      '{"bossKey":"__proto__"}',
+      '{"bossKey":{}}',
+    ]) {
+      expect((await post(raw)).status).toBe(400)
+    }
+    expect(seen.length).toBe(n)
   })
 })

@@ -2,7 +2,8 @@
  * BossRaid Durable Object — manages real-time multiplayer co-op boss raids.
  */
 import { type PartyRaidMember, type PartyRaidState } from '@learning-hub/core/online'
-import { RAID_LIMITS, frameByteLength, parseRaidJoin } from './raid-validation'
+import { BOSS_ROSTER } from '@learning-hub/core/boss'
+import { RAID_LIMITS, frameByteLength, parseRaidInit, parseRaidJoin } from './raid-validation'
 
 interface RaidAttachment {
   memberId?: string
@@ -44,10 +45,11 @@ export class BossRaid {
     }
 
     if (request.method === 'POST' && url.pathname.endsWith('/init')) {
-      const body = (await request.json()) as Partial<PartyRaidState>
+      const parsed = parseRaidInit(await request.json().catch(() => null), BOSS_ROSTER)
+      if (!parsed.ok) return Response.json({ ok: false, error: parsed.error }, { status: 400 })
       this.raid = {
         ...this.raid,
-        ...body,
+        ...parsed.value,
         members: [],
       }
       await this.state.storage.put('raid', this.raid)
