@@ -60,12 +60,11 @@ export const DEVICE_LOCAL_TABLES: ReadonlySet<string> = new Set([
 ])
 
 /**
- * AI endpoint settings that decide WHERE the device's local API key and custom
- * headers are sent. A backup or sync snapshot is untrusted input: if it could
- * change these while the local key survived, the next AI call would send the
- * key to an endpoint the snapshot chose. So the key and headers never come
- * from a snapshot, and when this device already holds a key or headers the
- * provider, model and base URL stay as they are locally too.
+ * AI endpoint settings decide WHERE the device's API key and custom headers are
+ * sent, now or after the user later enters a key. A backup or sync snapshot is
+ * untrusted input, so none of these come from it: the key, headers, provider,
+ * model and base URL are all device-local. An existing local row keeps its
+ * values; a device with no row gets the defaults (no provider, no base URL).
  */
 export const AI_ENDPOINT_COLUMNS = ['ai_provider', 'ai_model', 'ai_base_url'] as const
 
@@ -77,25 +76,29 @@ export interface LocalAiSettings {
   ai_headers: string | null
 }
 
-/** Whether the local row holds a credential that an endpoint change could leak. */
+const AI_DEFAULTS: LocalAiSettings = {
+  ai_provider: 'none',
+  ai_model: null,
+  ai_base_url: null,
+  ai_api_key: null,
+  ai_headers: null,
+}
+
+/** Whether the local row holds a credential. Kept for callers that report on it. */
 export function holdsAiSecret(local: Pick<LocalAiSettings, 'ai_api_key' | 'ai_headers'>): boolean {
   return Boolean(local.ai_api_key) || Boolean(local.ai_headers)
 }
 
-/**
- * Settings to write over an incoming `user_settings` row: always the local key
- * and headers (null when none), plus the local endpoint columns when a secret
- * is held. Returns column -> value.
- */
+/** Columns to write over an incoming `user_settings` row: always the local AI values or defaults. */
 export function aiSettingsOverlay(local: LocalAiSettings | undefined): Record<string, unknown> {
-  const overlay: Record<string, unknown> = {
-    ai_api_key: local?.ai_api_key ?? null,
-    ai_headers: local?.ai_headers ?? null,
+  const source = local ?? AI_DEFAULTS
+  return {
+    ai_provider: source.ai_provider ?? 'none',
+    ai_model: source.ai_model,
+    ai_base_url: source.ai_base_url,
+    ai_api_key: source.ai_api_key,
+    ai_headers: source.ai_headers,
   }
-  if (local && holdsAiSecret(local)) {
-    for (const column of AI_ENDPOINT_COLUMNS) overlay[column] = local[column]
-  }
-  return overlay
 }
 
 /** Tables defined by the drizzle schema — the restore whitelist. */

@@ -19,7 +19,7 @@ export class InputTooLargeError extends Error {
 }
 
 /**
- * Read a regular file path, or stdin when `source` is 0, as UTF-8 text, never
+ * Read a regular file path, or an already-open descriptor (0 is stdin), as UTF-8 text, never
  * holding more than `maxBytes`. Directories, FIFOs, sockets and devices given
  * as paths are refused (stdin may legitimately be a pipe).
  */
@@ -27,10 +27,11 @@ export function readBoundedText(
   source: string | 0,
   maxBytes: number = MAX_CLI_INPUT_BYTES,
 ): string {
-  const label = source === 0 ? 'stdin' : `"${source}"`
-  const fd = source === 0 ? 0 : openSync(source, 'r')
+  const isFd = typeof source === 'number'
+  const label = source === 0 ? 'stdin' : isFd ? `fd ${source}` : `"${source}"`
+  const fd = isFd ? source : openSync(source, 'r')
   try {
-    if (source !== 0) {
+    if (!isFd) {
       const stat = fstatSync(fd)
       if (!stat.isFile()) throw new Error(`${label} is not a regular file`)
       if (stat.size > maxBytes) throw new InputTooLargeError(label, maxBytes)
@@ -44,7 +45,11 @@ export function readBoundedText(
         n = readSync(fd, chunk, 0, chunk.length, null)
       } catch (err) {
         if ((err as NodeJS.ErrnoException).code === 'EOF') break
-        if ((err as NodeJS.ErrnoException).code === 'EAGAIN') continue
+        if ((err as NodeJS.ErrnoException).code === 'EAGAIN') {
+          // non-blocking stdin with no data yet: sleep briefly instead of spinning a core
+          Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10)
+          continue
+        }
         throw err
       }
       if (n === 0) break
@@ -54,7 +59,7 @@ export function readBoundedText(
     }
     return Buffer.concat(chunks, total).toString('utf8')
   } finally {
-    if (source !== 0) closeSync(fd)
+    if (!isFd) closeSync(fd)
   }
 }
 
@@ -67,7 +72,8 @@ export function readBoundedJson(
   try {
     return JSON.parse(text)
   } catch (err) {
-    const label = source === 0 ? 'stdin' : `"${source}"`
+    const label =
+      source === 0 ? 'stdin' : typeof source === 'number' ? `fd ${source}` : `"${source}"`
     throw new Error(`${label} is not valid JSON: ${(err as Error).message}`)
   }
 }

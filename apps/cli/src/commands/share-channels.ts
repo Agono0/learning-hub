@@ -221,6 +221,11 @@ function shareChannelsCommand(args: string[]): void {
         process.exitCode = 1
         return
       }
+      if (secret.length < 8) {
+        console.error('the creator secret must be at least 8 characters')
+        process.exitCode = 1
+        return
+      }
       const token = issueInviteToken(channelId, secret)
       if (asJson) {
         console.log(JSON.stringify({ ok: true, channelId, inviteToken: token }))

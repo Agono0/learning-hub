@@ -136,13 +136,39 @@ describe('AI endpoint pinning across restore and merge', () => {
     expect(row['ai_provider']).toBe('openai')
   })
 
-  it('without a local secret the endpoint may be restored but a snapshot key or headers never are', () => {
-    const raw = withSettings()
-    restoreAll(hostile(raw, '2027-01-01T00:00:00Z'), raw)
-    const row = settingsRow(raw)
-    expect(row['ai_api_key']).toBeNull()
-    expect(row['ai_headers']).toBeNull()
-    expect(row['ai_base_url']).toBe('https://attacker.invalid/v1')
+  it('a keyless device keeps its own endpoint: a later-entered key cannot be sent to the snapshot URL', async () => {
+    for (const mode of ['restore', 'merge'] as const) {
+      const raw = withSettings()
+      const before = settingsRow(raw)
+      const snapshot = hostile(raw, '2027-01-01T00:00:00Z')
+      if (mode === 'restore') restoreAll(snapshot, raw)
+      else await mergeBackup(snapshot, raw)
+      const row = settingsRow(raw)
+      expect(row['ai_api_key'], mode).toBeNull()
+      expect(row['ai_headers'], mode).toBeNull()
+      expect(row['ai_base_url'], mode).toBe(before['ai_base_url'])
+      expect(row['ai_provider'], mode).toBe(before['ai_provider'])
+      expect(row['ai_model'], mode).toBe(before['ai_model'])
+    }
+  })
+
+  it('a headers-only device keeps its headers and endpoint', async () => {
+    for (const mode of ['restore', 'merge'] as const) {
+      const raw = withSettings()
+      raw
+        .prepare(
+          "UPDATE user_settings SET ai_provider = 'custom-endpoint', ai_base_url = 'https://mine.example/v1', ai_headers = '{\"Authorization\":\"LOCAL\"}' WHERE id = 'default'",
+        )
+        .run()
+      const snapshot = hostile(raw, '2027-01-01T00:00:00Z')
+      if (mode === 'restore') restoreAll(snapshot, raw)
+      else await mergeBackup(snapshot, raw)
+      const row = settingsRow(raw)
+      expect(row['ai_headers'], mode).toBe('{"Authorization":"LOCAL"}')
+      expect(row['ai_base_url'], mode).toBe('https://mine.example/v1')
+      expect(row['ai_provider'], mode).toBe('custom-endpoint')
+      expect(row['ai_api_key'], mode).toBeNull()
+    }
   })
 
   it('a fresh machine merge drops snapshot key and headers', async () => {
@@ -154,5 +180,7 @@ describe('AI endpoint pinning across restore and merge', () => {
     const row = settingsRow(fresh)
     expect(row['ai_api_key']).toBeNull()
     expect(row['ai_headers']).toBeNull()
+    expect(row['ai_base_url']).toBeNull()
+    expect(row['ai_provider']).toBe('none')
   })
 })

@@ -90,6 +90,33 @@ describe('invite tokens', () => {
     expect(issueInviteToken('chan-1', secret + 'x')).not.toBe(t)
     expect(verifyInviteToken('chan-1', secret, ` ${t} `)).toBe(true)
   })
+  it('match a pinned golden value, so the format cannot drift silently', () => {
+    // independently computed: HMAC-SHA-256(key=secret, msg="lh-invite/v2:<channel>"), first 16 bytes, base64url
+    expect(issueInviteToken('golden-channel', 'golden-secret-1')).toBe('lh2.fXSffyW-pSUGbP_QrJJ7Og')
+  })
+  it('refuse empty or short creator secrets', () => {
+    expect(() => issueInviteToken('chan-1', '')).toThrow(/at least 8/)
+    expect(() => issueInviteToken('chan-1', 'short')).toThrow(/at least 8/)
+    const valid = issueInviteToken('chan-1', 'long-enough-secret')
+    expect(verifyInviteToken('chan-1', '', valid)).toBe(false)
+    expect(verifyInviteToken('chan-1', 'short', valid)).toBe(false)
+  })
+  it('tell the holder of an old-format token to ask for a re-issue', () => {
+    const manifest = { visibility: 'invite', channelId: 'chan-1' } as never
+    for (const [token, holderSecret] of [
+      ['0a1b2c3d', undefined],
+      ['0a1b2c3d', secret],
+      ['lh2.short', undefined],
+    ] as const) {
+      const gate = canSubscribe(manifest, token, holderSecret)
+      expect(gate.allowed).toBe(false)
+      expect(gate.reason).toMatch(/re-issue/)
+    }
+    expect(canSubscribe(manifest, issueInviteToken('chan-1', secret)).allowed).toBe(true)
+    expect(
+      canSubscribe(manifest, issueInviteToken('chan-1', secret), 'other-secret-xyz').reason,
+    ).toMatch(/re-issue/)
+  })
   it('reject legacy 32-bit checksum tokens and malformed input', () => {
     expect(verifyInviteToken('chan-1', secret, '0a1b2c3d')).toBe(false)
     expect(verifyInviteToken('chan-1', secret, '')).toBe(false)

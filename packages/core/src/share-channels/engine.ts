@@ -387,13 +387,22 @@ export function verifyManifest(manifest: ChannelManifest): { ok: boolean; badVer
  */
 export const INVITE_TOKEN_PREFIX = 'lh2.'
 
+/** Shortest invite secret accepted; matches the `min(8)` the HTTP and MCP schemas already enforce. */
+export const MIN_INVITE_SECRET_LENGTH = 8
+
+const INVITE_TOKEN_FORMAT = /^lh2\.[A-Za-z0-9_-]{22}$/
+
 export function issueInviteToken(channelId: string, inviteSecret: string): string {
+  if (inviteSecret.length < MIN_INVITE_SECRET_LENGTH) {
+    throw new Error(`invite secret must be at least ${MIN_INVITE_SECRET_LENGTH} characters`)
+  }
   const mac = hmacSha256(utf8(inviteSecret), utf8(`lh-invite/v2:${channelId}`))
   return INVITE_TOKEN_PREFIX + toBase64Url(mac.slice(0, 16))
 }
 
 /** Verify an invite token presented by a subscriber. */
 export function verifyInviteToken(channelId: string, inviteSecret: string, token: string): boolean {
+  if (inviteSecret.length < MIN_INVITE_SECRET_LENGTH) return false
   return constantTimeEqual(issueInviteToken(channelId, inviteSecret), token.trim())
 }
 
@@ -414,6 +423,13 @@ export function canSubscribe(
       reason: 'This channel is invite-only; ask the creator for an invite token.',
     }
   }
+  if (!INVITE_TOKEN_FORMAT.test(inviteToken.trim())) {
+    return {
+      allowed: false,
+      reason:
+        'This invite token is not in the current format (older tokens stopped working). Ask the creator to re-issue the invite.',
+    }
+  }
   if (!inviteSecret) {
     // Subscriber-side check: without the creator's secret we cannot verify
     // locally, so the presence of a token is all the client can assert. The
@@ -422,7 +438,11 @@ export function canSubscribe(
   }
   return verifyInviteToken(manifest.channelId, inviteSecret, inviteToken)
     ? { allowed: true }
-    : { allowed: false, reason: 'Invite token does not match this channel.' }
+    : {
+        allowed: false,
+        reason:
+          'Invite token does not match this channel. If it was issued before the token format changed, ask the creator to re-issue the invite.',
+      }
 }
 
 /* ==========================================================================

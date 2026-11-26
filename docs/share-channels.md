@@ -169,7 +169,8 @@ present); each channel then syncs independently through its own host.
   depth), so nested content differences produce distinct keys.
 - Backup restore and merge accept only envelope versions 1 through the current
   `BACKUP_VERSION`.
-- Restore and merge never take the AI API key or custom headers from a snapshot, and when this device holds a key the AI provider, model and base URL stay local, so a hostile backup cannot redirect the key to another endpoint.
+- Restore and merge never take any AI setting from a snapshot: key, headers, provider, model and base URL are device-local (a device with no settings row gets the defaults). A hostile backup therefore cannot redirect a key, including one the user enters later.
+- Invite tokens are checked for format on the subscriber side; an old-format token is refused with a message to ask the creator to re-issue. Creator secrets must be at least 8 characters.
 - CLI `--file` and stdin payloads are capped at 8 MiB and must be regular files.
 
 ## What a later PR adds
