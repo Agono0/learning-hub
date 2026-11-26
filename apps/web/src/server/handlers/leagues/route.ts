@@ -1,0 +1,376 @@
+/**
+ * /api/leagues — competitive study leagues (lh-leagues/v1): seasons with
+ * divisions and promotion/relegation, duels, and tournaments, over the
+ * shared leagues repository (packages/db repos/leagues).
+ */
+import { z } from 'zod'
+import {
+  awardLeaguePoints,
+  createDuelFromDeck,
+  closeLeagueRound,
+  createLeagueDuel,
+  createLeagueRow,
+  createLeagueTournament,
+  seedLeagueTournamentFromStandings,
+  exportLeague,
+  getLeagueBySlug,
+  getLeagueDuel,
+  getLeagueTournament,
+  importLeague,
+  joinLeagueRow,
+  leagueHeadToHead,
+  listLeagueAchievements,
+  leagueChampion,
+  buildLeagueDigest,
+  leagueDuelStats,
+  leagueRoundPreview,
+  leagueDivisionDetail,
+  leaguePlayerProfile,
+  leagueStandings,
+  listLeagueDuels,
+  listLeaguePlayers,
+  listLeagueRounds,
+  listLeagueRows,
+  listLeagueTournaments,
+  openTournamentMatches,
+  recordTournamentMatchResult,
+  rematchLeagueDuel,
+  redactLeagueDuelRow,
+  submitDuelAnswers,
+  syncLeaguePoints,
+} from '@learning-hub/db'
+import { DIVISION_ORDER } from '@learning-hub/core'
+import { readJson, withRoute } from '@/lib/api'
+
+const tierEnum = z.enum(['bronze', 'silver', 'gold', 'platinum', 'diamond'])
+
+/** GET /api/leagues?view=…&slug=… — read surface for the leagues UI. */
+export const GET = withRoute(async (req: Request) => {
+  const url = new URL(req.url)
+  const view = url.searchParams.get('view') ?? 'list'
+
+  if (view === 'list') return Response.json({ ok: true, leagues: listLeagueRows() })
+
+  const slug = url.searchParams.get('slug') ?? ''
+  if (view === 'division') {
+    const tier = url.searchParams.get('tier') ?? ''
+    if (!tier) return Response.json({ error: 'pass a tier' }, { status: 400 })
+    const division = leagueDivisionDetail(slug, tier as Parameters<typeof leagueDivisionDetail>[1])
+    if (!division) {
+      return Response.json({ error: `league not found: ${slug}` }, { status: 404 })
+    }
+    return Response.json({ ok: true, division })
+  }
+
+  if (view === 'duel-stats') {
+    const stats = leagueDuelStats(slug)
+    if (stats === null)
+      return Response.json({ error: `league not found: ${slug}` }, { status: 404 })
+    return Response.json({ ok: true, stats })
+  }
+
+  if (view === 'schedule') {
+    const schedule = leagueRoundPreview(slug, { upcoming: 5 })
+    if (!schedule) return Response.json({ error: `league not found: ${slug}` }, { status: 404 })
+    return Response.json({ ok: true, schedule })
+  }
+
+  if (view === 'digest') {
+    const digest = buildLeagueDigest(slug)
+    if (!digest) return Response.json({ error: `league not found: ${slug}` }, { status: 404 })
+    return Response.json({ ok: true, digest })
+  }
+
+  if (view === 'achievements') {
+    const handle = url.searchParams.get('handle') ?? ''
+    if (!handle) return Response.json({ error: 'pass a handle' }, { status: 400 })
+    if (!getLeagueBySlug(slug)) {
+      return Response.json({ error: `league not found: ${slug}` }, { status: 404 })
+    }
+    return Response.json({ ok: true, achievements: listLeagueAchievements(slug, handle) })
+  }
+
+  if (view === 'h2h') {
+    const a = url.searchParams.get('a') ?? ''
+    const b = url.searchParams.get('b') ?? ''
+    if (!a || !b) return Response.json({ error: 'pass a and b handles' }, { status: 400 })
+    const headToHead = leagueHeadToHead(slug, a, b)
+    if (!headToHead) {
+      return Response.json({ error: 'league or player not found' }, { status: 404 })
+    }
+    return Response.json({ ok: true, headToHead })
+  }
+
+  if (view === 'export') {
+    const transfer = exportLeague(slug)
+    if (!transfer) return Response.json({ error: `league not found: ${slug}` }, { status: 404 })
+    return Response.json({ ok: true, transfer })
+  }
+
+  if (view === 'detail') {
+    const league = getLeagueBySlug(slug)
+    if (!league) return Response.json({ error: `league not found: ${slug}` }, { status: 404 })
+    return Response.json({
+      ok: true,
+      league,
+      players: listLeaguePlayers(slug),
+      champion: leagueChampion(slug),
+      divisions: DIVISION_ORDER.map((tier) => ({
+        tier,
+        standings: leagueStandings(slug, tier),
+      })),
+      rounds: listLeagueRounds(slug),
+      duels: listLeagueDuels({ leagueSlug: slug }).map(redactLeagueDuelRow),
+      tournaments: listLeagueTournaments({ leagueSlug: slug }),
+    })
+  }
+  if (view === 'player') {
+    const handle = url.searchParams.get('handle') ?? ''
+    const profile = leaguePlayerProfile(slug, handle)
+    if (!profile) return Response.json({ error: 'player not found' }, { status: 404 })
+    return Response.json({ ok: true, profile })
+  }
+  if (view === 'standings') {
+    const tier = tierEnum.optional().parse(url.searchParams.get('tier') ?? undefined)
+    if (!getLeagueBySlug(slug))
+      return Response.json({ error: `league not found: ${slug}` }, { status: 404 })
+    if (tier) return Response.json({ ok: true, tier, standings: leagueStandings(slug, tier) })
+    return Response.json({
+      ok: true,
+      champion: leagueChampion(slug),
+      divisions: DIVISION_ORDER.map((t) => ({ tier: t, standings: leagueStandings(slug, t) })),
+    })
+  }
+  if (view === 'duels') {
+    const status = z
+      .enum(['open', 'complete'])
+      .optional()
+      .parse(url.searchParams.get('status') ?? undefined)
+    return Response.json({
+      ok: true,
+      duels: listLeagueDuels({ leagueSlug: slug || undefined, status }).map(redactLeagueDuelRow),
+    })
+  }
+  if (view === 'duel') {
+    const duel = getLeagueDuel(slug)
+    if (!duel) return Response.json({ error: `duel not found: ${slug}` }, { status: 404 })
+    // Open duels expose questions only (no correct or submitted answers);
+    // completed duels return in full for review.
+    return Response.json({ ok: true, duel: redactLeagueDuelRow(duel) })
+  }
+  if (view === 'tournaments') {
+    const status = z
+      .enum(['open', 'complete'])
+      .optional()
+      .parse(url.searchParams.get('status') ?? undefined)
+    return Response.json({
+      ok: true,
+      tournaments: listLeagueTournaments({ leagueSlug: slug || undefined, status }),
+    })
+  }
+  if (view === 'tournament-open') {
+    if (!getLeagueTournament(slug))
+      return Response.json({ error: `tournament not found: ${slug}` }, { status: 404 })
+    return Response.json({ ok: true, matches: openTournamentMatches(slug) })
+  }
+  return Response.json({ error: `unknown view: ${view}` }, { status: 400 })
+})
+
+const postSchema = z.discriminatedUnion('action', [
+  z.object({
+    action: z.literal('create'),
+    slug: z.string().min(1).max(60),
+    title: z.string().min(1).max(200),
+    seasonStart: z.string().min(1).optional(),
+    roundLengthDays: z.number().int().min(1).max(28).optional(),
+    seasonLengthRounds: z.number().int().min(2).max(52).optional(),
+    promotionSlots: z.number().int().min(1).max(10).optional(),
+    relegationSlots: z.number().int().min(0).max(10).optional(),
+  }),
+  z.object({
+    action: z.literal('join'),
+    slug: z.string().min(1),
+    handle: z.string().min(1).max(50),
+  }),
+  z.object({
+    action: z.literal('points'),
+    slug: z.string().min(1),
+    handle: z.string().min(1),
+    reviews: z.number().optional(),
+    focusMinutes: z.number().optional(),
+  }),
+  z.object({
+    action: z.literal('points-sync'),
+    slug: z.string().min(1),
+    handle: z.string().min(1),
+  }),
+  z.object({ action: z.literal('close-round'), slug: z.string().min(1) }),
+  z.object({ action: z.literal('import'), transfer: z.unknown() }),
+  z.object({
+    action: z.literal('duel-create'),
+    slug: z.string().min(1).max(60),
+    leagueSlug: z.string().min(1).optional(),
+    playerA: z.string().min(1).max(50),
+    playerB: z.string().min(1).max(50),
+    prompts: z
+      .array(
+        z.object({
+          id: z.string().min(1),
+          question: z.string().min(1),
+          answers: z.array(z.string().min(1)).min(1),
+        }),
+      )
+      .min(1)
+      .max(50),
+  }),
+  z.object({
+    action: z.literal('duel-create-from-deck'),
+    slug: z.string().min(1).max(60),
+    deckId: z.number().int().positive(),
+    leagueSlug: z.string().min(1).optional(),
+    playerA: z.string().min(1).max(50),
+    playerB: z.string().min(1).max(50),
+    limit: z.number().int().min(1).max(50).optional(),
+    seed: z.number().int().optional(),
+  }),
+  z.object({
+    action: z.literal('duel-rematch'),
+    duelSlug: z.string().min(1),
+    newSlug: z.string().min(1).max(60),
+  }),
+  z.object({
+    action: z.literal('duel-answer'),
+    slug: z.string().min(1),
+    side: z.enum(['A', 'B']),
+    answers: z.array(
+      z.object({
+        promptId: z.string().min(1),
+        answer: z.string(),
+        elapsedMs: z.number().nonnegative(),
+      }),
+    ),
+  }),
+  z.object({
+    action: z.literal('tournament-create'),
+    slug: z.string().min(1).max(60),
+    leagueSlug: z.string().min(1).optional(),
+    title: z.string().min(1).max(200),
+    seeds: z.array(z.string().min(1)).min(2).max(64),
+  }),
+  z.object({
+    action: z.literal('tournament-seed'),
+    slug: z.string().min(1).max(60),
+    leagueSlug: z.string().min(1),
+    title: z.string().min(1).max(200),
+    size: z.number().int().min(2).max(64).optional(),
+  }),
+  z.object({
+    action: z.literal('tournament-result'),
+    slug: z.string().min(1),
+    round: z.number().int().positive(),
+    position: z.number().int().nonnegative(),
+    winner: z.string().min(1),
+    duelId: z.string().min(1).optional(),
+  }),
+])
+
+/** POST /api/leagues — action dispatch (create/join/points/duels/tournaments). */
+export const POST = withRoute(async (req: Request) => {
+  const body = await readJson(req, postSchema)
+  try {
+    switch (body.action) {
+      case 'create': {
+        if (getLeagueBySlug(body.slug)) {
+          return Response.json({ error: `league exists: ${body.slug}` }, { status: 409 })
+        }
+        const league = createLeagueRow(body)
+        return Response.json({ ok: true, league }, { status: 201 })
+      }
+      case 'import': {
+        const league = importLeague(body.transfer)
+        return Response.json({ ok: true, slug: league.slug }, { status: 201 })
+      }
+      case 'join': {
+        const player = joinLeagueRow(body.slug, body.handle)
+        return Response.json({ ok: true, player }, { status: 201 })
+      }
+      case 'points': {
+        if (body.reviews === undefined && body.focusMinutes === undefined) {
+          return Response.json({ error: 'pass reviews or focusMinutes' }, { status: 400 })
+        }
+        const event =
+          body.reviews !== undefined
+            ? ({ kind: 'reviews', handle: body.handle, count: body.reviews } as const)
+            : ({ kind: 'focus', handle: body.handle, minutes: body.focusMinutes! } as const)
+        const player = awardLeaguePoints(body.slug, event)
+        return Response.json({ ok: true, awarded: player !== null, player })
+      }
+      case 'points-sync': {
+        // Local activity scoring: derive round points from real revlog/focus
+        // events since the league's activity cursor (forward-only, idempotent).
+        const result = syncLeaguePoints(body.slug, body.handle)
+        return Response.json({ ok: true, ...result })
+      }
+      case 'close-round': {
+        const r = closeLeagueRound(body.slug)
+        return Response.json({
+          ok: true,
+          round: r.round.round,
+          promoted: r.promoted,
+          relegated: r.relegated,
+        })
+      }
+      case 'duel-create': {
+        if (getLeagueDuel(body.slug)) {
+          return Response.json({ error: `duel exists: ${body.slug}` }, { status: 409 })
+        }
+        const duel = createLeagueDuel(body)
+        return Response.json({ ok: true, duel }, { status: 201 })
+      }
+      case 'duel-create-from-deck': {
+        if (getLeagueDuel(body.slug)) {
+          return Response.json({ error: `duel exists: ${body.slug}` }, { status: 409 })
+        }
+        const duel = createDuelFromDeck(body)
+        return Response.json({ ok: true, duel }, { status: 201 })
+      }
+      case 'duel-rematch': {
+        const duel = rematchLeagueDuel(body.duelSlug, body.newSlug)
+        return Response.json({ ok: true, duel }, { status: 201 })
+      }
+      case 'duel-answer': {
+        const r = submitDuelAnswers(body.slug, body.side, body.answers)
+        return Response.json({ ok: true, decided: r.decided, winner: r.winner, duel: r.duel })
+      }
+      case 'tournament-create': {
+        if (getLeagueTournament(body.slug)) {
+          return Response.json({ error: `tournament exists: ${body.slug}` }, { status: 409 })
+        }
+        const tournament = createLeagueTournament(body)
+        return Response.json({ ok: true, tournament }, { status: 201 })
+      }
+      case 'tournament-seed': {
+        if (getLeagueTournament(body.slug)) {
+          return Response.json({ error: `tournament exists: ${body.slug}` }, { status: 409 })
+        }
+        const tournament = seedLeagueTournamentFromStandings(body)
+        return Response.json({ ok: true, tournament }, { status: 201 })
+      }
+      case 'tournament-result': {
+        const tournament = recordTournamentMatchResult(
+          body.slug,
+          body.round,
+          body.position,
+          body.winner,
+          body.duelId,
+        )
+        return Response.json({ ok: true, tournament })
+      }
+    }
+  } catch (err) {
+    return Response.json(
+      { error: err instanceof Error ? err.message : 'league action failed' },
+      { status: 400 },
+    )
+  }
+})

@@ -19,6 +19,7 @@ import { curriculumRoutes } from '../../../apps/server/src/routes/curriculum'
 import { focusRoutes } from '../../../apps/server/src/routes/focus'
 import { habitsRoutes } from '../../../apps/server/src/routes/habits'
 import { ideasRoutes } from '../../../apps/server/src/routes/ideas'
+import { leaguesRoutes } from '../../../apps/server/src/routes/leagues'
 import { interleavingRoutes } from '../../../apps/server/src/routes/interleaving'
 import { notesRoutes } from '../../../apps/server/src/routes/notes'
 import { reviewRoutes } from '../../../apps/server/src/routes/review'
@@ -34,6 +35,7 @@ const AREA_TABLES = [
   ['studios', studiosRoutes],
   ['curriculum', curriculumRoutes],
   ['ideas', ideasRoutes],
+  ['leagues', leaguesRoutes],
   ['focus', focusRoutes],
   ['habits', habitsRoutes],
   ['notes', notesRoutes],

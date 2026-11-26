@@ -1,0 +1,597 @@
+/**
+ * Learning HUB headless server — COMPETITIVE LEAGUES routes.
+ *
+ * Seasonal leagues (lh-leagues/v1): five divisions, weekly rounds,
+ * promotion/relegation, head-to-head duels with Elo, and seeded
+ * single-elimination tournaments. Every handler delegates to the shared
+ * leagues repo (packages/db repos/leagues) so web, MCP, CLI and REST hosts
+ * cannot drift (AGENTS.md rule 7).
+ */
+import { z } from 'zod'
+import type { IncomingMessage, ServerResponse } from 'node:http'
+import {
+  awardLeaguePoints,
+  closeDueRounds,
+  createDuelFromDeck,
+  closeLeagueRound,
+  createLeagueDuel,
+  createLeagueRow,
+  createLeagueTournament,
+  exportLeague,
+  getLeagueBySlug,
+  getLeagueDuel,
+  getLeagueTournament,
+  importLeague,
+  joinLeagueRow,
+  leagueHeadToHead,
+  listLeagueAchievements,
+  leagueChampion,
+  buildLeagueDigest,
+  leagueDivisionDetail,
+  leagueDuelStats,
+  leagueRoundPreview,
+  seedLeagueTournamentFromStandings,
+  leagueStandings,
+  listLeagueDuels,
+  listLeaguePlayers,
+  listLeagueRounds,
+  listLeagueSeasons,
+  listLeagueRows,
+  listLeagueTournaments,
+  openTournamentMatches,
+  recordTournamentMatchResult,
+  rematchLeagueDuel,
+  submitDuelAnswers,
+} from '@learning-hub/db'
+import { DIVISION_ORDER } from '@learning-hub/core'
+import { jsonError, sendJson, readJson, readQuery } from '../http'
+import type { Route } from './shared'
+
+// ── Schemas ─────────────────────────────────────────────────────────────────
+
+const createLeagueSchema = z.object({
+  slug: z.string().min(1).max(60),
+  title: z.string().min(1).max(200),
+  seasonStart: z.string().min(1).optional(),
+  roundLengthDays: z.number().int().min(1).max(28).optional(),
+  seasonLengthRounds: z.number().int().min(2).max(52).optional(),
+  promotionSlots: z.number().int().min(1).max(10).optional(),
+  relegationSlots: z.number().int().min(0).max(10).optional(),
+})
+
+const joinSchema = z.object({
+  slug: z.string().min(1),
+  handle: z.string().min(1).max(50),
+})
+
+const pointsSchema = z.object({
+  slug: z.string().min(1),
+  event: z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('reviews'), handle: z.string().min(1), count: z.number() }),
+    z.object({ kind: z.literal('focus'), handle: z.string().min(1), minutes: z.number() }),
+    z.object({
+      kind: z.literal('duel'),
+      winner: z.string().min(1),
+      loser: z.string().min(1),
+      draw: z.boolean().optional(),
+    }),
+  ]),
+})
+
+const slugQuerySchema = z.object({ slug: z.string().min(1) })
+
+const standingsQuerySchema = z.object({
+  slug: z.string().min(1),
+  tier: z.enum(['bronze', 'silver', 'gold', 'platinum', 'diamond']).optional(),
+})
+
+const duelCreateSchema = z.object({
+  slug: z.string().min(1).max(60),
+  leagueSlug: z.string().min(1).optional(),
+  playerA: z.string().min(1).max(50),
+  playerB: z.string().min(1).max(50),
+  prompts: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        question: z.string().min(1),
+        answers: z.array(z.string().min(1)).min(1),
+      }),
+    )
+    .min(1)
+    .max(50),
+})
+
+const duelFromDeckSchema = z.object({
+  slug: z.string().min(1).max(60),
+  deckId: z.number().int().positive(),
+  leagueSlug: z.string().min(1).optional(),
+  playerA: z.string().min(1).max(50),
+  playerB: z.string().min(1).max(50),
+  limit: z.number().int().min(1).max(50).optional(),
+  seed: z.number().int().optional(),
+})
+
+const duelRematchSchema = z.object({
+  duelSlug: z.string().min(1),
+  newSlug: z.string().min(1).max(60),
+})
+
+const duelAnswersSchema = z.object({
+  slug: z.string().min(1),
+  side: z.enum(['A', 'B']),
+  answers: z.array(
+    z.object({
+      promptId: z.string().min(1),
+      answer: z.string(),
+      elapsedMs: z.number().nonnegative(),
+    }),
+  ),
+})
+
+const duelListQuerySchema = z.object({
+  leagueSlug: z.string().min(1).optional(),
+  status: z.enum(['open', 'complete']).optional(),
+})
+
+const tournamentCreateSchema = z.object({
+  slug: z.string().min(1).max(60),
+  leagueSlug: z.string().min(1).optional(),
+  title: z.string().min(1).max(200),
+  seeds: z.array(z.string().min(1)).min(2).max(64),
+})
+
+const tournamentResultSchema = z.object({
+  slug: z.string().min(1),
+  round: z.number().int().positive(),
+  position: z.number().int().nonnegative(),
+  winner: z.string().min(1),
+  duelId: z.string().min(1).optional(),
+})
+
+// ── Handlers ────────────────────────────────────────────────────────────────
+
+function getLeagues(_req: IncomingMessage, res: ServerResponse): void {
+  sendJson(res, 200, { ok: true, leagues: listLeagueRows() })
+}
+
+async function postLeague(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, createLeagueSchema)
+  if (getLeagueBySlug(body.slug)) return jsonError(res, 409, `league exists: ${body.slug}`)
+  const row = createLeagueRow(body)
+  sendJson(res, 201, { ok: true, league: row })
+}
+
+async function postLeagueJoin(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, joinSchema)
+  try {
+    const player = joinLeagueRow(body.slug, body.handle)
+    sendJson(res, 201, { ok: true, player })
+  } catch (err) {
+    jsonError(res, 400, err instanceof Error ? err.message : 'join failed')
+  }
+}
+
+async function postLeaguePoints(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, pointsSchema)
+  try {
+    const player = awardLeaguePoints(body.slug, body.event)
+    sendJson(res, 200, { ok: true, awarded: player !== null, player })
+  } catch (err) {
+    jsonError(res, 404, err instanceof Error ? err.message : 'league not found')
+  }
+}
+
+async function postLeagueCloseRound(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, slugQuerySchema)
+  try {
+    const result = closeLeagueRound(body.slug)
+    sendJson(res, 200, {
+      ok: true,
+      round: result.round.round,
+      promoted: result.promoted,
+      relegated: result.relegated,
+    })
+  } catch (err) {
+    jsonError(res, 404, err instanceof Error ? err.message : 'league not found')
+  }
+}
+
+function getLeaguePlayers(_req: IncomingMessage, res: ServerResponse, url: URL): void {
+  const q = readQuery(url, slugQuerySchema)
+  if (!getLeagueBySlug(q.slug)) return jsonError(res, 404, `league not found: ${q.slug}`)
+  sendJson(res, 200, { ok: true, players: listLeaguePlayers(q.slug) })
+}
+
+function getLeagueStandings(_req: IncomingMessage, res: ServerResponse, url: URL): void {
+  const q = readQuery(url, standingsQuerySchema)
+  if (!getLeagueBySlug(q.slug)) return jsonError(res, 404, `league not found: ${q.slug}`)
+  if (q.tier) {
+    return sendJson(res, 200, {
+      ok: true,
+      tier: q.tier,
+      standings: leagueStandings(q.slug, q.tier),
+    })
+  }
+  sendJson(res, 200, {
+    ok: true,
+    champion: leagueChampion(q.slug),
+    divisions: DIVISION_ORDER.map((tier) => ({ tier, standings: leagueStandings(q.slug, tier) })),
+  })
+}
+
+function getLeagueRounds(_req: IncomingMessage, res: ServerResponse, url: URL): void {
+  const q = readQuery(url, slugQuerySchema)
+  if (!getLeagueBySlug(q.slug)) return jsonError(res, 404, `league not found: ${q.slug}`)
+  sendJson(res, 200, { ok: true, rounds: listLeagueRounds(q.slug) })
+}
+
+function getDuels(_req: IncomingMessage, res: ServerResponse, url: URL): void {
+  const q = readQuery(url, duelListQuerySchema)
+  sendJson(res, 200, { ok: true, duels: listLeagueDuels(q) })
+}
+
+async function postDuel(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, duelCreateSchema)
+  if (getLeagueDuel(body.slug)) return jsonError(res, 409, `duel exists: ${body.slug}`)
+  try {
+    const duel = createLeagueDuel(body)
+    sendJson(res, 201, { ok: true, duel })
+  } catch (err) {
+    jsonError(res, 400, err instanceof Error ? err.message : 'duel creation failed')
+  }
+}
+
+async function postDuelFromDeck(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, duelFromDeckSchema)
+  if (getLeagueDuel(body.slug)) return jsonError(res, 409, `duel exists: ${body.slug}`)
+  try {
+    const duel = createDuelFromDeck(body)
+    sendJson(res, 201, { ok: true, duel })
+  } catch (err) {
+    jsonError(res, 400, err instanceof Error ? err.message : 'duel creation failed')
+  }
+}
+
+async function postDuelAnswers(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, duelAnswersSchema)
+  try {
+    const result = submitDuelAnswers(body.slug, body.side, body.answers)
+    sendJson(res, 200, {
+      ok: true,
+      decided: result.decided,
+      winner: result.winner,
+      duel: result.duel,
+    })
+  } catch (err) {
+    jsonError(res, 400, err instanceof Error ? err.message : 'answer submission failed')
+  }
+}
+
+function getTournaments(_req: IncomingMessage, res: ServerResponse, url: URL): void {
+  const q = readQuery(url, duelListQuerySchema)
+  sendJson(res, 200, { ok: true, tournaments: listLeagueTournaments(q) })
+}
+
+async function postTournament(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, tournamentCreateSchema)
+  if (getLeagueTournament(body.slug)) return jsonError(res, 409, `tournament exists: ${body.slug}`)
+  try {
+    const tournament = createLeagueTournament(body)
+    sendJson(res, 201, { ok: true, tournament })
+  } catch (err) {
+    jsonError(res, 400, err instanceof Error ? err.message : 'tournament creation failed')
+  }
+}
+
+const tournamentSeedSchema = z.object({
+  slug: z.string().min(1),
+  leagueSlug: z.string().min(1),
+  title: z.string().min(1),
+  size: z.number().int().min(2).max(64).optional(),
+})
+
+/** POST /leagues/tournaments/seed — auto-seed a bracket from league standings. */
+async function postTournamentSeed(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, tournamentSeedSchema)
+  if (getLeagueTournament(body.slug)) return jsonError(res, 409, `tournament exists: ${body.slug}`)
+  try {
+    const tournament = seedLeagueTournamentFromStandings(body)
+    sendJson(res, 201, { ok: true, tournament })
+  } catch (err) {
+    jsonError(res, 400, err instanceof Error ? err.message : 'tournament seeding failed')
+  }
+}
+
+function getTournamentOpen(_req: IncomingMessage, res: ServerResponse, url: URL): void {
+  const q = readQuery(url, slugQuerySchema)
+  if (!getLeagueTournament(q.slug)) return jsonError(res, 404, `tournament not found: ${q.slug}`)
+  sendJson(res, 200, { ok: true, matches: openTournamentMatches(q.slug) })
+}
+
+async function postTournamentResult(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, tournamentResultSchema)
+  try {
+    const tournament = recordTournamentMatchResult(
+      body.slug,
+      body.round,
+      body.position,
+      body.winner,
+      body.duelId,
+    )
+    sendJson(res, 200, { ok: true, tournament })
+  } catch (err) {
+    jsonError(res, 400, err instanceof Error ? err.message : 'result rejected')
+  }
+}
+
+function postLeagueCloseDue(_req: IncomingMessage, res: ServerResponse): void {
+  const closed = closeDueRounds()
+  sendJson(res, 200, { ok: true, closed })
+}
+
+function getLeagueSeasons(_req: IncomingMessage, res: ServerResponse, url: URL): void {
+  const q = readQuery(url, slugQuerySchema)
+  if (!getLeagueBySlug(q.slug)) return jsonError(res, 404, `league not found: ${q.slug}`)
+  sendJson(res, 200, { ok: true, seasons: listLeagueSeasons(q.slug) })
+}
+
+/** GET /leagues/export?slug= — full portable transfer envelope. */
+function getLeagueExport(req: IncomingMessage, res: ServerResponse, url: URL): void {
+  const q = readQuery(url, slugQuerySchema)
+  const transfer = exportLeague(q.slug)
+  if (!transfer) return jsonError(res, 404, `league not found: ${q.slug}`)
+  sendJson(res, 200, transfer)
+}
+
+const importSchema = z.object({
+  transfer: z.unknown(),
+})
+
+/** POST /leagues/import — import a transfer envelope as a NEW league. */
+async function postLeagueImport(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, importSchema)
+  try {
+    const league = importLeague(body.transfer)
+    sendJson(res, 201, { ok: true, slug: league.slug })
+  } catch (err) {
+    jsonError(res, 400, err instanceof Error ? err.message : 'import failed')
+  }
+}
+
+const h2hQuerySchema = z.object({
+  slug: z.string().min(1),
+  a: z.string().min(1),
+  b: z.string().min(1),
+})
+
+/** GET /leagues/head-to-head?slug=&a=&b= — full rivalry record. */
+function getLeagueHeadToHead(req: IncomingMessage, res: ServerResponse, url: URL): void {
+  const q = readQuery(url, h2hQuerySchema)
+  const h2h = leagueHeadToHead(q.slug, q.a, q.b)
+  if (!h2h) return jsonError(res, 404, 'league or player not found')
+  sendJson(res, 200, { ok: true, headToHead: h2h })
+}
+
+const achievementsQuerySchema = z.object({
+  slug: z.string().min(1),
+  handle: z.string().min(1),
+})
+
+/** GET /leagues/achievements?slug=&handle= — banked badges, oldest first. */
+function getLeagueAchievements(req: IncomingMessage, res: ServerResponse, url: URL): void {
+  const q = readQuery(url, achievementsQuerySchema)
+  if (!getLeagueBySlug(q.slug)) return jsonError(res, 404, `league not found: ${q.slug}`)
+  sendJson(res, 200, { ok: true, achievements: listLeagueAchievements(q.slug, q.handle) })
+}
+
+/** GET /leagues/division?slug=&tier= — focused division view. */
+function getLeagueDivision(req: IncomingMessage, res: ServerResponse, url: URL): void {
+  const q = readQuery(url, standingsQuerySchema)
+  if (!q.tier) return jsonError(res, 400, 'pass a tier')
+  const detail = leagueDivisionDetail(q.slug, q.tier)
+  if (!detail) return jsonError(res, 404, `league not found: ${q.slug}`)
+  sendJson(res, 200, { ok: true, division: detail })
+}
+
+const digestQuerySchema = z.object({
+  slug: z.string().min(1),
+})
+
+/** GET /leagues/digest?slug= — weekly recap: standings, last round, duels, Elo movers, badges. */
+function getLeagueDigest(req: IncomingMessage, res: ServerResponse, url: URL): void {
+  const q = readQuery(url, digestQuerySchema)
+  const digest = buildLeagueDigest(q.slug)
+  if (!digest) return jsonError(res, 404, `league not found: ${q.slug}`)
+  sendJson(res, 200, { ok: true, digest })
+}
+
+/** GET /leagues/duel-stats?slug= — per-player duel record, accuracy, speed, streaks. */
+function getLeagueDuelStats(req: IncomingMessage, res: ServerResponse, url: URL): void {
+  const q = readQuery(url, digestQuerySchema)
+  const stats = leagueDuelStats(q.slug)
+  if (stats === null) return jsonError(res, 404, `league not found: ${q.slug}`)
+  sendJson(res, 200, { ok: true, stats })
+}
+
+/** GET /leagues/schedule?slug= — round calendar: current window, due state, upcoming rounds. */
+function getLeagueSchedule(req: IncomingMessage, res: ServerResponse, url: URL): void {
+  const q = readQuery(url, digestQuerySchema)
+  const schedule = leagueRoundPreview(q.slug, { upcoming: 5 })
+  if (!schedule) return jsonError(res, 404, `league not found: ${q.slug}`)
+  sendJson(res, 200, { ok: true, schedule })
+}
+
+/** POST /leagues/duels/rematch — new duel: same players/prompts, swapped seats. */
+async function postDuelRematch(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, duelRematchSchema)
+  try {
+    const duel = rematchLeagueDuel(body.duelSlug, body.newSlug)
+    sendJson(res, 201, { ok: true, duel })
+  } catch (err) {
+    jsonError(res, 400, err instanceof Error ? err.message : 'rematch failed')
+  }
+}
+
+// ── Route table ─────────────────────────────────────────────────────────────
+
+export const leaguesRoutes: Route[] = [
+  { method: 'GET', path: '/leagues', summary: 'list leagues', handler: getLeagues },
+  {
+    method: 'POST',
+    path: '/leagues',
+    summary: 'create a league (engine-validated)',
+    handler: postLeague,
+  },
+  {
+    method: 'POST',
+    path: '/leagues/join',
+    summary: 'join a league (starts in bronze)',
+    handler: postLeagueJoin,
+  },
+  {
+    method: 'POST',
+    path: '/leagues/points',
+    summary: 'award league points for a study event',
+    handler: postLeaguePoints,
+  },
+  {
+    method: 'POST',
+    path: '/leagues/close-due',
+    summary: 'close every due round (one per league per sweep)',
+    handler: postLeagueCloseDue,
+  },
+  {
+    method: 'GET',
+    path: '/leagues/export',
+    summary: 'export a league as a portable transfer envelope (?slug=)',
+    handler: getLeagueExport,
+  },
+  {
+    method: 'POST',
+    path: '/leagues/import',
+    summary: 'import a transfer envelope as a new league',
+    handler: postLeagueImport,
+  },
+  {
+    method: 'POST',
+    path: '/leagues/close-round',
+    summary: 'close the round: promote/relegate, record, reset',
+    handler: postLeagueCloseRound,
+  },
+  {
+    method: 'GET',
+    path: '/leagues/players',
+    summary: 'league players by season points (?slug=)',
+    handler: getLeaguePlayers,
+  },
+  {
+    method: 'GET',
+    path: '/leagues/standings',
+    summary: 'division standings or full table + champion (?slug=&tier=)',
+    handler: getLeagueStandings,
+  },
+  {
+    method: 'GET',
+    path: '/leagues/division',
+    summary: 'one division: standings, round history, movement, duels (?slug=&tier=)',
+    handler: getLeagueDivision,
+  },
+  {
+    method: 'GET',
+    path: '/leagues/duel-stats',
+    summary: 'per-player duel performance: record, accuracy, speed, streaks (?slug=)',
+    handler: getLeagueDuelStats,
+  },
+  {
+    method: 'GET',
+    path: '/leagues/schedule',
+    summary: 'round calendar: current window, due state, upcoming rounds (?slug=)',
+    handler: getLeagueSchedule,
+  },
+  {
+    method: 'GET',
+    path: '/leagues/digest',
+    summary: 'weekly recap: standings, last round, duel activity, Elo movers, badges (?slug=)',
+    handler: getLeagueDigest,
+  },
+  {
+    method: 'GET',
+    path: '/leagues/achievements',
+    summary: "a player's earned achievement badges (?slug=&handle=)",
+    handler: getLeagueAchievements,
+  },
+  {
+    method: 'GET',
+    path: '/leagues/head-to-head',
+    summary: 'rivalry record between two players (?slug=&a=&b=)',
+    handler: getLeagueHeadToHead,
+  },
+  {
+    method: 'GET',
+    path: '/leagues/seasons',
+    summary: 'archived seasons, newest first (?slug=)',
+    handler: getLeagueSeasons,
+  },
+  {
+    method: 'GET',
+    path: '/leagues/rounds',
+    summary: 'closed round history (?slug=)',
+    handler: getLeagueRounds,
+  },
+  {
+    method: 'GET',
+    path: '/leagues/duels',
+    summary: 'duels (?leagueSlug=&status=)',
+    handler: getDuels,
+  },
+  { method: 'POST', path: '/leagues/duels', summary: 'create a duel', handler: postDuel },
+  {
+    method: 'POST',
+    path: '/leagues/duels/from-deck',
+    summary: 'create a duel from a deck of cards',
+    handler: postDuelFromDeck,
+  },
+  {
+    method: 'POST',
+    path: '/leagues/duels/rematch',
+    summary: 'rematch a completed duel (same prompts, swapped seating)',
+    handler: postDuelRematch,
+  },
+  {
+    method: 'POST',
+    path: '/leagues/duels/answers',
+    summary: 'submit one side; decides when both are in',
+    handler: postDuelAnswers,
+  },
+  {
+    method: 'GET',
+    path: '/leagues/tournaments',
+    summary: 'tournaments (?leagueSlug=&status=)',
+    handler: getTournaments,
+  },
+  {
+    method: 'POST',
+    path: '/leagues/tournaments/seed',
+    summary: 'auto-seed a tournament from league standings',
+    handler: postTournamentSeed,
+  },
+  {
+    method: 'POST',
+    path: '/leagues/tournaments',
+    summary: 'create a seeded bracket',
+    handler: postTournament,
+  },
+  {
+    method: 'GET',
+    path: '/leagues/tournaments/open',
+    summary: 'playable matches right now (?slug=)',
+    handler: getTournamentOpen,
+  },
+  {
+    method: 'POST',
+    path: '/leagues/tournaments/result',
+    summary: 'record a match winner (completes on the final)',
+    handler: postTournamentResult,
+  },
+]

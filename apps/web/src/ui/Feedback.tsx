@@ -51,6 +51,7 @@ export function Badge({
   icon,
   children,
   className,
+  ...rest
 }: {
   tone?: keyof typeof BADGE_TONE
   dot?: boolean
@@ -58,9 +59,11 @@ export function Badge({
   icon?: ReactNode
   children: ReactNode
   className?: string
+  'data-testid'?: string
 }) {
   return (
     <span
+      data-testid={rest['data-testid']}
       className={cx(
         'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium',
         BADGE_TONE[tone],

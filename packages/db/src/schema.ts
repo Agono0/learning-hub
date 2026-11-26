@@ -2119,3 +2119,259 @@ export const taskViews = table('task_views', {
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
 })
+
+// ─── Competitive Study Leagues (lh-leagues/v1) ────────────────────────────
+// Seasonal leagues: five divisions, weekly rounds, promotion/relegation.
+// Round points reset at close; season totals never do. Elo lives db-side and
+// moves only on decided duels.
+
+export const leagues = table('leagues', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  /** Stable public identifier (core League.id). */
+  slug: text('slug').notNull().unique(),
+  title: text('title').notNull(),
+  /**
+   * 'practice' is the only mode: local & friendly play with no ranked
+   * effects (Elo stays frozen). Ranked/shared competition is disabled
+   * until leagues bind to the online identity + worker-verified scoring.
+   */
+  mode: text('mode').notNull().default('practice'),
+  seasonStart: text('season_start').notNull(),
+  roundLengthDays: integer('round_length_days').notNull().default(7),
+  currentRound: integer('current_round').notNull().default(0),
+  season: integer('season').notNull().default(1),
+  seasonLengthRounds: integer('season_length_rounds').notNull().default(10),
+  promotionSlots: integer('promotion_slots').notNull().default(3),
+  relegationSlots: integer('relegation_slots').notNull().default(3),
+  scoringJson: text('scoring', { mode: 'json' })
+    .$type<{ review: number; focusMinute: number; duelWin: number; duelDraw: number }>()
+    .notNull()
+    .default({ review: 1, focusMinute: 1, duelWin: 25, duelDraw: 10 }),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
+export const leaguePlayers = table(
+  'league_players',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    leagueId: integer('league_id')
+      .notNull()
+      .references(() => leagues.id),
+    handle: text('handle').notNull(),
+    tier: text('tier').notNull().default('bronze'),
+    /** League points in the current round (reset at round close). */
+    points: integer('points').notNull().default(0),
+    seasonPoints: integer('season_points').notNull().default(0),
+    roundsWon: integer('rounds_won').notNull().default(0),
+    duelsWon: integer('duels_won').notNull().default(0),
+    duelsLost: integer('duels_lost').notNull().default(0),
+    elo: integer('elo').notNull().default(1000),
+    joinedAt: text('joined_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [
+    uniqueIndex('league_players_league_handle_uidx').on(t.leagueId, t.handle),
+    index('league_players_league_idx').on(t.leagueId),
+    index('league_players_tier_idx').on(t.leagueId, t.tier),
+  ],
+)
+
+/**
+ * One local-activity scoring cursor per league. syncLeaguePoints credits NEW
+ * review/focus events (ids above the cursor) to one handle and advances the
+ * cursor, so device activity can never be credited twice. This is LOCAL
+ * ACTIVITY scoring — the cursor cannot identify who performed the activity
+ * on a shared device.
+ */
+export const leagueActivityCursors = table(
+  'league_activity_cursors',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    leagueId: integer('league_id')
+      .notNull()
+      .references(() => leagues.id),
+    revlogCursor: integer('revlog_cursor').notNull().default(0),
+    focusCursor: integer('focus_cursor').notNull().default(0),
+    updatedAt: text('updated_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [index('league_activity_cursors_league_idx').on(t.leagueId)],
+)
+
+export const leagueRounds = table(
+  'league_rounds',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    leagueId: integer('league_id')
+      .notNull()
+      .references(() => leagues.id),
+    round: integer('round').notNull(),
+    promotionsJson: text('promotions', { mode: 'json' })
+      .$type<{ handle: string; from: string; to: string }[]>()
+      .notNull()
+      .default([]),
+    relegationsJson: text('relegations', { mode: 'json' })
+      .$type<{ handle: string; from: string; to: string }[]>()
+      .notNull()
+      .default([]),
+    winnersJson: text('winners', { mode: 'json' })
+      .$type<{ tier: string; handle: string }[]>()
+      .notNull()
+      .default([]),
+    closedAt: text('closed_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [uniqueIndex('league_rounds_league_round_uidx').on(t.leagueId, t.round)],
+)
+
+export const leagueDuels = table(
+  'league_duels',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    slug: text('slug').notNull().unique(),
+    leagueId: integer('league_id').references(() => leagues.id),
+    playerA: text('player_a').notNull(),
+    playerB: text('player_b').notNull(),
+    promptsJson: text('prompts', { mode: 'json' })
+      .$type<{ id: string; question: string; answers: string[] }[]>()
+      .notNull(),
+    answersAJson: text('answers_a', { mode: 'json' })
+      .$type<{ promptId: string; answer: string; elapsedMs: number }[]>()
+      .notNull()
+      .default([]),
+    answersBJson: text('answers_b', { mode: 'json' })
+      .$type<{ promptId: string; answer: string; elapsedMs: number }[]>()
+      .notNull()
+      .default([]),
+    status: text('status').notNull().default('open'), // 'open' | 'complete'
+    winner: text('winner'), // null while open; null + complete = draw
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+    completedAt: text('completed_at'),
+  },
+  (t) => [
+    index('league_duels_league_idx').on(t.leagueId),
+    index('league_duels_players_idx').on(t.playerA, t.playerB),
+  ],
+)
+
+/** Append-only Elo history: two rows per decided league duel (one per side). */
+export const leagueEloEvents = table(
+  'league_elo_events',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    leagueId: integer('league_id')
+      .notNull()
+      .references(() => leagues.id),
+    duelId: integer('duel_id')
+      .notNull()
+      .references(() => leagueDuels.id),
+    handle: text('handle').notNull(),
+    opponent: text('opponent').notNull(),
+    result: text('result').$type<'win' | 'loss' | 'draw'>().notNull(),
+    eloBefore: integer('elo_before').notNull(),
+    eloAfter: integer('elo_after').notNull(),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [
+    index('league_elo_events_league_idx').on(t.leagueId),
+    index('league_elo_events_handle_idx').on(t.leagueId, t.handle),
+  ],
+)
+
+/** Archived seasons: one row per completed season with the final table. */
+export const leagueSeasons = table(
+  'league_seasons',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    leagueId: integer('league_id')
+      .notNull()
+      .references(() => leagues.id),
+    season: integer('season').notNull(),
+    champion: text('champion'),
+    finalStandingsJson: text('final_standings', { mode: 'json' })
+      .$type<
+        {
+          handle: string
+          tier: string
+          seasonPoints: number
+          roundsWon: number
+          elo: number
+        }[]
+      >()
+      .notNull(),
+    closedAt: text('closed_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [
+    uniqueIndex('league_seasons_league_season_uidx').on(t.leagueId, t.season),
+    index('league_seasons_league_idx').on(t.leagueId),
+  ],
+)
+
+/** Earned league achievements (catalog in core leagues/achievements). */
+export const leagueAchievements = table(
+  'league_achievements',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    leagueId: integer('league_id')
+      .notNull()
+      .references(() => leagues.id),
+    handle: text('handle').notNull(),
+    achievementId: text('achievement_id').notNull(),
+    earnedAt: text('earned_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [
+    uniqueIndex('league_achievements_league_handle_achievement_uidx').on(
+      t.leagueId,
+      t.handle,
+      t.achievementId,
+    ),
+    index('league_achievements_league_idx').on(t.leagueId),
+  ],
+)
+export type LeagueAchievementRow = typeof leagueAchievements.$inferSelect
+
+export const leagueTournaments = table(
+  'league_tournaments',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    slug: text('slug').notNull().unique(),
+    leagueId: integer('league_id').references(() => leagues.id),
+    title: text('title').notNull(),
+    seedsJson: text('seeds', { mode: 'json' }).$type<string[]>().notNull(),
+    matchesJson: text('matches', { mode: 'json' })
+      .$type<
+        {
+          round: number
+          position: number
+          playerA?: string
+          playerB?: string
+          winner?: string
+          duelId?: string
+        }[]
+      >()
+      .notNull(),
+    status: text('status').notNull().default('open'), // 'open' | 'complete'
+    champion: text('champion'),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+    completedAt: text('completed_at'),
+  },
+  (t) => [index('league_tournaments_league_idx').on(t.leagueId)],
+)

@@ -23,6 +23,7 @@ import { captureCommands } from './commands/capture'
 import { focusCommands } from './commands/focus-pomodoro'
 import { exposureCommands } from './commands/exposure'
 import { goalsCommands } from './commands/goals'
+import { leaguesCommands } from './commands/leagues'
 import { notesCommands } from './commands/notes'
 import { reviewCommands } from './commands/review'
 import { systemCommands } from './commands/system'
@@ -141,6 +142,7 @@ const builtinCommands: RegisteredCommand[] = [
   ...cpsCommands,
   // New domain commands over the shared repos (commands/goals.ts, commands/notes.ts)
   ...goalsCommands,
+  ...leaguesCommands,
   ...notesCommands,
 ]
 

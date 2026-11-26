@@ -1,0 +1,2044 @@
+'use client'
+
+/**
+ * Competitive Leagues page: seasonal leagues with five divisions and
+ * promotion/relegation, head-to-head duels, and seeded tournaments. All data
+ * flows through /api/leagues (the shared leagues repository) via apiGet /
+ * apiSend — never raw fetch.
+ */
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Badge,
+  Button,
+  Callout,
+  EmptyState,
+  PageHeader,
+  Panel,
+  Tabs,
+  TextArea,
+  TextField,
+} from '@/ui'
+import { apiGet, apiSend } from '@/lib/transport'
+
+// ── Types mirroring the /api/leagues payloads ────────────────────────────────
+
+type LeagueRow = {
+  id: number
+  slug: string
+  title: string
+  seasonStart: string
+  roundLengthDays: number
+  currentRound: number
+  season: number
+  seasonLengthRounds: number
+  promotionSlots: number
+  relegationSlots: number
+  mode: string
+}
+
+/** True when a league's current round has passed its calendar end (same math as the engine). */
+function leagueRoundIsDue(l: LeagueRow, now: number = Date.now()): boolean {
+  const base = new Date(`${l.seasonStart}T00:00:00.000Z`).getTime()
+  return now >= base + (l.currentRound + 1) * l.roundLengthDays * 86_400_000
+}
+
+type PlayerRow = {
+  handle: string
+  tier: string
+  points: number
+  seasonPoints: number
+  roundsWon: number
+  duelsWon: number
+  duelsLost: number
+  elo: number
+}
+
+type PlayerProfile = {
+  player: PlayerRow
+  record: { wins: number; losses: number; draws: number }
+  recentDuels: DuelRow[]
+  eloHistory: {
+    handle: string
+    opponent: string
+    result: 'win' | 'loss' | 'draw'
+    eloBefore: number
+    eloAfter: number
+    createdAt: string
+  }[]
+  rank: number
+}
+
+type Division = {
+  tier: string
+  standings: { handle: string; points: number; seasonPoints: number }[]
+}
+
+type RoundRow = {
+  round: number
+  closedAt: string
+  promotionsJson: { handle: string; from: string; to: string }[]
+  relegationsJson: { handle: string; from: string; to: string }[]
+  winnersJson: { tier: string; handle: string }[]
+}
+
+type DuelRow = {
+  slug: string
+  playerA: string
+  playerB: string
+  status: string
+  winner: string | null
+  promptsJson: { id: string; question: string; answers: string[] }[]
+  createdAt: string
+}
+
+type LeagueDigest = {
+  generatedAt: string
+  playerCount: number
+  roundsClosed: number
+  divisions: {
+    tier: string
+    standings: { handle: string; seasonPoints: number; roundsWon: number; elo: number }[]
+  }[]
+  lastRound: {
+    round: number
+    closedAt: string
+    winners: { tier: string; handle: string }[]
+    promotions: { handle: string; from: string; to: string }[]
+    relegations: { handle: string; from: string; to: string }[]
+  } | null
+  duels: {
+    open: number
+    completed: number
+    recentCompleted: {
+      slug: string
+      playerA: string
+      playerB: string
+      winner: string | null
+      completedAt: string | null
+    }[]
+  }
+  eloMovers: { handle: string; delta: number; duels: number }[]
+  newAchievements: { handle: string; achievementId: string; earnedAt: string }[]
+}
+
+type DuelPlayerStats = {
+  handle: string
+  played: number
+  wins: number
+  losses: number
+  draws: number
+  winRate: number
+  avgAccuracy: number
+  avgCorrectTimeMs: number | null
+  currentStreak: number
+  bestStreak: number
+}
+
+type LeagueSchedule = {
+  currentRound: number
+  seasonLengthRounds: number
+  current: { round: number; startsAt: string; endsAt: string }
+  dueNow: boolean
+  msUntilRoundEnd: number
+  roundsRemaining: number
+  seasonEndsAt: string
+  upcoming: { round: number; startsAt: string; endsAt: string }[]
+}
+
+type TournamentRow = {
+  slug: string
+  title: string
+  status: string
+  champion: string | null
+  seedsJson: string[]
+  matchesJson: {
+    round: number
+    position: number
+    playerA?: string
+    playerB?: string
+    winner?: string
+  }[]
+}
+
+type Detail = {
+  league: LeagueRow
+  players: PlayerRow[]
+  champion: string | null
+  divisions: Division[]
+  rounds: RoundRow[]
+  duels: DuelRow[]
+  tournaments: TournamentRow[]
+}
+
+type HeadToHead = {
+  summary: {
+    playerA: string
+    playerB: string
+    duels: number
+    winsA: number
+    winsB: number
+    draws: number
+    winRateA: number
+    winRateB: number
+    accuracyA: number
+    accuracyB: number
+    avgCorrectMsA: number
+    avgCorrectMsB: number
+    streakA: number
+    streakB: number
+    lastResult: 'A' | 'B' | 'draw' | null
+    lastDuelAt: string | null
+  }
+  leader: { leader: string | null; edge: number; even: boolean }
+  elo: { eloA: number; eloB: number; gap: number; higher: 'A' | 'B' | null }
+  recentDuels: { duelId: string; winner: string | null; completedAt: string }[]
+}
+
+const TIER_TONE: Record<string, 'neutral' | 'accent' | 'success' | 'warning' | 'cyan' | 'violet'> =
+  {
+    bronze: 'warning',
+    silver: 'neutral',
+    gold: 'success',
+    platinum: 'cyan',
+    diamond: 'violet',
+  }
+
+// ── Page ────────────────────────────────────────────────────────────────────
+
+export default function LeaguesPage() {
+  const [tab, setTab] = useState('overview')
+  const [leagues, setLeagues] = useState<LeagueRow[]>([])
+  const [selected, setSelected] = useState<string | null>(null)
+  const [detail, setDetail] = useState<Detail | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+
+  const refreshList = useCallback(async () => {
+    const res = await apiGet<{ ok: boolean; leagues: LeagueRow[] }>('/api/leagues?view=list')
+    setLeagues(res.leagues)
+    return res.leagues
+  }, [])
+
+  const refreshDetail = useCallback(async (slug: string) => {
+    const res = await apiGet<{ ok: boolean } & Detail>(
+      `/api/leagues?view=detail&slug=${encodeURIComponent(slug)}`,
+    )
+    setDetail(res)
+  }, [])
+
+  useEffect(() => {
+    refreshList()
+      .then((rows) => {
+        if (rows.length > 0) {
+          setSelected((cur) => cur ?? rows[0]!.slug)
+        }
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : 'failed to load leagues'))
+  }, [refreshList])
+
+  useEffect(() => {
+    if (selected) {
+      refreshDetail(selected).catch((err) =>
+        setError(err instanceof Error ? err.message : 'failed to load league'),
+      )
+    }
+  }, [selected, refreshDetail])
+
+  async function act(body: Record<string, unknown>, okMessage: string) {
+    setError(null)
+    setNotice(null)
+    try {
+      await apiSend('/api/leagues', 'POST', body)
+      setNotice(okMessage)
+      await refreshList()
+      if (selected) await refreshDetail(selected)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'action failed')
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <PageHeader
+        title="Leagues"
+        subtitle="Friendly local leagues: climb from bronze to diamond across weekly rounds, answer recall duels, and play the tournament bracket."
+      />
+      <Callout tone="neutral" title="Practice leagues">
+        Local &amp; friendly play on this device — no ranked effects (Elo stays at baseline) and
+        scores are friendly/self-reported unless synced from real study activity. Verified
+        competition arrives when leagues connect to online accounts.
+      </Callout>
+      {error && (
+        <Callout tone="danger" title="Something went wrong">
+          {error}
+        </Callout>
+      )}
+      {notice && <Callout tone="success">{notice}</Callout>}
+      <Tabs
+        label="League sections"
+        items={[
+          { key: 'overview', label: 'Overview' },
+          { key: 'standings', label: 'Standings' },
+          { key: 'duels', label: 'Duels' },
+          { key: 'tournaments', label: 'Tournaments' },
+        ]}
+        value={tab}
+        onChange={setTab}
+      />
+      {tab === 'overview' && (
+        <OverviewTab
+          leagues={leagues}
+          selected={selected}
+          onSelect={(slug) => {
+            setSelected(slug)
+            setTab('standings')
+          }}
+          act={act}
+        />
+      )}
+      {tab === 'standings' && (
+        <StandingsTab
+          detail={detail}
+          leagues={leagues}
+          selected={selected}
+          onSelect={setSelected}
+          act={act}
+        />
+      )}
+      {tab === 'duels' && <DuelsTab detail={detail} selected={selected} act={act} />}
+      {tab === 'tournaments' && <TournamentsTab detail={detail} selected={selected} act={act} />}
+    </div>
+  )
+}
+
+// ── Overview ────────────────────────────────────────────────────────────────
+
+type DeckOption = {
+  id: number
+  name: string
+  emoji: string | null
+  total: number
+}
+
+type ActFn = (body: Record<string, unknown>, okMessage: string) => Promise<void>
+
+function DigestPanel({ slug }: { slug: string }) {
+  const [digest, setDigest] = useState<LeagueDigest | null>(null)
+  const [schedule, setSchedule] = useState<LeagueSchedule | null>(null)
+  useEffect(() => {
+    let alive = true
+    apiGet<{ ok: boolean; digest: LeagueDigest }>(
+      `/api/leagues?view=digest&slug=${encodeURIComponent(slug)}`,
+    )
+      .then((res) => {
+        if (alive) setDigest(res.digest)
+      })
+      .catch(() => {
+        if (alive) setDigest(null)
+      })
+    apiGet<{ ok: boolean; schedule: LeagueSchedule }>(
+      `/api/leagues?view=schedule&slug=${encodeURIComponent(slug)}`,
+    )
+      .then((res) => {
+        if (alive) setSchedule(res.schedule)
+      })
+      .catch(() => {
+        if (alive) setSchedule(null)
+      })
+    return () => {
+      alive = false
+    }
+  }, [slug])
+
+  if (!digest) return null
+  const tone = (delta: number): 'success' | 'danger' | 'neutral' =>
+    delta > 0 ? 'success' : delta < 0 ? 'danger' : 'neutral'
+  return (
+    <Panel>
+      <div data-testid="league-digest">
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-base font-semibold">Weekly digest</h2>
+          <span className="text-xs text-neutral-500">
+            {digest.playerCount} players · {digest.roundsClosed} rounds · {digest.duels.open} open
+            duels
+          </span>
+        </div>
+        {schedule && (
+          <p
+            className="mb-2 text-xs text-neutral-500 dark:text-neutral-400"
+            data-testid="digest-schedule"
+          >
+            Round {schedule.currentRound} of {schedule.seasonLengthRounds} ·{' '}
+            {schedule.current.startsAt.slice(0, 10)} → {schedule.current.endsAt.slice(0, 10)}
+            {schedule.dueNow
+              ? ' · due to close'
+              : ` · ${Math.max(0, Math.round(schedule.msUntilRoundEnd / 86_400_000))}d left`}
+            {schedule.upcoming.length > 0 &&
+              ` · next: ${schedule.upcoming
+                .map((u) => `R${u.round} ${u.startsAt.slice(0, 10)}`)
+                .join(', ')}`}
+          </p>
+        )}
+        {digest.lastRound ? (
+          <p className="text-sm text-neutral-600 dark:text-neutral-300">
+            Round {digest.lastRound.round} closed {digest.lastRound.closedAt.slice(0, 10)} —
+            winners:{' '}
+            {digest.lastRound.winners.map((w) => `${w.handle} (${w.tier})`).join(', ') || 'none'}
+            {digest.lastRound.promotions.length > 0 &&
+              ` · promoted: ${digest.lastRound.promotions.map((m) => m.handle).join(', ')}`}
+            {digest.lastRound.relegations.length > 0 &&
+              ` · relegated: ${digest.lastRound.relegations.map((m) => m.handle).join(', ')}`}
+          </p>
+        ) : (
+          <p className="text-sm text-neutral-500">
+            No rounds closed yet — the first recap lands after round 0.
+          </p>
+        )}
+        {digest.eloMovers.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1" data-testid="digest-elo-movers">
+            {digest.eloMovers.map((m) => (
+              <Badge key={m.handle} tone={tone(m.delta)}>
+                {m.handle} {m.delta > 0 ? '+' : ''}
+                {m.delta}
+              </Badge>
+            ))}
+          </div>
+        )}
+        {digest.newAchievements.length > 0 && (
+          <p className="mt-2 text-sm" data-testid="digest-badges">
+            New badges:{' '}
+            {digest.newAchievements.map((a) => `${a.handle} — ${a.achievementId}`).join(', ')}
+          </p>
+        )}
+        {digest.duels.recentCompleted.length > 0 && (
+          <ul className="mt-2 space-y-1 text-xs text-neutral-500 dark:text-neutral-400">
+            {digest.duels.recentCompleted.map((d) => (
+              <li key={d.slug}>
+                {d.slug}: {d.playerA} vs {d.playerB} → {d.winner ?? 'draw'}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Panel>
+  )
+}
+
+function OverviewTab({
+  leagues,
+  selected,
+  onSelect,
+  act,
+}: {
+  leagues: LeagueRow[]
+  selected: string | null
+  onSelect: (slug: string) => void
+  act: ActFn
+}) {
+  const [slug, setSlug] = useState('')
+  const [title, setTitle] = useState('')
+  const [roundDays, setRoundDays] = useState('7')
+  const [joinHandle, setJoinHandle] = useState('')
+  const [joinLeague, setJoinLeague] = useState('')
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Panel>
+        <h2 className="mb-2 text-base font-semibold">Your leagues</h2>
+        {leagues.length === 0 ? (
+          <EmptyState title="No leagues yet">
+            Create a season and invite study partners — everyone starts in bronze.
+          </EmptyState>
+        ) : (
+          <ul className="space-y-2">
+            {leagues.map((l) => (
+              <li key={l.slug}>
+                <button
+                  type="button"
+                  data-testid={`league-card-${l.slug}`}
+                  onClick={() => onSelect(l.slug)}
+                  className={`w-full rounded-lg border p-3 text-left transition hover:border-indigo-500 ${
+                    selected === l.slug
+                      ? 'border-indigo-500 bg-indigo-600/10'
+                      : 'border-neutral-200 dark:border-neutral-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{l.title}</span>
+                    <span className="flex items-center gap-1">
+                      <Badge tone="accent">round {l.currentRound}</Badge>
+                      {leagueRoundIsDue(l) && (
+                        <Badge tone="warning" data-testid={`league-due-${l.slug}`}>
+                          due
+                        </Badge>
+                      )}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-neutral-500">
+                    {l.slug} · season from {l.seasonStart} · {l.roundLengthDays}-day rounds · ↑
+                    {l.promotionSlots} ↓{l.relegationSlots}
+                  </p>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+      {selected && <DigestPanel slug={selected} />}
+      <div className="space-y-4">
+        <Panel>
+          <h2 className="mb-2 text-base font-semibold">Create a league</h2>
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault()
+              void act(
+                {
+                  action: 'create',
+                  slug: slug.trim(),
+                  title: title.trim(),
+                  roundLengthDays: Number(roundDays) || 7,
+                },
+                `League ${slug.trim()} created.`,
+              ).then(() => {
+                setSlug('')
+                setTitle('')
+              })
+            }}
+          >
+            <TextField
+              label="League id"
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              data-testid="create-league-slug"
+            />
+            <TextField
+              label="Title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              data-testid="create-league-title"
+            />
+            <TextField
+              label="Round length (days)"
+              value={roundDays}
+              onChange={(e) => setRoundDays(e.target.value)}
+              data-testid="create-league-days"
+            />
+            <Button
+              type="submit"
+              data-testid="create-league-submit"
+              disabled={!slug.trim() || !title.trim()}
+            >
+              Create league
+            </Button>
+          </form>
+        </Panel>
+        <Panel>
+          <h2 className="mb-2 text-base font-semibold">Join a league</h2>
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault()
+              void act(
+                { action: 'join', slug: joinLeague.trim(), handle: joinHandle.trim() },
+                `${joinHandle.trim()} joined ${joinLeague.trim()} in bronze.`,
+              )
+            }}
+          >
+            <TextField
+              label="League id"
+              value={joinLeague}
+              onChange={(e) => setJoinLeague(e.target.value)}
+              data-testid="join-league-slug"
+            />
+            <TextField
+              label="Your handle"
+              value={joinHandle}
+              onChange={(e) => setJoinHandle(e.target.value)}
+              data-testid="join-league-handle"
+            />
+            <Button
+              type="submit"
+              data-testid="join-league-submit"
+              disabled={!joinLeague.trim() || !joinHandle.trim()}
+            >
+              Join in bronze
+            </Button>
+          </form>
+        </Panel>
+        <TransferPanel leagues={leagues} selected={selected} act={act} />
+      </div>
+    </div>
+  )
+}
+
+function TransferPanel({
+  leagues,
+  selected,
+  act,
+}: {
+  leagues: LeagueRow[]
+  selected: string | null
+  act: ActFn
+}) {
+  const [exportSlug, setExportSlug] = useState('')
+  const [exportJson, setExportJson] = useState('')
+  const [importText, setImportText] = useState('')
+  const [transferError, setTransferError] = useState<string | null>(null)
+
+  const effectiveSlug = exportSlug || selected || leagues[0]?.slug || ''
+
+  async function doExport() {
+    setTransferError(null)
+    setExportJson('')
+    try {
+      const res = await apiGet<{ ok: boolean; transfer: unknown }>(
+        `/api/leagues?view=export&slug=${encodeURIComponent(effectiveSlug)}`,
+      )
+      setExportJson(JSON.stringify(res.transfer, null, 2))
+    } catch (err) {
+      setTransferError(err instanceof Error ? err.message : 'export failed')
+    }
+  }
+
+  return (
+    <Panel>
+      <h2 className="mb-2 text-base font-semibold">Export / import</h2>
+      <p className="mb-3 text-xs text-neutral-500 dark:text-neutral-400">
+        Move a league between devices as a portable, tamper-checked file — players, rounds, duels,
+        tournaments, seasons and Elo history travel together. Import always creates a new league; it
+        never overwrites an existing one.
+      </p>
+      {transferError && (
+        <Callout tone="danger" title="Transfer failed">
+          {transferError}
+        </Callout>
+      )}
+      <div className="space-y-3">
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <TextField
+              label="League id to export"
+              value={exportSlug}
+              onChange={(e) => setExportSlug(e.target.value)}
+              placeholder={selected ?? ''}
+              data-testid="export-league-slug"
+            />
+          </div>
+          <Button
+            type="button"
+            data-testid="export-league-submit"
+            disabled={!effectiveSlug.trim()}
+            onClick={() => void doExport()}
+          >
+            Export
+          </Button>
+        </div>
+        {exportJson && (
+          <TextArea
+            label="Exported transfer file (copy and save as .json)"
+            value={exportJson}
+            onChange={() => undefined}
+            data-testid="export-league-json"
+          />
+        )}
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault()
+            let parsed: unknown
+            try {
+              parsed = JSON.parse(importText)
+            } catch {
+              setTransferError('That is not valid JSON — paste the exported transfer file.')
+              return
+            }
+            void act(
+              { action: 'import', transfer: parsed },
+              'League imported as a new league.',
+            ).then(() => setImportText(''))
+          }}
+        >
+          <TextArea
+            label="Import a transfer file (paste its JSON)"
+            value={importText}
+            onChange={(e) => setImportText(e.target.value)}
+            data-testid="import-league-json"
+          />
+          <Button type="submit" data-testid="import-league-submit" disabled={!importText.trim()}>
+            Import as new league
+          </Button>
+        </form>
+      </div>
+    </Panel>
+  )
+}
+
+// ── Standings ───────────────────────────────────────────────────────────────
+
+function StandingsTab({
+  detail,
+  leagues,
+  selected,
+  onSelect,
+  act,
+}: {
+  detail: Detail | null
+  leagues: LeagueRow[]
+  selected: string | null
+  onSelect: (slug: string) => void
+  act: ActFn
+}) {
+  const [handle, setHandle] = useState('')
+  const [reviews, setReviews] = useState('')
+  const [focusMinutes, setFocusMinutes] = useState('')
+  const [profileHandle, setProfileHandle] = useState<string | null>(null)
+  const [divisionTier, setDivisionTier] = useState<string | null>(null)
+
+  if (!selected) {
+    return (
+      <EmptyState title="Pick a league">
+        Create or select a league on the Overview tab first.
+      </EmptyState>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        {leagues.map((l) => (
+          <Button
+            key={l.slug}
+            variant={l.slug === selected ? 'primary' : 'secondary'}
+            onClick={() => onSelect(l.slug)}
+            data-testid={`standings-picker-${l.slug}`}
+          >
+            {l.title}
+          </Button>
+        ))}
+      </div>
+      {detail && (
+        <>
+          <Panel>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-base font-semibold">
+                {detail.league.title} — season {detail.league.season} · round{' '}
+                {detail.league.currentRound} of {detail.league.seasonLengthRounds}
+              </h2>
+              {detail.champion && (
+                <Badge tone="success" data-testid="champion-badge">
+                  Leader: {detail.champion}
+                </Badge>
+              )}
+            </div>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+              {detail.divisions.map((d) => (
+                <div
+                  key={d.tier}
+                  className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-700"
+                >
+                  <button
+                    type="button"
+                    data-testid={`division-open-${d.tier}`}
+                    onClick={() => setDivisionTier((cur) => (cur === d.tier ? null : d.tier))}
+                    className="mb-2 flex items-center gap-2 rounded px-1 transition hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                  >
+                    <Badge tone={TIER_TONE[d.tier] ?? 'neutral'}>{d.tier}</Badge>
+                    <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                      {d.standings.length} players
+                    </span>
+                  </button>
+                  {d.standings.length === 0 ? (
+                    <p className="text-xs text-neutral-400">empty</p>
+                  ) : (
+                    <ol className="space-y-1" data-testid={`standings-${d.tier}`}>
+                      {d.standings.map((s, i) => (
+                        <li key={s.handle}>
+                          <button
+                            type="button"
+                            data-testid={`standings-row-${s.handle}`}
+                            onClick={() =>
+                              setProfileHandle((cur) => (cur === s.handle ? null : s.handle))
+                            }
+                            className={`flex w-full justify-between rounded px-1 py-0.5 text-left text-sm transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
+                              profileHandle === s.handle ? 'bg-indigo-600/10' : ''
+                            }`}
+                          >
+                            <span>
+                              {i + 1}. {s.handle}
+                            </span>
+                            <span className="text-neutral-500">
+                              {s.points} <span className="text-xs">({s.seasonPoints} season)</span>
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Panel>
+          {profileHandle && (
+            <PlayerProfilePanel slug={selected} handle={profileHandle} mode={detail.league.mode} />
+          )}
+          {divisionTier && (
+            <DivisionPanel slug={selected} tier={divisionTier} mode={detail.league.mode} />
+          )}
+          <HeadToHeadPanel detail={detail} selected={selected} />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Panel>
+              <h2 className="mb-2 text-base font-semibold">Friendly points (self-reported)</h2>
+              <p className="mb-3 text-xs text-neutral-500 dark:text-neutral-400">
+                Claims are entered as-is and not verified — friendly play only. To score real study
+                activity on this device, use the sync below instead.
+              </p>
+              <form
+                className="space-y-3"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  const body: Record<string, unknown> = {
+                    action: 'points',
+                    slug: selected,
+                    handle: handle.trim(),
+                  }
+                  if (reviews.trim()) body.reviews = Number(reviews)
+                  if (focusMinutes.trim()) body.focusMinutes = Number(focusMinutes)
+                  void act(body, `Points logged for ${handle.trim()}.`).then(() => {
+                    setReviews('')
+                    setFocusMinutes('')
+                  })
+                }}
+              >
+                <TextField
+                  label="Handle"
+                  value={handle}
+                  onChange={(e) => setHandle(e.target.value)}
+                  data-testid="points-handle"
+                />
+                <TextField
+                  label="Reviews done"
+                  value={reviews}
+                  onChange={(e) => setReviews(e.target.value)}
+                  data-testid="points-reviews"
+                />
+                <TextField
+                  label="Focus minutes"
+                  value={focusMinutes}
+                  onChange={(e) => setFocusMinutes(e.target.value)}
+                  data-testid="points-focus"
+                />
+                <Button
+                  type="submit"
+                  data-testid="points-submit"
+                  disabled={!handle.trim() || (!reviews.trim() && !focusMinutes.trim())}
+                >
+                  Award points
+                </Button>
+              </form>
+              <div className="mt-3 border-t border-neutral-200 pt-3 dark:border-neutral-700">
+                <p className="mb-2 text-xs text-neutral-500 dark:text-neutral-400">
+                  Local activity scoring: credit new reviews and completed focus time on this device
+                  to a handle. Forward-only and never retroactive.
+                </p>
+                <Button
+                  variant="secondary"
+                  data-testid="points-sync"
+                  disabled={!handle.trim()}
+                  onClick={() =>
+                    void act(
+                      { action: 'points-sync', slug: selected, handle: handle.trim() },
+                      `Synced ${handle.trim()} from local activity.`,
+                    )
+                  }
+                >
+                  Sync {handle.trim() || 'a handle'} from my activity
+                </Button>
+              </div>
+            </Panel>
+            <Panel>
+              <h2 className="mb-2 text-base font-semibold">Round control</h2>
+              <p className="mb-3 text-sm text-neutral-500">
+                Closing a round promotes the top {detail.league.promotionSlots} scorers in each
+                division (you must score to advance) and relegates the bottom{' '}
+                {detail.league.relegationSlots}.
+              </p>
+              <Button
+                variant="secondary"
+                data-testid="close-round"
+                onClick={() =>
+                  void act(
+                    { action: 'close-round', slug: selected },
+                    `Round closed for ${selected}.`,
+                  )
+                }
+              >
+                Close round {detail.league.currentRound}
+              </Button>
+              {detail.rounds.length > 0 && (
+                <ul className="mt-3 space-y-1" data-testid="round-history">
+                  {detail.rounds.map((r) => (
+                    <li key={r.round} className="text-sm text-neutral-600 dark:text-neutral-300">
+                      Round {r.round} · {r.closedAt.slice(0, 10)} · ↑{r.promotionsJson.length} ↓
+                      {r.relegationsJson.length}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Panel>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// ── Player profile ──────────────────────────────────────────────────────────
+
+function PlayerProfilePanel({
+  slug,
+  handle,
+  mode,
+}: {
+  slug: string
+  handle: string
+  mode: string
+}) {
+  const practice = mode === 'practice'
+  const [profile, setProfile] = useState<PlayerProfile | null>(null)
+  const [achievements, setAchievements] = useState<
+    { achievementId: string; title: string; description: string; earnedAt: string }[]
+  >([])
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setProfile(null)
+    setAchievements([])
+    setError(null)
+    apiGet<{ ok: boolean; profile: PlayerProfile }>(
+      `/api/leagues?view=player&slug=${encodeURIComponent(slug)}&handle=${encodeURIComponent(handle)}`,
+    )
+      .then((res) => setProfile(res.profile))
+      .catch((err) => setError(err instanceof Error ? err.message : 'failed to load profile'))
+    apiGet<{
+      ok: boolean
+      achievements: {
+        achievementId: string
+        title: string
+        description: string
+        earnedAt: string
+      }[]
+    }>(
+      `/api/leagues?view=achievements&slug=${encodeURIComponent(slug)}&handle=${encodeURIComponent(handle)}`,
+    )
+      .then((res) => setAchievements(res.achievements))
+      .catch(() => setAchievements([]))
+  }, [slug, handle])
+
+  if (error) {
+    return (
+      <Callout tone="danger" title="Profile failed to load">
+        {error}
+      </Callout>
+    )
+  }
+  if (!profile) return null
+
+  const { player, record, recentDuels, eloHistory, rank } = profile
+  // newest-first history → oldest-first sparkline of eloAfter values
+  const trajectory = [...eloHistory].reverse().map((e) => e.eloAfter)
+
+  return (
+    <Panel>
+      <div data-testid="player-profile" className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-base font-semibold">{handle}</h2>
+          <Badge tone={TIER_TONE[player.tier] ?? 'neutral'}>{player.tier}</Badge>
+          <Badge tone="accent">rank #{rank}</Badge>
+          {!practice && <Badge tone="violet">elo {player.elo}</Badge>}
+          {practice && <Badge tone="neutral">practice</Badge>}
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-lg border border-neutral-200 p-3 dark:border-(--hub-border)">
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">This round</p>
+            <p className="text-lg font-semibold" data-testid="profile-points">
+              {player.points}
+            </p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              {player.seasonPoints} season · {player.roundsWon} rounds won
+            </p>
+          </div>
+          <div className="rounded-lg border border-neutral-200 p-3 dark:border-(--hub-border)">
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">Duels</p>
+            <p className="text-lg font-semibold" data-testid="profile-record">
+              {record.wins}W · {record.draws}D · {record.losses}L
+            </p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              accuracy first, speed breaks ties
+            </p>
+          </div>
+          {!practice && (
+            <div className="rounded-lg border border-neutral-200 p-3 dark:border-(--hub-border)">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">Elo trajectory</p>
+              {trajectory.length === 0 ? (
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                  No league duels yet.
+                </p>
+              ) : (
+                <EloSparkline values={trajectory} start={1000} />
+              )}
+            </div>
+          )}
+        </div>
+        {achievements.length > 0 && (
+          <div data-testid="profile-achievements">
+            <p className="mb-1 text-xs text-neutral-500 dark:text-neutral-400">
+              Achievements ({achievements.length})
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {achievements.map((a) => (
+                <Badge
+                  key={a.achievementId}
+                  tone="success"
+                  data-testid={`achievement-${a.achievementId}`}
+                >
+                  {a.title}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+        {recentDuels.length > 0 && (
+          <ul className="space-y-1" data-testid="profile-duels">
+            {recentDuels.map((d) => (
+              <li
+                key={d.slug}
+                className="flex items-center justify-between text-sm text-neutral-600 dark:text-neutral-300"
+              >
+                <span>
+                  {d.slug} — {d.playerA} vs {d.playerB}
+                </span>
+                <span>{d.winner === null ? 'draw' : d.winner === handle ? 'won' : 'lost'}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Panel>
+  )
+}
+
+/** Tiny inline SVG sparkline (no chart dependency) for the Elo trajectory. */
+function EloSparkline({ values, start }: { values: number[]; start: number }) {
+  const all = [start, ...values]
+  const min = Math.min(...all)
+  const max = Math.max(...all)
+  const span = Math.max(1, max - min)
+  const w = 160
+  const h = 36
+  const points = all
+    .map(
+      (v, i) =>
+        `${((i / Math.max(1, all.length - 1)) * w).toFixed(1)},${(h - ((v - min) / span) * h).toFixed(1)}`,
+    )
+    .join(' ')
+  return (
+    <svg
+      viewBox={`0 0 ${w} ${h}`}
+      className="h-9 w-full text-indigo-500"
+      data-testid="profile-elo-sparkline"
+      role="img"
+      aria-label={`Elo trajectory ending at ${all[all.length - 1]}`}
+    >
+      <polyline points={points} fill="none" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  )
+}
+
+type DivisionDetail = {
+  tier: string
+  standings: { handle: string; points: number; seasonPoints: number; elo: number }[]
+  roundHistory: { round: number; winner: string; closedAt: string }[]
+  duels: { slug: string; playerA: string; playerB: string; status: string; winner: string | null }[]
+  movements: {
+    round: number
+    handle: string
+    kind: 'promoted_in' | 'relegated_in' | 'promoted_out' | 'relegated_out'
+  }[]
+}
+
+function DivisionPanel({ slug, tier, mode }: { slug: string; tier: string; mode: string }) {
+  const practice = mode === 'practice'
+  const [division, setDivision] = useState<DivisionDetail | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setDivision(null)
+    setError(null)
+    apiGet<{ ok: boolean; division: DivisionDetail }>(
+      `/api/leagues?view=division&slug=${encodeURIComponent(slug)}&tier=${encodeURIComponent(tier)}`,
+    )
+      .then((res) => setDivision(res.division))
+      .catch((err) => setError(err instanceof Error ? err.message : 'failed to load division'))
+  }, [slug, tier])
+
+  if (error) {
+    return (
+      <Callout tone="danger" title="Division failed to load">
+        {error}
+      </Callout>
+    )
+  }
+  if (!division) return null
+
+  return (
+    <Panel>
+      <div data-testid="division-detail" className="space-y-3">
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-semibold">{tier} division</h2>
+          <Badge tone={TIER_TONE[tier] ?? 'neutral'}>{division.standings.length} players</Badge>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="rounded-lg border border-neutral-200 p-3 dark:border-(--hub-border)">
+            <p className="mb-1 text-xs text-neutral-500 dark:text-neutral-400">Standings</p>
+            {division.standings.length === 0 ? (
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">Empty division.</p>
+            ) : (
+              <ol className="space-y-1" data-testid="division-standings">
+                {division.standings.map((p, i) => (
+                  <li key={p.handle} className="flex justify-between text-sm">
+                    <span>
+                      {i + 1}. {p.handle}
+                    </span>
+                    <span className="text-neutral-500 dark:text-neutral-400">
+                      {p.points} pts{practice ? '' : ` · elo ${p.elo}`}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+          <div className="rounded-lg border border-neutral-200 p-3 dark:border-(--hub-border)">
+            <p className="mb-1 text-xs text-neutral-500 dark:text-neutral-400">Round winners</p>
+            {division.roundHistory.length === 0 ? (
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                No closed rounds named a {tier} winner yet.
+              </p>
+            ) : (
+              <ul className="space-y-1" data-testid="division-history">
+                {division.roundHistory.map((r) => (
+                  <li key={r.round} className="flex justify-between text-sm">
+                    <span>round {r.round}</span>
+                    <span className="text-neutral-500 dark:text-neutral-400">{r.winner}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+        {division.movements.length > 0 && (
+          <div>
+            <p className="mb-1 text-xs text-neutral-500 dark:text-neutral-400">Movement</p>
+            <div className="flex flex-wrap gap-1.5" data-testid="division-movements">
+              {division.movements.map((m, i) => (
+                <Badge
+                  key={`${m.round}-${m.handle}-${i}`}
+                  tone={m.kind.startsWith('promoted') ? 'success' : 'warning'}
+                >
+                  {m.handle} {m.kind.replace(/_/g, ' ')} (r{m.round})
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+        {division.duels.length > 0 && (
+          <ul className="space-y-1" data-testid="division-duels">
+            {division.duels.map((d) => (
+              <li
+                key={d.slug}
+                className="flex justify-between text-sm text-neutral-600 dark:text-neutral-300"
+              >
+                <span>
+                  {d.slug} — {d.playerA} vs {d.playerB}
+                </span>
+                <span>{d.winner ?? d.status}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Panel>
+  )
+}
+
+function HeadToHeadPanel({ detail, selected }: { detail: Detail; selected: string }) {
+  const practice = detail.league.mode !== 'competitive'
+  const [a, setA] = useState('')
+  const [b, setB] = useState('')
+  const [result, setResult] = useState<HeadToHead | null>(null)
+  const [h2hError, setH2hError] = useState<string | null>(null)
+
+  async function compare() {
+    setH2hError(null)
+    setResult(null)
+    try {
+      const res = await apiGet<{ ok: boolean; headToHead: HeadToHead }>(
+        `/api/leagues?view=h2h&slug=${encodeURIComponent(selected)}&a=${encodeURIComponent(
+          a.trim(),
+        )}&b=${encodeURIComponent(b.trim())}`,
+      )
+      setResult(res.headToHead)
+    } catch (err) {
+      setH2hError(err instanceof Error ? err.message : 'head-to-head failed')
+    }
+  }
+
+  return (
+    <Panel>
+      <h2 className="mb-2 text-base font-semibold">Head-to-head</h2>
+      <p className="mb-3 text-xs text-neutral-500 dark:text-neutral-400">
+        {practice
+          ? 'The full friendly rivalry record between two players: every duel they played, accuracy, speed and streaks.'
+          : 'The full rivalry record between two players: every duel they played, accuracy, speed, streaks and the Elo gap.'}
+      </p>
+      {h2hError && (
+        <Callout tone="danger" title="Head-to-head failed">
+          {h2hError}
+        </Callout>
+      )}
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="w-40">
+          <TextField
+            label="Player A"
+            value={a}
+            onChange={(e) => setA(e.target.value)}
+            data-testid="h2h-a"
+            list="h2h-players"
+          />
+        </div>
+        <div className="w-40">
+          <TextField
+            label="Player B"
+            value={b}
+            onChange={(e) => setB(e.target.value)}
+            data-testid="h2h-b"
+            list="h2h-players"
+          />
+        </div>
+        <datalist id="h2h-players">
+          {detail.players.map((p) => (
+            <option key={p.handle} value={p.handle} />
+          ))}
+        </datalist>
+        <Button
+          type="button"
+          data-testid="h2h-submit"
+          disabled={!a.trim() || !b.trim() || a.trim() === b.trim()}
+          onClick={() => void compare()}
+        >
+          Compare
+        </Button>
+      </div>
+      {result && (
+        <div className="mt-3 space-y-2" data-testid="h2h-result">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge tone="accent">
+              {result.summary.duels} duel{result.summary.duels === 1 ? '' : 's'}
+            </Badge>
+            <Badge tone={result.leader.even ? 'neutral' : 'success'}>
+              {result.leader.leader
+                ? `${result.leader.leader} leads by ${result.leader.edge}`
+                : 'All square'}
+            </Badge>
+            {!practice && (
+              <Badge tone="cyan">
+                Elo {result.elo.eloA} vs {result.elo.eloB}
+              </Badge>
+            )}
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {(['A', 'B'] as const).map((side) => {
+              const name = side === 'A' ? result.summary.playerA : result.summary.playerB
+              const wins = side === 'A' ? result.summary.winsA : result.summary.winsB
+              const acc = side === 'A' ? result.summary.accuracyA : result.summary.accuracyB
+              const speed =
+                side === 'A' ? result.summary.avgCorrectMsA : result.summary.avgCorrectMsB
+              const streak = side === 'A' ? result.summary.streakA : result.summary.streakB
+              return (
+                <div
+                  key={side}
+                  className="rounded-lg border border-neutral-200 p-3 dark:border-(--hub-border)"
+                  data-testid={`h2h-side-${side}`}
+                >
+                  <div className="font-medium">{name}</div>
+                  <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                    {wins} wins · {(acc * 100).toFixed(0)}% accuracy · {speed}ms avg correct ·{' '}
+                    streak {streak}
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+          {result.recentDuels.length > 0 && (
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              Recent:{' '}
+              {result.recentDuels.map((d) => `${d.duelId} → ${d.winner ?? 'draw'}`).join(' · ')}
+            </p>
+          )}
+        </div>
+      )}
+    </Panel>
+  )
+}
+
+// ── Duels ───────────────────────────────────────────────────────────────────
+
+function DuelsTab({
+  detail,
+  selected,
+  act,
+}: {
+  detail: Detail | null
+  selected: string | null
+  act: ActFn
+}) {
+  const [duelSlug, setDuelSlug] = useState('')
+  const [playerA, setPlayerA] = useState('')
+  const [playerB, setPlayerB] = useState('')
+  const [promptsText, setPromptsText] = useState('')
+  const [deckId, setDeckId] = useState('')
+  const [deckLimit, setDeckLimit] = useState('10')
+  const [decks, setDecks] = useState<DeckOption[]>([])
+  const [answerDuel, setAnswerDuel] = useState('')
+  const [answerSide, setAnswerSide] = useState<'A' | 'B'>('A')
+  const [answersText, setAnswersText] = useState('')
+  const [playSlug, setPlaySlug] = useState<string | null>(null)
+
+  const openDuels = useMemo(() => detail?.duels.filter((d) => d.status === 'open') ?? [], [detail])
+  const [stats, setStats] = useState<DuelPlayerStats[]>([])
+  useEffect(() => {
+    if (!selected) return
+    let alive = true
+    apiGet<{ ok: boolean; stats: DuelPlayerStats[] }>(
+      `/api/leagues?view=duel-stats&slug=${encodeURIComponent(selected)}`,
+    )
+      .then((res) => {
+        if (alive) setStats(res.stats)
+      })
+      .catch(() => {
+        if (alive) setStats([])
+      })
+    return () => {
+      alive = false
+    }
+  }, [selected, detail])
+
+  useEffect(() => {
+    let alive = true
+    apiGet<{ decks: DeckOption[] }>('/api/decks')
+      .then((res) => {
+        if (alive) setDecks(res.decks)
+      })
+      .catch(() => {
+        if (alive) setDecks([])
+      })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  if (!selected) {
+    return <EmptyState title="Pick a league">Duels live inside a league season.</EmptyState>
+  }
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Panel>
+        <h2 className="mb-2 text-base font-semibold">Duels in {selected}</h2>
+        {stats.length > 0 && (
+          <table className="mb-3 w-full text-xs" data-testid="duel-stats">
+            <thead>
+              <tr className="text-left text-neutral-500">
+                <th className="py-1 pr-2 font-medium">player</th>
+                <th className="py-1 pr-2 font-medium">W-L-D</th>
+                <th className="py-1 pr-2 font-medium">win%</th>
+                <th className="py-1 pr-2 font-medium">accuracy</th>
+                <th className="py-1 font-medium">streak</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.map((st) => (
+                <tr key={st.handle} className="border-t border-neutral-100 dark:border-neutral-800">
+                  <td className="py-1 pr-2 font-medium">{st.handle}</td>
+                  <td className="py-1 pr-2">
+                    {st.wins}-{st.losses}-{st.draws}
+                  </td>
+                  <td className="py-1 pr-2">{Math.round(st.winRate * 100)}%</td>
+                  <td className="py-1 pr-2">{Math.round(st.avgAccuracy * 100)}%</td>
+                  <td className="py-1">
+                    {st.currentStreak > 0 ? `${st.currentStreak}W` : '—'} (best {st.bestStreak})
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {detail && detail.duels.length === 0 ? (
+          <EmptyState title="No duels yet">
+            Challenge a rival to a recall duel — accuracy first, speed breaks ties.
+          </EmptyState>
+        ) : (
+          <ul className="space-y-2" data-testid="duel-list">
+            {detail?.duels.map((d) => (
+              <li
+                key={d.slug}
+                className="flex items-center justify-between rounded-lg border border-neutral-200 p-2 text-sm dark:border-neutral-700"
+              >
+                <span>
+                  <span className="font-medium">{d.slug}</span> — {d.playerA} vs {d.playerB}
+                </span>
+                <span className="flex items-center gap-2">
+                  {d.status === 'open' && (
+                    <Button
+                      variant="secondary"
+                      data-testid={`duel-play-${d.slug}`}
+                      onClick={() => setPlaySlug(d.slug)}
+                    >
+                      Play
+                    </Button>
+                  )}
+                  {d.status === 'complete' && (
+                    <Button
+                      variant="secondary"
+                      data-testid={`duel-rematch-${d.slug}`}
+                      onClick={() => {
+                        const taken = new Set(detail?.duels.map((x) => x.slug) ?? [])
+                        let n = 2
+                        while (taken.has(`${d.slug}-r${n}`)) n += 1
+                        void act(
+                          { action: 'duel-rematch', duelSlug: d.slug, newSlug: `${d.slug}-r${n}` },
+                          `Rematch ${d.slug}-r${n} created — same prompts, swapped seating.`,
+                        )
+                      }}
+                    >
+                      Rematch
+                    </Button>
+                  )}
+                  <Badge tone={d.status === 'open' ? 'accent' : d.winner ? 'success' : 'neutral'}>
+                    {d.status === 'open' ? 'open' : d.winner ? `won by ${d.winner}` : 'draw'}
+                  </Badge>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+      <div className="space-y-4">
+        <Panel>
+          <h2 className="mb-2 text-base font-semibold">New duel</h2>
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault()
+              const slug = duelSlug.trim() || `duel-${Date.now().toString(36)}`
+              const body: Record<string, unknown> = {
+                slug,
+                leagueSlug: selected,
+                playerA: playerA.trim(),
+                playerB: playerB.trim(),
+              }
+              if (deckId.trim()) {
+                body.action = 'duel-create-from-deck'
+                body.deckId = Number(deckId)
+                body.limit = Number(deckLimit) || 10
+              } else {
+                body.action = 'duel-create'
+                body.prompts = promptsText
+                  .split('\n')
+                  .map((line) => line.trim())
+                  .filter(Boolean)
+                  .map((line) => {
+                    const [id, question, answers] = line.split('::')
+                    return {
+                      id: id ?? '',
+                      question: question ?? '',
+                      answers: (answers ?? '').split('|').filter(Boolean),
+                    }
+                  })
+              }
+              void act(body, `Duel ${slug} created.`).then(() => {
+                setDuelSlug('')
+                setPromptsText('')
+              })
+            }}
+          >
+            <TextField
+              label="Duel id (auto-generated when empty)"
+              value={duelSlug}
+              onChange={(e) => setDuelSlug(e.target.value)}
+              data-testid="duel-slug"
+            />
+            <TextField
+              label="Challenger"
+              value={playerA}
+              onChange={(e) => setPlayerA(e.target.value)}
+              data-testid="duel-player-a"
+            />
+            <TextField
+              label="Opponent"
+              value={playerB}
+              onChange={(e) => setPlayerB(e.target.value)}
+              data-testid="duel-player-b"
+            />
+            {decks.length > 0 && (
+              <div>
+                <p className="mb-1 text-xs text-neutral-500 dark:text-neutral-400">
+                  Build the duel from one of your decks
+                </p>
+                <div className="flex flex-wrap gap-1.5" data-testid="duel-deck-pick">
+                  {decks.map((d) => (
+                    <Button
+                      key={d.id}
+                      type="button"
+                      variant={deckId === String(d.id) ? 'primary' : 'secondary'}
+                      data-testid={`duel-deck-${d.id}`}
+                      onClick={() => setDeckId((cur) => (cur === String(d.id) ? '' : String(d.id)))}
+                    >
+                      {d.emoji ? `${d.emoji} ` : ''}
+                      {d.name} · {d.total} cards
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {deckId.trim() && (
+              <TextField
+                label="Prompt count"
+                value={deckLimit}
+                onChange={(e) => setDeckLimit(e.target.value)}
+                data-testid="duel-deck-limit"
+              />
+            )}
+            <details
+              data-testid="duel-advanced"
+              className="rounded-lg border border-neutral-200 p-2 dark:border-neutral-700"
+            >
+              <summary
+                data-testid="duel-advanced-toggle"
+                className="cursor-pointer text-xs text-neutral-500 dark:text-neutral-400"
+              >
+                Advanced: raw deck id or prompt lines
+              </summary>
+              <div className="mt-2 space-y-3">
+                <TextField
+                  label="Deck id (build prompts from its cards)"
+                  value={deckId}
+                  onChange={(e) => setDeckId(e.target.value)}
+                  data-testid="duel-deck-id"
+                />
+                <TextArea
+                  label={'Prompts — one per line: id::question::answer1|answer2'}
+                  value={promptsText}
+                  onChange={(e) => setPromptsText(e.target.value)}
+                  data-testid="duel-prompts"
+                  rows={3}
+                />
+              </div>
+            </details>
+            <Button
+              type="submit"
+              data-testid="duel-create"
+              disabled={
+                !playerA.trim() || !playerB.trim() || (!deckId.trim() && !promptsText.trim())
+              }
+            >
+              Create duel
+            </Button>
+          </form>
+        </Panel>
+        <Panel>
+          <h2 className="mb-2 text-base font-semibold">Play a duel</h2>
+          {playSlug ? (
+            <GuidedDuelPlayer duelSlug={playSlug} act={act} onClose={() => setPlaySlug(null)} />
+          ) : openDuels.length > 0 ? (
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              Press <span className="font-medium">Play</span> next to an open duel — questions come
+              one at a time and your answer time is measured automatically.
+            </p>
+          ) : (
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              No open duels waiting for answers.
+            </p>
+          )}
+          <details
+            data-testid="answer-advanced"
+            className="mt-3 rounded-lg border border-neutral-200 p-2 dark:border-neutral-700"
+          >
+            <summary
+              data-testid="answer-advanced-toggle"
+              className="cursor-pointer text-xs text-neutral-500 dark:text-neutral-400"
+            >
+              Advanced: paste raw answer lines
+            </summary>
+            <form
+              className="mt-2 space-y-3"
+              onSubmit={(e) => {
+                e.preventDefault()
+                const answers = answersText
+                  .split('\n')
+                  .map((line) => line.trim())
+                  .filter(Boolean)
+                  .map((line) => {
+                    const [promptId, answer, ms] = line.split('::')
+                    return {
+                      promptId: promptId ?? '',
+                      answer: answer ?? '',
+                      elapsedMs: Number(ms) || 0,
+                    }
+                  })
+                void act(
+                  { action: 'duel-answer', slug: answerDuel.trim(), side: answerSide, answers },
+                  `Answers submitted for ${answerDuel.trim()}.`,
+                ).then(() => setAnswersText(''))
+              }}
+            >
+              <TextField
+                label="Duel id"
+                value={answerDuel}
+                onChange={(e) => setAnswerDuel(e.target.value)}
+                data-testid="answer-duel-slug"
+              />
+              <div className="flex gap-2" data-testid="answer-side">
+                <Button
+                  type="button"
+                  variant={answerSide === 'A' ? 'primary' : 'secondary'}
+                  onClick={() => setAnswerSide('A')}
+                >
+                  Side A
+                </Button>
+                <Button
+                  type="button"
+                  variant={answerSide === 'B' ? 'primary' : 'secondary'}
+                  onClick={() => setAnswerSide('B')}
+                >
+                  Side B
+                </Button>
+              </div>
+              <TextArea
+                label={'Answers — one per line: promptId::answer::milliseconds'}
+                value={answersText}
+                onChange={(e) => setAnswersText(e.target.value)}
+                data-testid="answer-text"
+                rows={3}
+              />
+              <Button
+                type="submit"
+                data-testid="answer-submit"
+                disabled={!answerDuel.trim() || !answersText.trim()}
+              >
+                Submit answers
+              </Button>
+            </form>
+          </details>
+          {openDuels.length > 0 && (
+            <p className="mt-2 text-xs text-neutral-500">
+              Waiting: {openDuels.map((d) => d.slug).join(', ')}
+            </p>
+          )}
+        </Panel>
+      </div>
+    </div>
+  )
+}
+
+type GuidedDuel = {
+  slug: string
+  playerA: string
+  playerB: string
+  status: string
+  promptsJson: { id: string; question: string; answers: string[] }[]
+}
+
+/**
+ * Learner-facing duel play: one question at a time, per-question time measured
+ * with performance.now() from when the question becomes visible. Answers are
+ * submitted together at the end through the normal duel-answer action.
+ */
+function GuidedDuelPlayer({
+  duelSlug,
+  act,
+  onClose,
+}: {
+  duelSlug: string
+  act: ActFn
+  onClose: () => void
+}) {
+  const [duel, setDuel] = useState<GuidedDuel | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [side, setSide] = useState<'A' | 'B'>('A')
+  const [index, setIndex] = useState(0)
+  const [answer, setAnswer] = useState('')
+  const [answers, setAnswers] = useState<{ promptId: string; answer: string; elapsedMs: number }[]>(
+    [],
+  )
+  const [submitting, setSubmitting] = useState(false)
+  const shownAt = useRef<number>(0)
+
+  useEffect(() => {
+    let alive = true
+    setDuel(null)
+    setLoadError(null)
+    setSide('A')
+    setIndex(0)
+    setAnswer('')
+    setAnswers([])
+    setSubmitting(false)
+    apiGet<{ ok: boolean; duel: GuidedDuel }>(
+      `/api/leagues?view=duel&slug=${encodeURIComponent(duelSlug)}`,
+    )
+      .then((res) => {
+        if (alive) setDuel(res.duel)
+      })
+      .catch((err) => {
+        if (alive) setLoadError(err instanceof Error ? err.message : 'failed to load duel')
+      })
+    return () => {
+      alive = false
+    }
+  }, [duelSlug])
+
+  // The per-question clock starts when the question becomes visible.
+  useEffect(() => {
+    shownAt.current = performance.now()
+    setAnswer('')
+  }, [index, duel])
+
+  if (loadError) {
+    return (
+      <Callout tone="danger" title="Duel failed to load">
+        {loadError}
+      </Callout>
+    )
+  }
+  if (!duel) return <p className="text-sm text-neutral-500">Loading duel…</p>
+
+  const prompts = duel.promptsJson
+  const prompt = prompts[index]
+  const playing = side === 'A' ? duel.playerA : duel.playerB
+  const last = index + 1 >= prompts.length
+
+  function submitCurrent() {
+    if (!prompt || submitting) return
+    const elapsedMs = Math.max(1, Math.round(performance.now() - shownAt.current))
+    const next = [...answers, { promptId: prompt.id, answer: answer.trim(), elapsedMs }]
+    setAnswers(next)
+    if (last) {
+      setSubmitting(true)
+      void act(
+        { action: 'duel-answer', slug: duelSlug, side, answers: next },
+        `Answers submitted for ${duelSlug}.`,
+      ).then(onClose)
+    } else {
+      setIndex(index + 1)
+    }
+  }
+
+  return (
+    <div className="space-y-3" data-testid="guided-duel">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm">
+          <span className="font-medium">{duelSlug}</span> — playing as{' '}
+          <span className="font-medium">{playing}</span>
+        </p>
+        <div className="flex gap-2" data-testid="guided-side">
+          <Button
+            type="button"
+            variant={side === 'A' ? 'primary' : 'secondary'}
+            disabled={answers.length > 0}
+            onClick={() => setSide('A')}
+            data-testid="guided-side-A"
+          >
+            {duel.playerA}
+          </Button>
+          <Button
+            type="button"
+            variant={side === 'B' ? 'primary' : 'secondary'}
+            disabled={answers.length > 0}
+            onClick={() => setSide('B')}
+            data-testid="guided-side-B"
+          >
+            {duel.playerB}
+          </Button>
+        </div>
+      </div>
+      {prompt ? (
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault()
+            submitCurrent()
+          }}
+        >
+          <p
+            className="text-xs text-neutral-500 dark:text-neutral-400"
+            data-testid="guided-progress"
+          >
+            Question {index + 1} of {prompts.length}
+          </p>
+          <p className="text-base font-medium" data-testid="guided-question">
+            {prompt.question}
+          </p>
+          <TextField
+            label="Your answer"
+            value={answer}
+            onChange={(e) => setAnswer(e.target.value)}
+            data-testid="guided-answer-input"
+            autoFocus
+          />
+          <div className="flex gap-2">
+            <Button
+              type="submit"
+              data-testid="guided-answer-next"
+              disabled={submitting || !answer.trim()}
+            >
+              {last ? 'Finish duel' : 'Next question'}
+            </Button>
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+          </div>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            Your time per question is measured automatically and breaks accuracy ties.
+          </p>
+        </form>
+      ) : (
+        <p className="text-sm text-neutral-500">This duel has no prompts.</p>
+      )}
+    </div>
+  )
+}
+
+// ── Tournaments ─────────────────────────────────────────────────────────────
+
+function TournamentsTab({
+  detail,
+  selected,
+  act,
+}: {
+  detail: Detail | null
+  selected: string | null
+  act: ActFn
+}) {
+  const [tSlug, setTSlug] = useState('')
+  const [tTitle, setTTitle] = useState('')
+  const [seeds, setSeeds] = useState('')
+  const [rSlug, setRSlug] = useState('')
+  const [rRound, setRRound] = useState('')
+  const [rPosition, setRPosition] = useState('')
+  const [rWinner, setRWinner] = useState('')
+
+  if (!selected) {
+    return <EmptyState title="Pick a league">Tournaments are seeded from league rivals.</EmptyState>
+  }
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Panel>
+        <h2 className="mb-2 text-base font-semibold">Tournaments in {selected}</h2>
+        {detail && detail.tournaments.length === 0 ? (
+          <EmptyState title="No tournaments yet">
+            Seed a single-elimination bracket — byes advance automatically.
+          </EmptyState>
+        ) : (
+          <ul className="space-y-3" data-testid="tournament-list">
+            {detail?.tournaments.map((t) => (
+              <li
+                key={t.slug}
+                className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-700"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{t.title}</span>
+                  <Badge tone={t.status === 'open' ? 'accent' : 'success'}>
+                    {t.status === 'open' ? 'open' : `champion: ${t.champion}`}
+                  </Badge>
+                </div>
+                <div className="mt-2 space-y-1" data-testid={`bracket-${t.slug}`}>
+                  {t.matchesJson.map((m) => (
+                    <div
+                      key={`${m.round}-${m.position}`}
+                      className="flex flex-wrap items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400"
+                    >
+                      <span>
+                        R{m.round} #{m.position}: {m.playerA ?? '…'} vs {m.playerB ?? '…'}
+                        {m.winner ? ` → ${m.winner}` : ''}
+                      </span>
+                      {t.status === 'open' && !m.winner && m.playerA && m.playerB && (
+                        <span className="flex gap-1">
+                          {[m.playerA, m.playerB].map((w) => (
+                            <button
+                              key={w}
+                              type="button"
+                              data-testid={`match-win-${t.slug}-${m.round}-${m.position}-${w}`}
+                              onClick={() =>
+                                void act(
+                                  {
+                                    action: 'tournament-result',
+                                    slug: t.slug,
+                                    round: m.round,
+                                    position: m.position,
+                                    winner: w,
+                                  },
+                                  `${w} takes R${m.round} #${m.position} of ${t.title}.`,
+                                )
+                              }
+                              className="rounded border border-neutral-300 px-1.5 py-0.5 text-xs transition hover:border-indigo-500 hover:text-indigo-600 dark:border-neutral-600 dark:hover:text-indigo-300"
+                            >
+                              {w} wins
+                            </button>
+                          ))}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+      <div className="space-y-4">
+        <Panel>
+          <h2 className="mb-2 text-base font-semibold">New tournament</h2>
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault()
+              const seedList = seeds
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean)
+              void act(
+                {
+                  action: 'tournament-create',
+                  slug: tSlug.trim(),
+                  leagueSlug: selected,
+                  title: tTitle.trim(),
+                  seeds: seedList,
+                },
+                `Tournament ${tSlug.trim()} created.`,
+              ).then(() => {
+                setTSlug('')
+                setTTitle('')
+                setSeeds('')
+              })
+            }}
+          >
+            <TextField
+              label="Tournament id"
+              value={tSlug}
+              onChange={(e) => setTSlug(e.target.value)}
+              data-testid="tournament-slug"
+            />
+            <TextField
+              label="Title"
+              value={tTitle}
+              onChange={(e) => setTTitle(e.target.value)}
+              data-testid="tournament-title"
+            />
+            <TextField
+              label="Seeds (comma-separated handles)"
+              value={seeds}
+              onChange={(e) => setSeeds(e.target.value)}
+              data-testid="tournament-seeds"
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              data-testid="tournament-seed"
+              disabled={!tSlug.trim() || !tTitle.trim()}
+              onClick={() =>
+                void act(
+                  {
+                    action: 'tournament-seed',
+                    slug: tSlug.trim(),
+                    leagueSlug: selected,
+                    title: tTitle.trim(),
+                  },
+                  `Tournament ${tSlug.trim()} seeded from ${selected} standings.`,
+                ).then(() => {
+                  setTSlug('')
+                  setTTitle('')
+                  setSeeds('')
+                })
+              }
+            >
+              Seed from standings
+            </Button>
+            <Button
+              type="submit"
+              data-testid="tournament-create"
+              disabled={
+                !tSlug.trim() ||
+                !tTitle.trim() ||
+                seeds.split(',').filter((s) => s.trim()).length < 2
+              }
+            >
+              Create bracket
+            </Button>
+          </form>
+        </Panel>
+        <Panel>
+          <h2 className="mb-2 text-base font-semibold">Record a match result</h2>
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault()
+              void act(
+                {
+                  action: 'tournament-result',
+                  slug: rSlug.trim(),
+                  round: Number(rRound),
+                  position: Number(rPosition),
+                  winner: rWinner.trim(),
+                },
+                `Result recorded in ${rSlug.trim()}.`,
+              )
+            }}
+          >
+            <TextField
+              label="Tournament id"
+              value={rSlug}
+              onChange={(e) => setRSlug(e.target.value)}
+              data-testid="result-slug"
+            />
+            <TextField
+              label="Round"
+              value={rRound}
+              onChange={(e) => setRRound(e.target.value)}
+              data-testid="result-round"
+            />
+            <TextField
+              label="Position"
+              value={rPosition}
+              onChange={(e) => setRPosition(e.target.value)}
+              data-testid="result-position"
+            />
+            <TextField
+              label="Winner handle"
+              value={rWinner}
+              onChange={(e) => setRWinner(e.target.value)}
+              data-testid="result-winner"
+            />
+            <Button
+              type="submit"
+              data-testid="result-submit"
+              disabled={!rSlug.trim() || !rRound.trim() || !rPosition.trim() || !rWinner.trim()}
+            >
+              Record result
+            </Button>
+          </form>
+        </Panel>
+      </div>
+    </div>
+  )
+}

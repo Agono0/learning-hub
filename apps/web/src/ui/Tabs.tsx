@@ -48,9 +48,20 @@ export function Tabs<K extends string>({ items, value, onChange, label }: TabsPr
     // First paint of dynamically-rendered tabs can shift after hydration.
     const raf = requestAnimationFrame(measure)
     window.addEventListener('resize', measure)
+    // Buttons resize after the initial measure when the webfont swaps in
+    // (fallback metrics are narrower), leaving the pill stale and offset.
+    // Re-measure when any button resizes and once fonts settle.
+    const observer = new ResizeObserver(measure)
+    for (const el of refs.current) if (el) observer.observe(el)
+    let fontsCancelled = false
+    void document.fonts?.ready.then(() => {
+      if (!fontsCancelled) measure()
+    })
     return () => {
       cancelAnimationFrame(raf)
       window.removeEventListener('resize', measure)
+      observer.disconnect()
+      fontsCancelled = true
     }
   }, [items, value])
 

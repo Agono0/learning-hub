@@ -44,6 +44,7 @@ import { advancedLearningTools } from './tools/advanced-learning'
 import { prototypeExemplarTools } from './tools/prototype-exemplar'
 import { cognitiveLoadTools } from './tools/cognitive-load'
 import { dualcodingTools } from './tools/dualcoding'
+import { leagueTools } from './tools/leagues'
 import type { RegisteredTool } from './tool-kit'
 
 // ─── Server ─────────────────────────────────────────────────────────────────
@@ -83,6 +84,7 @@ async function main() {
     ...prototypeExemplarTools,
     ...cognitiveLoadTools,
     ...dualcodingTools,
+    ...leagueTools,
   ] as RegisteredTool[]) {
     server.registerTool(
       registered.name,

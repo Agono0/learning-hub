@@ -40,6 +40,7 @@ export const NOTIFICATION_CHANNEL_IDS = [
   'break_complete',
   'max_focus',
   'achievement',
+  'league',
 ] as const
 
 export type NotificationChannelId = (typeof NOTIFICATION_CHANNEL_IDS)[number]
@@ -159,6 +160,14 @@ export const NOTIFICATION_CHANNELS: Readonly<
     category: 'system',
     defaultEnabled: false,
     defaultViaOs: true,
+  },
+  league: {
+    id: 'league',
+    title: 'League results',
+    description: 'Round wins, promotions and relegations in your study leagues.',
+    category: 'system',
+    defaultEnabled: true,
+    defaultViaOs: false,
   },
 }
 

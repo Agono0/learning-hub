@@ -136,6 +136,7 @@ export type XPSource =
   | 'boss'
   | 'debate'
   | 'arena'
+  | 'league'
 
 /** One daily quest with its progress toward the target. */
 export interface QuestItem {
