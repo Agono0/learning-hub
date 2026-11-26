@@ -43,6 +43,7 @@ import {
 } from '@learning-hub/core'
 import { readJson, withRoute } from '@/lib/api'
 import { ensureEnginesLoaded } from '@/server/engine'
+import { parseCardIds } from './card-ids'
 
 const DAY_MS = 86_400_000
 
@@ -120,12 +121,45 @@ export async function GET(req: Request) {
   } else if (requestedDeckIds.length > 1) {
     filters.push(inArray(cards.deckId, requestedDeckIds))
   }
+  // Explicit card list (exam-prep days): the learner picked these cards, so the due window and
+  // buildSession are skipped. Eligibility is NOT: the deck/course scope above, suspended and
+  // buried cards all still apply, and every id must pass or the whole request is rejected.
+  // Cards come back in the order given. Non-due cards are allowed: reviewing early is what
+  // exam prep is for, and the answer still goes through the canonical POST below.
+  const explicitParsed = parseCardIds(url.searchParams.get('cardIds'))
+  if (!explicitParsed.ok)
+    return Response.json({ ok: false, error: explicitParsed.error }, { status: 400 })
+  const explicitIds = explicitParsed.ids
+  let explicitRows: (typeof cards.$inferSelect)[] | null = null
+  if (explicitIds) {
+    const rows = await db
+      .select()
+      .from(cards)
+      .where(and(...filters, inArray(cards.id, explicitIds)))
+    const byId = new Map(rows.map((r) => [r.id, r]))
+    const bad = explicitIds.filter((id) => {
+      const r = byId.get(id)
+      return !r || (r.buryUntil != null && r.buryUntil > now.toISOString())
+    })
+    if (bad.length > 0)
+      return Response.json(
+        {
+          ok: false,
+          error: 'some cards are unknown, suspended, buried or outside the chosen deck/course',
+          cardIds: bad,
+        },
+        { status: 400 },
+      )
+    explicitRows = explicitIds.map((id) => byId.get(id)!)
+  }
   // candidates: everything due or newer (buildSession filters precisely per mode)
-  const candidateRows = await db
-    .select()
-    .from(cards)
-    .where(and(...filters, lte(cards.due, new Date(now.getTime() + 7 * DAY_MS).toISOString())))
-    .limit(1000)
+  const candidateRows = explicitRows
+    ? []
+    : await db
+        .select()
+        .from(cards)
+        .where(and(...filters, lte(cards.due, new Date(now.getTime() + 7 * DAY_MS).toISOString())))
+        .limit(1000)
   // most recent active revlog entry per card — hypercorrection signal (excludes undone reviews)
   const recent = await db.all<{
     card_id: number
@@ -203,8 +237,9 @@ export async function GET(req: Request) {
       })
     : interleaved
 
+  const finalCards = explicitRows ?? mixed
   const globalCfg = await globalFsrsConfig()
-  const deckIds = [...new Set(mixed.map((c) => c.deckId))]
+  const deckIds = [...new Set(finalCards.map((c) => c.deckId))]
   const deckRows = deckIds.length
     ? await db
         .select({
@@ -219,7 +254,7 @@ export async function GET(req: Request) {
   const deckById = new Map(deckRows.map((d) => [d.id, d]))
 
   const cardsWithPreviews = await Promise.all(
-    mixed.map(async (c) => {
+    finalCards.map(async (c) => {
       const deckCfg = deckById.get(c.deckId)
       const retention = deckCfg?.desiredRetention ?? globalCfg.desiredRetention
       const weights = deckCfg?.fsrsWeights ?? globalCfg.fsrsWeights
@@ -249,6 +284,9 @@ export async function GET(req: Request) {
   return Response.json({
     ok: true,
     cards: cardsWithPreviews,
+    explicit: explicitRows !== null,
+    // explicit lists only: how many of the listed cards are not due yet (an early review)
+    earlyCount: explicitRows ? explicitRows.filter((r) => r.due > now.toISOString()).length : 0,
     mode: course ? 'cram' : mode,
     course: course ? { id: course.id, title: course.title } : null,
     retention: globalCfg.desiredRetention,
