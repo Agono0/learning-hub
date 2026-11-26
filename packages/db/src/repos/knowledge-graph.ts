@@ -3,6 +3,7 @@
  * - Curriculum Concept Dependencies (Prerequisite Graph)
  * - Anki Note & Card Synchronization Mappings
  */
+import { rowLimit } from '../limits'
 import { and, desc, eq, or, sql } from 'drizzle-orm'
 import type { AnkiSyncMode } from '@learning-hub/core/anki-connect'
 import { willCreateCycle } from '@learning-hub/core/knowledge-graph'
@@ -144,7 +145,7 @@ export function listAnkiMappings(limit = 100) {
     .select()
     .from(ankiSyncMappings)
     .orderBy(desc(ankiSyncMappings.lastSyncAt))
-    .limit(limit)
+    .limit(rowLimit(limit))
     .all()
 }
 

@@ -9,6 +9,7 @@
  * no update, no delete and no resume path. "Start new" is the only forward
  * action, exactly like the engine's own session model.
  */
+import { rowLimit } from '../limits'
 import { desc, sql } from 'drizzle-orm'
 import {
   categorizationEvaluationSchema,
@@ -112,7 +113,7 @@ export function listSessions(
     .select()
     .from(prototypeExemplarSessions)
     .orderBy(desc(prototypeExemplarSessions.createdAt), desc(prototypeExemplarSessions.id))
-    .limit(limit)
+    .limit(rowLimit(limit))
     .all()
   return rows.map(parseStoredRow).filter((s): s is StoredPrototypeExemplarSession => s !== null)
 }

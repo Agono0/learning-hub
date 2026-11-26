@@ -1,6 +1,7 @@
 /**
  * Images repository — registry and storage for card images and occlusion cards.
  */
+import { rowLimit } from '../limits'
 import { desc, eq } from 'drizzle-orm'
 import { getDb, type LearningHubDB } from '../index'
 import { images } from '../schema'
@@ -74,7 +75,7 @@ export function listImages(
 ): ImageRow[] {
   const db = opts.db ?? getDb()
   let query = db.select().from(images).orderBy(desc(images.createdAt)).$dynamic()
-  if (typeof opts.limit === 'number') query = query.limit(opts.limit)
+  if (typeof opts.limit === 'number') query = query.limit(rowLimit(opts.limit))
   if (typeof opts.offset === 'number') query = query.offset(opts.offset)
   return query.all()
 }

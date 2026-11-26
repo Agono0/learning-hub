@@ -7,6 +7,7 @@
  * reconstructs that state. Every function takes an optional trailing database
  * handle so tests and transactions can share a connection.
  */
+import { rowLimit } from '../limits'
 import { and, count, desc, eq, gt, max, or, sql } from 'drizzle-orm'
 import {
   LEAGUES_SCHEMA,
@@ -1321,7 +1322,7 @@ export function listLeagueEloEvents(
     .from(leagueEloEvents)
     .where(and(eq(leagueEloEvents.leagueId, league.id), eq(leagueEloEvents.handle, handle)))
     .orderBy(desc(leagueEloEvents.id))
-    .limit(limit)
+    .limit(rowLimit(limit))
     .all()
 }
 

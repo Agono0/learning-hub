@@ -29,6 +29,7 @@
  * functions taking `database?` reuse a caller-supplied connection (nested
  * calls stay inside the caller's transaction) or wrap their own.
  */
+import { rowLimit } from '../limits'
 import { and, asc, desc, eq, gte, inArray, isNull, lte, sql, type SQL } from 'drizzle-orm'
 import {
   DEFAULT_ARCHIVE_CONFIG,
@@ -294,7 +295,7 @@ export function listTaskItems(opts: ListTaskItemsOpts = {}): TaskItem[] {
     .from(taskItems)
     .where(where.length > 0 ? and(...where) : undefined)
     .orderBy(asc(taskItems.order), asc(taskItems.id))
-  const rows = (opts.limit !== undefined ? query.limit(opts.limit) : query).all()
+  const rows = (opts.limit !== undefined ? query.limit(rowLimit(opts.limit)) : query).all()
   return rows.map((row) => taskFromRow(conn, row))
 }
 

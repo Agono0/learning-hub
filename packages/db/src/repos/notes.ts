@@ -4,6 +4,7 @@
  * Implements Luhmann's Zettelkasten slip-box principles (Luhmann 1981) and
  * networked thought graphs with bi-directional wikilinks.
  */
+import { rowLimit } from '../limits'
 import { and, desc, eq, like, or, sql, type SQL } from 'drizzle-orm'
 import { bulletSyncPlan, extractBacklinks, parseBullets, wikilinkParse } from '@learning-hub/core'
 import { getDb, type LearningHubDB } from '../index'
@@ -73,11 +74,11 @@ export function listNotes(
       .from(notes)
       .where(and(...conditions))
       .orderBy(desc(notes.updatedAt))
-      .limit(limit)
+      .limit(rowLimit(limit))
       .all()
   }
 
-  return db.select().from(notes).orderBy(desc(notes.updatedAt)).limit(limit).all()
+  return db.select().from(notes).orderBy(desc(notes.updatedAt)).limit(rowLimit(limit)).all()
 }
 
 /**

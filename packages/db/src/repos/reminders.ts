@@ -4,6 +4,7 @@
  * Persists reminder preferences, aggregates user learning facts for scheduling,
  * and maintains the append-only audit trail for dispatched notifications and user clicks.
  */
+import { rowLimit } from '../limits'
 import { and, desc, eq, gte, lte, sql } from 'drizzle-orm'
 import {
   planReminders,
@@ -290,7 +291,7 @@ export function listRecentReminderLogs(
   database?: LearningHubDB,
 ): (typeof reminderLog.$inferSelect)[] {
   const conn = database ?? getDb()
-  return conn.select().from(reminderLog).orderBy(desc(reminderLog.id)).limit(limit).all()
+  return conn.select().from(reminderLog).orderBy(desc(reminderLog.id)).limit(rowLimit(limit)).all()
 }
 
 /**

@@ -2,6 +2,7 @@
  * Ideas & Idea-Links repository — Zettelkasten incubator (Luhmann 1981), staged ideation
  * (seed -> growing -> validated -> project), and hybrid offspring evolutionary synthesis.
  */
+import { rowLimit } from '../limits'
 import { desc, eq, like, or } from 'drizzle-orm'
 import {
   incubatorScore,
@@ -76,9 +77,9 @@ export function listIdeas(
         .from(ideas)
         .where(eq(ideas.stage, opts.stage))
         .orderBy(desc(ideas.updatedAt))
-        .limit(limit)
+        .limit(rowLimit(limit))
         .all()
-    : db.select().from(ideas).orderBy(desc(ideas.updatedAt)).limit(limit).all()
+    : db.select().from(ideas).orderBy(desc(ideas.updatedAt)).limit(rowLimit(limit)).all()
 
   const links = db.select().from(ideaLinks).all()
 
@@ -111,7 +112,7 @@ export function ideaSearch(
     .from(ideas)
     .where(or(like(ideas.title, pattern), like(ideas.content, pattern)))
     .orderBy(desc(ideas.updatedAt))
-    .limit(limit)
+    .limit(rowLimit(limit))
     .all()
 }
 
@@ -256,11 +257,11 @@ export function listIdeaLinks(
       .select()
       .from(ideaLinks)
       .where(or(eq(ideaLinks.fromIdeaId, opts.ideaId), eq(ideaLinks.toIdeaId, opts.ideaId)))
-      .limit(limit)
+      .limit(rowLimit(limit))
       .all()
   }
 
-  return db.select().from(ideaLinks).limit(limit).all()
+  return db.select().from(ideaLinks).limit(rowLimit(limit)).all()
 }
 
 /**

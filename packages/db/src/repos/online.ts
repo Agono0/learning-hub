@@ -4,6 +4,7 @@
  * Manages device-local identity, online preferences, registered worker servers,
  * and the append-only inbox.
  */
+import { rowLimit } from '../limits'
 import { desc, eq } from 'drizzle-orm'
 import { onlineIdentity, onlineInbox, onlinePrefs, onlineServers } from '../schema'
 import { getDb, type LearningHubDB } from '../index'
@@ -134,7 +135,12 @@ export function listInboxMessages(
   database?: LearningHubDB,
 ): (typeof onlineInbox.$inferSelect)[] {
   const conn = database ?? getDb()
-  return conn.select().from(onlineInbox).orderBy(desc(onlineInbox.receivedAt)).limit(limit).all()
+  return conn
+    .select()
+    .from(onlineInbox)
+    .orderBy(desc(onlineInbox.receivedAt))
+    .limit(rowLimit(limit))
+    .all()
 }
 
 export function addInboxMessage(

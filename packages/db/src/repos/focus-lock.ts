@@ -4,6 +4,7 @@
  * Coordinates active session state, commitment-lock early exits with mandatory
  * 60s cooldown and reflection, allowlists, and companion extension bridge pairing.
  */
+import { rowLimit } from '../limits'
 import { and, desc, eq, gte, isNull, sql } from 'drizzle-orm'
 import {
   COOLDOWN_SECONDS,
@@ -937,7 +938,12 @@ export function listRecentFocusSessions(
 ): FocusSessionRow[] {
   const conn = opts.db ?? getDb()
   const limit = opts.limit ?? 10
-  return conn.select().from(focusSessions).orderBy(desc(focusSessions.startedAt)).limit(limit).all()
+  return conn
+    .select()
+    .from(focusSessions)
+    .orderBy(desc(focusSessions.startedAt))
+    .limit(rowLimit(limit))
+    .all()
 }
 
 /** Per-trigger friction (distraction-gate) counts: total events and how many proceeded. */

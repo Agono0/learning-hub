@@ -1,6 +1,7 @@
 /**
  * Learning HUB — Circadian & Passive Learning DB Repository.
  */
+import { rowLimit } from '../limits'
 import { desc, gte, inArray, eq, sql } from 'drizzle-orm'
 import {
   generateTmrEarcon,
@@ -52,7 +53,7 @@ export function listCircadianAudioSessions(
     .select()
     .from(circadianAudioSessions)
     .orderBy(desc(circadianAudioSessions.createdAt))
-    .limit(limit)
+    .limit(rowLimit(limit))
     .all()
 }
 
@@ -147,7 +148,12 @@ export function getTmrCuesForSleepReplay(
   database?: LearningHubDB,
 ): (typeof tmrCues.$inferSelect)[] {
   const db = database ?? getDb()
-  return db.select().from(tmrCues).orderBy(desc(tmrCues.timesCuedAwake)).limit(limit).all()
+  return db
+    .select()
+    .from(tmrCues)
+    .orderBy(desc(tmrCues.timesCuedAwake))
+    .limit(rowLimit(limit))
+    .all()
 }
 
 export function recordSleepTmrPlayback(cardIds: number[], database?: LearningHubDB): void {

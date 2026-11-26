@@ -13,6 +13,7 @@
  * `judgmentOfLearningFromRevlogRows`). The repos gather facts; the engines
  * own the math.
  */
+import { rowLimit } from '../limits'
 import { and, desc, eq, sql, type SQL } from 'drizzle-orm'
 import {
   confidenceToForecast,
@@ -70,7 +71,7 @@ export function getRevlogTrialRows(
     .innerJoin(cards, eq(revlog.cardId, cards.id))
     .where(and(...conditions))
     .orderBy(desc(revlog.id))
-    .limit(options.limit)
+    .limit(rowLimit(options.limit))
     .all()
 }
 
