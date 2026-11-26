@@ -59,12 +59,25 @@ const STOP = new Set(
   (
     'a an the of to in on at for from by with and or but is are was were be been being it its this that ' +
     'these those as into than then so such not no do does did has have had which what who whom whose how ' +
-    'when where why can could should would may might will shall you your we our they their he she his her'
+    'when where why can could should would may might will shall you your we our they their he she his her ' +
+    // Arabic function words (very common in cue text, carry no category signal)
+    'في من على إلى عن مع هذا هذه ذلك تلك التي الذي ما ماذا هو هي هل أن إن كان كل او أو و'
   ).split(' '),
 )
 
-/** Light stemmer: enough to match plurals and common endings, never meant to be linguistic. */
+/**
+ * Light stemmer for Latin-script words only. Other scripts are matched as whole
+ * words (Arabic, Cyrillic and so on are tokenised, but not stemmed), and text
+ * written without spaces (Chinese, Japanese) is not split into words, so cards in
+ * those languages link only on identical runs. See docs/retrieval-forgetting.md.
+ */
 export function stem(word: string): string {
+  if (!/^[a-z]+$/.test(word)) return word
+  return stemLatin(word)
+}
+
+/** Light stemmer: enough to match plurals and common endings, never meant to be linguistic. */
+function stemLatin(word: string): string {
   let w = word
   if (w.length > 5 && w.endsWith('ies')) w = `${w.slice(0, -3)}y`
   else if (w.length > 5 && w.endsWith('ing')) w = w.slice(0, -3)

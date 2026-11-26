@@ -72,4 +72,49 @@ describe('retrieval forgetting sync', () => {
     expect(counts(b).audits).toBe(2)
     expect(counts(b).dismissals).toBe(1)
   })
+  it('a restore on one device beats the older dismissal on another and survives re-merging', async () => {
+    const a = createDeviceDb()
+    const b = createDeviceDb()
+    seed(a, 1, '2026-11-20T10:00:00.000Z')
+    await mergeBackup(backupAll(a.raw), b.raw)
+    expect(b.db.select().from(schema.rifDismissals).get()?.active).toBe(true)
+    // device A restores later
+    a.db
+      .update(schema.rifDismissals)
+      .set({ active: false, updatedAt: '2099-01-01T00:00:00.000Z' })
+      .run()
+    const snap = backupAll(a.raw)
+    await mergeBackup(snap, b.raw)
+    expect(b.db.select().from(schema.rifDismissals).get()?.active).toBe(false)
+    await mergeBackup(snap, b.raw)
+    expect(counts(b).dismissals).toBe(1)
+    // the old dismissal coming back from a stale snapshot does not undo it
+    const stale = createDeviceDb()
+    seed(stale, 1, '2026-11-19T10:00:00.000Z')
+    await mergeBackup(backupAll(stale.raw), b.raw)
+    expect(b.db.select().from(schema.rifDismissals).get()?.active).toBe(false)
+  })
+  it('remaps rif_audits.deck_id onto the local deck with the same name', async () => {
+    const a = createDeviceDb()
+    const b = createDeviceDb()
+    a.db.insert(schema.decks).values({ id: 1, name: 'Fruit' }).run()
+    a.db
+      .insert(schema.rifAudits)
+      .values({
+        deckId: 1,
+        windowDays: 21,
+        scanned: 1,
+        clustered: 0,
+        atRisk: 0,
+        watch: 0,
+        meanRisk: 0,
+        createdAt: '2026-11-20T10:00:00.000Z',
+      })
+      .run()
+    b.db.insert(schema.decks).values({ id: 1, name: 'Other' }).run()
+    b.db.insert(schema.decks).values({ id: 5, name: 'Fruit' }).run()
+    await mergeBackup(backupAll(a.raw), b.raw)
+    const row = b.db.select().from(schema.rifAudits).get()!
+    expect(row.deckId).toBe(5)
+  })
 })

@@ -281,6 +281,7 @@ const LOGICAL_FOREIGN_KEYS: Record<string, ForeignKeySpec[]> = {
     { fromCol: 'skill_id', toTable: 'skills', strictParent: false },
   ],
   revlog: [{ fromCol: 'card_id', toTable: 'cards', strictParent: false }],
+  rif_audits: [{ fromCol: 'deck_id', toTable: 'decks', strictParent: false }],
   revlog_undos: [
     { fromCol: 'revlog_id', toTable: 'revlog', strictParent: false },
     { fromCol: 'card_id', toTable: 'cards', strictParent: false },

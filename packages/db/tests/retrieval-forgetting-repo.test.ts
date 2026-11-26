@@ -5,7 +5,7 @@ import { beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import {
   cards,
   decks,
-  RIF_MAX_AUDITS,
+  RIF_MAX_DISMISSED,
   RifLimitError,
   dismissRifCard,
   initDb,
@@ -139,19 +139,49 @@ describe('retrieval forgetting repo', () => {
     expect(restoreRifCard(3)).toBe(false)
     expect(runRifAudit({ now: NOW }).rescue.some((r) => r.cardId === 3)).toBe(true)
   })
-  it('saving the same audit twice stores one row, and history is capped', () => {
+  it('keeps one saved audit per deck per hour and never deletes history', () => {
     seedFruit()
     const audit = runRifAudit({ now: NOW }).audit
-    expect(saveRifAudit(audit, null)).toBe(saveRifAudit(audit, null))
+    const id = saveRifAudit(audit, null)
+    expect(
+      saveRifAudit({ ...audit, asOf: new Date(NOW.getTime() + 600_000).toISOString() }, null),
+    ).toBe(id)
     expect(listRifAudits(10)).toHaveLength(1)
-    const base = NOW.getTime()
-    for (let i = 1; i < RIF_MAX_AUDITS; i++)
-      saveRifAudit({ ...audit, asOf: new Date(base + i * 1000).toISOString() }, null)
-    expect(() =>
-      saveRifAudit({ ...audit, asOf: new Date(base + 9e6).toISOString() }, null),
-    ).toThrow(RifLimitError)
-    // an exact repeat is still accepted at the cap
-    expect(() => saveRifAudit(audit, null)).not.toThrow()
+    const next = saveRifAudit(
+      { ...audit, asOf: new Date(NOW.getTime() + 3_700_000).toISOString() },
+      null,
+    )
+    expect(next).not.toBe(id)
+    expect(saveRifAudit({ ...audit, asOf: audit.asOf }, 1)).not.toBe(id)
+    expect(listRifAudits(10)).toHaveLength(3)
+    expect(listRifAudits(1)).toHaveLength(1)
+  })
+  it('caps dismissals', () => {
+    for (let i = 1; i <= RIF_MAX_DISMISSED; i++) {
+      addCard(i, `Cue ${i} unique`, `answer ${i}`)
+      dismissRifCard(i)
+    }
+    addCard(RIF_MAX_DISMISSED + 1, 'one more cue', 'one more answer')
+    expect(() => dismissRifCard(RIF_MAX_DISMISSED + 1)).toThrow(RifLimitError)
+    expect(dismissRifCard(5)).toBe(true)
+  })
+  it('restoring keeps the row inactive and dismissing again reactivates it', () => {
+    seedFruit()
+    dismissRifCard(3, 'a')
+    expect(restoreRifCard(3)).toBe(true)
+    const row = db.select().from(rifDismissals).all()
+    expect(row).toHaveLength(1)
+    expect(row[0]!.active).toBe(false)
+    expect(listRifDismissed()).toEqual([])
+    dismissRifCard(3, 'b')
+    expect(listRifDismissed()).toEqual([3])
+    expect(db.select().from(rifDismissals).all()).toHaveLength(1)
+  })
+  it('orders the card scan by id so a truncated scan is stable', () => {
+    for (let i = 1600; i >= 1; i--) addCard(i, `Unique cue number ${i} zeta`, `ans${i}`)
+    const { audit } = runRifAudit({ now: NOW })
+    expect(audit.truncatedScope).toBe(true)
+    expect(audit.scanned).toBe(1500)
   })
   it('dismissing twice keeps one row and keeps the first reason', () => {
     seedFruit()

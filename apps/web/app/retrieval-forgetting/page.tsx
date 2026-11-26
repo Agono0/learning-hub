@@ -148,6 +148,12 @@ export default function RetrievalForgettingPage() {
               {data.audit.scanned} cards scanned, {data.audit.clustered} in competing groups, mean
               risk {Math.round(data.audit.meanRisk * 100)}%.
             </p>
+            {data.audit.truncatedScope ? (
+              <p role="status" className="mt-2 text-sm text-amber-700">
+                Only the first {data.audit.scanned} cards were checked. Pick a deck to check the
+                rest.
+              </p>
+            ) : null}
             <ul className="mt-2 list-disc pl-5 text-sm">
               {data.report.advice.map((a) => (
                 <li key={a}>{a}</li>

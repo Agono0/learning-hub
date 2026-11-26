@@ -71,6 +71,13 @@ describe('cue extraction', () => {
     expect(cardCueTarget(null)).toBeNull()
     expect(cardCueTarget({ basic: { front: 'only front', back: '  ' } })).toBeNull()
   })
+  it('handles Arabic: whole-word tokens, Arabic stop words dropped, no stemming applied', () => {
+    expect(tokens('ما هي عاصمة مصر')).toEqual(['عاصمة', 'مصر'])
+    expect(tokens('الفاكهة')).toEqual(['الفاكهة'])
+    const a = card(1, 'ما هي الفاكهة الحمراء الحلوة', 'تفاح')
+    const b = card(2, 'ما هي الفاكهة الصفراء الحلوة', 'موز')
+    expect(competitorEdge(a, b)).not.toBeNull()
+  })
   it('tokenizes with stop words removed and plurals merged', () => {
     expect(tokens('The Fruits of the trees')).toEqual(['fruit', 'tree'])
   })

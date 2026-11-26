@@ -2616,7 +2616,7 @@ export const rifAudits = table(
   (t) => [index('rif_audits_created_idx').on(t.createdAt)],
 )
 
-/** Cards the learner excluded from the guard. One row per card. */
+/** Cards the learner excluded from the guard. One row per card; restoring clears `active` instead of deleting. */
 export const rifDismissals = table(
   'rif_dismissals',
   {
@@ -2625,7 +2625,12 @@ export const rifDismissals = table(
       .notNull()
       .references(() => cards.id, { onDelete: 'cascade' }),
     reason: text('reason'),
+    /** false after a restore. The row stays so the restore wins over an older dismissal on another device (last write wins by updated_at). */
+    active: integer('active', { mode: 'boolean' }).notNull().default(true),
     createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at')
       .notNull()
       .$defaultFn(() => new Date().toISOString()),
   },

@@ -73,7 +73,7 @@ export const POST = withRoute(async (req: Request) => {
   switch (body.action) {
     case 'save': {
       const { audit } = runRifAudit({ deckId: body.deckId, windowDays: body.windowDays })
-      const id = guardLimit(() => saveRifAudit(audit, body.deckId ?? null))
+      const id = saveRifAudit(audit, body.deckId ?? null)
       return Response.json({ id, atRisk: audit.atRisk, watch: audit.watch }, { status: 201 })
     }
     case 'dismiss':

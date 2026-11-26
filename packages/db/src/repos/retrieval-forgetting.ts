@@ -3,7 +3,7 @@
  * pure audit in core, and stores audit summaries and dismissals. Cards,
  * schedules and reviews are never written.
  */
-import { and, count, desc, eq, gte, isNull, notInArray } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gte, isNull, lte, notInArray } from 'drizzle-orm'
 import {
   RIF_DEFAULTS,
   cardCueTarget,
@@ -47,6 +47,7 @@ export function loadRifCards(deckId?: number, database?: Db): RifCard[] {
         ? eq(cards.suspended, false)
         : and(eq(cards.suspended, false), eq(cards.deckId, deckId)),
     )
+    .orderBy(asc(cards.id))
     .limit(RIF_DEFAULTS.maxCards + 1)
     .all()
   const out: RifCard[] = []
@@ -84,6 +85,7 @@ export function listRifDismissed(database?: Db): number[] {
   return db
     .select({ cardId: rifDismissals.cardId })
     .from(rifDismissals)
+    .where(eq(rifDismissals.active, true))
     .all()
     .map((r) => r.cardId)
 }
@@ -102,12 +104,12 @@ export function runRifAudit(q: RifQuery = {}, database?: Db): RifRun {
 }
 
 /** Store a summary of an audit (history for trend lines). Returns the stored row id. */
-/** Most audit summaries kept. Rows sync between devices and are append-only, so the cap refuses new rows instead of pruning. */
-export const RIF_MAX_AUDITS = 500
-/** Most cards that can be dismissed. */
+/** Most dismissed cards. */
 export const RIF_MAX_DISMISSED = 2000
+/** How many saved audits the API and page show. Older rows stay stored: the table is append-only and synced, so pruning would let another device bring them back. */
+export const RIF_HISTORY_VISIBLE = 200
 
-/** Thrown when a history or dismissal cap is reached. */
+/** Thrown when the dismissal cap is reached. */
 export class RifLimitError extends Error {
   constructor(what: string, max: number) {
     super(`Too many ${what} (limit ${max}).`)
@@ -115,21 +117,28 @@ export class RifLimitError extends Error {
   }
 }
 
+/**
+ * Store a summary of an audit (history for trend lines). At most one row per
+ * deck per UTC hour is kept, so growth is bounded at 24 rows per deck per day
+ * without ever deleting synced history. Returns the row id (the existing one
+ * when this hour already has a summary).
+ */
 export function saveRifAudit(audit: RifAudit, deckId: number | null, database?: Db): number {
   const db = database ?? getDb()
+  const hourStart = `${audit.asOf.slice(0, 13)}:00:00.000Z`
+  const hourEnd = `${audit.asOf.slice(0, 13)}:59:59.999Z`
   const same = db
     .select({ id: rifAudits.id })
     .from(rifAudits)
     .where(
       and(
-        eq(rifAudits.createdAt, audit.asOf),
+        gte(rifAudits.createdAt, hourStart),
+        lte(rifAudits.createdAt, hourEnd),
         deckId === null ? isNull(rifAudits.deckId) : eq(rifAudits.deckId, deckId),
       ),
     )
     .get()
   if (same) return same.id
-  const total = db.select({ n: count() }).from(rifAudits).get()?.n ?? 0
-  if (total >= RIF_MAX_AUDITS) throw new RifLimitError('saved audits', RIF_MAX_AUDITS)
   const top = audit.clusters
     .flatMap((c) => c.members)
     .filter((m) => !m.dismissed && m.band !== 'low')
@@ -154,7 +163,7 @@ export function saveRifAudit(audit: RifAudit, deckId: number | null, database?: 
   return row!.id
 }
 
-export function listRifAudits(limit = 20, database?: Db) {
+export function listRifAudits(limit = RIF_HISTORY_VISIBLE, database?: Db) {
   const db = database ?? getDb()
   return db
     .select()
@@ -164,36 +173,43 @@ export function listRifAudits(limit = 20, database?: Db) {
     .all()
 }
 
-/** Exclude a card from the guard. Idempotent. Returns false when the card does not exist. */
+/** Exclude a card from the guard. Idempotent; reactivates a restored card. Returns false when the card does not exist. */
 export function dismissRifCard(cardId: number, reason?: string, database?: Db): boolean {
   const db = database ?? getDb()
   const exists = db.select({ id: cards.id }).from(cards).where(eq(cards.id, cardId)).get()
   if (!exists) return false
-  const already = db
-    .select({ id: rifDismissals.id })
-    .from(rifDismissals)
-    .where(eq(rifDismissals.cardId, cardId))
-    .get()
-  if (already) return true
+  const row = db.select().from(rifDismissals).where(eq(rifDismissals.cardId, cardId)).get()
+  if (row?.active) return true
+  const now = new Date().toISOString()
+  if (row) {
+    db.update(rifDismissals)
+      .set({ active: true, reason: reason?.slice(0, 200) ?? row.reason, updatedAt: now })
+      .where(eq(rifDismissals.id, row.id))
+      .run()
+    return true
+  }
   const total = db.select({ n: count() }).from(rifDismissals).get()?.n ?? 0
   if (total >= RIF_MAX_DISMISSED) throw new RifLimitError('dismissed cards', RIF_MAX_DISMISSED)
   db.insert(rifDismissals)
-    .values({ cardId, reason: reason?.slice(0, 200) ?? null })
-    .onConflictDoNothing()
+    .values({ cardId, reason: reason?.slice(0, 200) ?? null, createdAt: now, updatedAt: now })
     .run()
   return true
 }
 
-/** Put a dismissed card back under the guard. Returns whether anything was removed. */
+/**
+ * Put a dismissed card back under the guard. The row is kept with active =
+ * false and a newer updated_at, so on sync the restore beats the older
+ * dismissal on other devices. Returns whether anything changed.
+ */
 export function restoreRifCard(cardId: number, database?: Db): boolean {
   const db = database ?? getDb()
-  return (
-    db
-      .delete(rifDismissals)
-      .where(eq(rifDismissals.cardId, cardId))
-      .returning({ id: rifDismissals.id })
-      .all().length > 0
-  )
+  const rows = db
+    .update(rifDismissals)
+    .set({ active: false, updatedAt: new Date().toISOString() })
+    .where(and(eq(rifDismissals.cardId, cardId), eq(rifDismissals.active, true)))
+    .returning({ id: rifDismissals.id })
+    .all()
+  return rows.length > 0
 }
 
 /**
