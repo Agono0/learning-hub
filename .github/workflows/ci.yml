@@ -14,6 +14,13 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # onnxruntime-node (via @huggingface/transformers) has a postinstall that
+  # downloads the CUDA provider libs from the NuGet feed on linux/x64. That
+  # download times out from current runners and the app only ever uses the
+  # bundled CPU runtime, so skip it everywhere we npm ci.
+  ONNXRUNTIME_NODE_INSTALL: skip
+
 jobs:
   test:
     name: Typecheck, lint, test, e2e, build
