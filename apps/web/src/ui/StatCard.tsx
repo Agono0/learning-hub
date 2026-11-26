@@ -46,7 +46,7 @@ const ACCENT_STYLES = {
 } as const
 
 const VARIANT_STYLES = {
-  glass: 'panel-glass p-4',
+  glass: 'panel bento-tile p-4',
   elevated: 'panel-elevated p-4',
   standard: 'panel p-4',
 } as const
