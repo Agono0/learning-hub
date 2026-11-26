@@ -17,6 +17,8 @@ const MAX_BYTES_EXCEPTIONS = [
   'import/route.ts', // Anki .apkg arrives as base64, capped at 50 MiB of payload
   'curriculum/import/route.ts', // LHCF source up to 5M characters
   'share/import/route.ts', // a shared deck pasted as text
+  'review/attempt-image/route.ts', // handwriting canvas as a base64 data URL, schema max 8M chars
+  'ingest/multimodal/route.ts', // transcript or paper up to 500k characters, any script
 ]
 
 function walk(dir: string, out: string[] = []): string[] {
