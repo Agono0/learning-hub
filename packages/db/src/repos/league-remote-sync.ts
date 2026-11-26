@@ -48,6 +48,8 @@ export type SyncOutcome =
       attempted: number
       nextWakeAt: number | null
       queue: SyncQueueSummary
+      /** Set when the authority answered with a redirect: nothing was sent on. */
+      notice?: string
     }
   | { ok: false; code: 'no_device_key'; message: string }
 
@@ -62,6 +64,10 @@ export function remoteBase(link: Pick<LeagueRemoteLink, 'serverUrl' | 'remoteLea
  * signed mutation must go to the origin the link names, not wherever a reply points.
  */
 export const REMOTE_REDIRECT_MODE = 'manual' as const
+
+/** What the user is told when an authority answers with a redirect (nothing was followed). */
+export const AUTHORITY_REDIRECT_MESSAGE =
+  'authority redirected; the server URL has moved, update the server URL on this link'
 
 /** True for a redirect reply (what `redirect: 'manual'` hands back instead of following). */
 export function isRedirectReply(res: Response): boolean {
@@ -134,6 +140,7 @@ export async function syncRemoteLeague(
   const base = remoteBase(link)
   const { queue: stored, recovered } = loadLeagueQueue(link.id)
   const tracker = { next: { ...createSeqTracker().next, [link.remoteLeagueId]: link.nextSeq } }
+  let redirected = false
   const result = await flushQueue(stored, tracker, {
     signer,
     leagueId: link.remoteLeagueId,
@@ -150,6 +157,7 @@ export async function syncRemoteLeague(
         })
         if (isRedirectReply(res)) {
           await res.body?.cancel().catch(() => undefined)
+          redirected = true
           return { kind: 'network-error' }
         }
         return { kind: 'http', status: res.status, body: await readBoundedReply(res) }
@@ -172,6 +180,7 @@ export async function syncRemoteLeague(
     attempted: result.attempted.length,
     nextWakeAt: result.nextWakeAt,
     queue: summarizeQueue(kept),
+    ...(redirected ? { notice: AUTHORITY_REDIRECT_MESSAGE } : {}),
   }
 }
 
@@ -186,7 +195,7 @@ export async function fetchRemoteState(
   })
   if (isRedirectReply(res)) {
     await res.body?.cancel().catch(() => undefined)
-    return { ok: false, status: res.status, remote: { error: 'authority redirected' } }
+    return { ok: false, status: res.status, remote: { error: AUTHORITY_REDIRECT_MESSAGE } }
   }
   return { ok: res.ok, status: res.status, remote: await readBoundedReply(res) }
 }

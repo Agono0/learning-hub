@@ -8,6 +8,7 @@ import {
   fetchRemoteState,
   getRemoteLink,
   initDb,
+  AUTHORITY_REDIRECT_MESSAGE,
   isRedirectReply,
   leagueRemoteLinks,
   leagueRemoteQueues,
@@ -121,6 +122,10 @@ describe('redirects from an authority are never followed', () => {
     expect(inits[0]?.redirect).toBe('manual')
     expect(inits).toHaveLength(1) // never re-issued toward the Location
     expect(out).toMatchObject({ ok: true, attempted: 1, queue: { pending: 1, rejected: 0 } })
+    // the user is told the authority redirected, not just that it was unreachable
+    expect(out).toMatchObject({ notice: AUTHORITY_REDIRECT_MESSAGE })
+    expect(AUTHORITY_REDIRECT_MESSAGE).toMatch(/redirected/)
+    expect(AUTHORITY_REDIRECT_MESSAGE).toMatch(/update the server URL/)
     expect(loadLeagueQueue(l.id).queue.items).toHaveLength(1)
     // a redirect is a transport failure, not an authority verdict
     expect(getRemoteLink(SERVER, LEAGUE)?.lastStatus).toBe('transport-error')
@@ -138,7 +143,7 @@ describe('redirects from an authority are never followed', () => {
     expect(res).toEqual({
       ok: false,
       status: 302,
-      remote: { error: 'authority redirected' },
+      remote: { error: AUTHORITY_REDIRECT_MESSAGE },
     })
   })
 })

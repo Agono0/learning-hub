@@ -221,7 +221,7 @@ describe('mutate', () => {
     expect(tables.getRemoteLink(SERVER, LEAGUE)?.nextSeq).toBe(2)
   })
 
-  it('never follows an authority redirect: manual mode, one call, 502 unreachable', async () => {
+  it('never follows an authority redirect: manual mode, one call, 502 redirected message', async () => {
     await enableWithDeviceKey()
     const calls: (RequestInit | undefined)[] = []
     setRemoteFetch(async (_url, init) => {
@@ -239,7 +239,10 @@ describe('mutate', () => {
     expect(calls).toHaveLength(1)
     expect(calls[0]?.redirect).toBe('manual')
     expect(res.status).toBe(502)
-    expect(await res.json()).toMatchObject({ code: 'unreachable' })
+    expect(await res.clone().json()).toMatchObject({
+      code: 'authority_redirected',
+      remote: { error: expect.stringMatching(/redirected.*update the server URL/) },
+    })
   })
 
   it('maps authority 5xx to 502 and survives a non-JSON reply', async () => {
