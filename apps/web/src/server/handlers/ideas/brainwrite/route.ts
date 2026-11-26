@@ -11,8 +11,9 @@ import { aiErrorResponse, readJson, withRoute } from '@/lib/api'
 const ideasSchema = z.object({ ideas: z.array(z.string().min(1)).min(1) })
 
 const brainwriteSchema = z.object({
-  topic: z.string().trim().min(1, 'topic required'),
-  userIdeas: z.array(z.string()).optional(),
+  topic: z.string().trim().min(1, 'topic required').max(500),
+  // Everything here goes into one paid model prompt: bound the count and each idea.
+  userIdeas: z.array(z.string().max(1000)).max(50).optional(),
 })
 
 export const POST = withRoute(async (req: Request) => {

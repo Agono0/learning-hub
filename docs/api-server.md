@@ -35,19 +35,52 @@ Plugins are loaded at boot exactly like the other hosts: core's
 `loadPlugins(["plugins"])` scans the repo-root `plugins/` directory. Loading
 failures are isolated by core and never prevent the server from starting.
 
-## Auth — read this before widening the host
+## Auth and browser protection: read this before widening the host
 
-**There is no authentication or authorization on any endpoint.** The server is
-meant for the local user's own machine:
+There is no login. The server is meant for the local user's own machine. What it does check
+(`apps/server/src/guard.ts`, run before every route):
 
-- It binds `127.0.0.1` by default — other devices on the network cannot reach it.
-- If you pass `--host 0.0.0.0` (or set `LEARNING_HUB_HOST`), **anyone on your
-  network can read and write your learning data**, including `POST /review`
-  which mutates the database. Only widen the host on a trusted network or put
-  an authenticating reverse proxy in front.
-- CORS: no CORS headers are sent, so browser pages on other origins cannot read
-  responses (a small incidental protection; curl/server-side clients are
-  unaffected).
+- **Host.** Only loopback names (`localhost`, `127.0.0.1`, `[::1]`), IP literals and hostnames you list
+  are served; anything else gets `421`. This stops DNS rebinding, where a web page re-points its own
+  hostname at your machine to read your data. Serve a hostname with
+  `LEARNING_HUB_ALLOWED_HOSTS=desk.lan,other.lan:4000` (comma list, `host:port` pins the port).
+- **Origin on writes.** A cross-origin `POST`/`PUT`/`PATCH`/`DELETE` gets `403`. Trusted without
+  configuration: same-origin, the native shell (`tauri://localhost` on desktop and iOS,
+  `http(s)://tauri.localhost` on Windows and Android) and any `chrome-extension://` origin. Other
+  exact origins can be exempted from this `403` with `LEARNING_HUB_ALLOWED_ORIGINS=https://x.lan`
+  (comma separated); pin the extension with `LEARNING_HUB_EXTENSION_IDS=<id>,<id>`. This is only
+  the write check. The server sends no CORS headers and does not answer `OPTIONS` preflights, so a
+  web page on another origin (a phone web app, a LAN page) cannot call it from the browser, with
+  or without a token. Put such a page behind a reverse proxy on the same origin, or use a
+  non-browser client.
+- **JSON on writes.** A write that carries a body must be `application/json` (or `+json`), else
+  `415`. That is the form a cross-site page can send without a preflight (`text/plain`, form
+  posts). `curl -d` defaults to a form type, so add `-H 'Content-Type: application/json'`, or set
+  `LEARNING_HUB_ALLOW_ANY_CONTENT_TYPE=1` to turn the check off. Bodyless writes and all reads are
+  not checked.
+- **Bearer token.** Set `LEARNING_HUB_API_TOKEN` and every request must send
+  `Authorization: Bearer <token>` (the scheme name is case-insensitive; `401` otherwise). When the
+  server listens beyond loopback (`--host 0.0.0.0`, a LAN address) a token is required: with none
+  set, every request is refused with `401`, whatever `Origin` it carries, because any client can
+  send any `Origin`. `LEARNING_HUB_ALLOW_UNAUTHENTICATED=1` turns that off and the server then warns
+  at boot. Loopback binds stay open without a token. `GET /health` is not exempt: it reports the
+  database path, so it needs the token too. `GET /healthz` is the one exception: it needs no token,
+  works on any bind, and answers exactly `{"ok":true}` (GET only; `HEAD` and other methods follow
+  the normal rules). The Host check still applies to it.
+- **Body size.** A JSON body over 1 MiB gets `413`. The web app's own API uses the same default
+  with a few reviewed exceptions. `POST /api/review/attempt-image` now limits `imageData` to 8M
+  characters: that is a new product limit set with this hardening, not a constraint that existed
+  before, and the route accepts a body of up to that size plus 4 KiB.
+
+Compatibility: no first-party client talks to this server today (the native shell, whose
+`tauri.conf.json` serves `web/.next-tauri` and `localhost:3000` in dev, the browser extension, the
+CLI and the MCP server all use the web host or the database directly), so these defaults cannot
+break one. The native-shell origins are allowed up front so a future client needs no
+configuration; anything else is opt-in by exact origin.
+
+What this is not: on a loopback bind, a request with no `Origin` header (curl, a script, a local
+program) passes the Host and Origin checks, so only the token protects against another program
+that can reach the port. CORS headers are never sent, so other origins cannot read responses.
 
 ## Endpoints
 

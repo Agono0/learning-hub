@@ -22,6 +22,7 @@
 import { createServer } from 'node:http'
 import { loadPlugins } from '@learning-hub/core'
 import { loadConfig } from './config'
+import { isLoopbackBind, readGuardConfig, withGuard } from './guard'
 import { dispatch, routes } from './routes'
 import { setupWebhooks } from './webhooks'
 
@@ -40,15 +41,28 @@ async function main(): Promise<void> {
 
   const webhooks = setupWebhooks(process.env.LEARNING_HUB_WEBHOOKS)
 
-  const server = createServer((req, res) => {
-    dispatch(req, res).catch((err) => {
-      console.error('[server] dispatch crashed:', err)
-      if (!res.writableEnded) {
-        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' })
-        res.end(JSON.stringify({ error: 'Internal error' }))
-      }
-    })
-  })
+  const guard = { ...readGuardConfig(process.env), exposed: !isLoopbackBind(config.host) }
+  if (guard.exposed && !guard.token) {
+    console.warn(
+      guard.allowUnauthenticated
+        ? '[server] WARNING: listening beyond loopback with no LEARNING_HUB_API_TOKEN and ' +
+            'LEARNING_HUB_ALLOW_UNAUTHENTICATED set: anyone who can reach this port can read and write your data.'
+        : '[server] listening beyond loopback with no LEARNING_HUB_API_TOKEN: every request is refused ' +
+            'with 401. Set a token (see docs/api-server.md).',
+    )
+  }
+
+  const server = createServer(
+    withGuard((req, res) => {
+      dispatch(req, res).catch((err) => {
+        console.error('[server] dispatch crashed:', err)
+        if (!res.writableEnded) {
+          res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' })
+          res.end(JSON.stringify({ error: 'Internal error' }))
+        }
+      })
+    }, guard),
+  )
 
   server.on('error', (err) => {
     console.error('[server] fatal:', err)

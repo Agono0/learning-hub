@@ -21,6 +21,13 @@ import { readJson, withRoute } from '@/lib/api'
 /** ~500 KB of text — a long lecture transcript or paper; beyond that, split it. */
 const MAX_CONTENT_CHARS = 500_000
 
+/**
+ * JSON body cap for this route. rawContent counts UTF-16 units but the body counts bytes: a unit
+ * costs up to 3 bytes as UTF-8 and 6 as a `\uXXXX` escape, and title, sourceUrl and filename add up
+ * to 2400 units more.
+ */
+const MAX_MULTIMODAL_BODY_BYTES = (MAX_CONTENT_CHARS + 2400) * 6 + 4 * 1024
+
 const multimodalIngestSchema = z.object({
   kind: z.enum(['youtube_transcript', 'academic_paper', 'code_files', 'markdown_notes']),
   rawContent: z.string().min(5).max(MAX_CONTENT_CHARS),
@@ -35,7 +42,7 @@ const multimodalIngestSchema = z.object({
 })
 
 export const POST = withRoute(async (req: Request) => {
-  const body = await readJson(req, multimodalIngestSchema)
+  const body = await readJson(req, multimodalIngestSchema, { maxBytes: MAX_MULTIMODAL_BODY_BYTES })
   const title = body.title || 'Ingested Source'
 
   let cards: IngestedCardOutput[]

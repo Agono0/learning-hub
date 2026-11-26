@@ -25,7 +25,7 @@ const voiceTurnSchema = z.object({
     .array(
       z.object({
         role: z.enum(['user', 'assistant']),
-        text: z.string(),
+        text: z.string().max(4000),
       }),
     )
     .max(50)
