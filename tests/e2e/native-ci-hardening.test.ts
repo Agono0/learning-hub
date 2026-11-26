@@ -65,6 +65,10 @@ describe('native command argument trust', () => {
     )
   })
 
+  it('the JS caller passes the manifest APK size as total, not a transport length', () => {
+    expect(read('apps/web/src/platform/updater.ts')).toContain('total: pkg.size')
+  })
+
   it('Dependabot keeps the pinned workflow actions current', () => {
     expect(read('.github/dependabot.yml')).toMatch(/package-ecosystem:\s*github-actions/)
   })

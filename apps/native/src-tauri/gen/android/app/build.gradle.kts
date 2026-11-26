@@ -25,7 +25,12 @@ fun signingValue(name: String): String? =
 // instead of shipping an APK signed with a publicly known default (O1-22).
 val releaseKeystoreFile: String? =
     signingValue("KEYSTORE_FILE") ?: defaultKeystore.takeIf { it.exists() }?.absolutePath
-val releaseRequested = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
+// Any task that resolves to a release variant: *Release tasks, and the variant-less
+// lifecycle tasks (assemble, bundle, build), which build release as well as debug.
+val releaseRequested = gradle.startParameter.taskNames.any {
+    it.contains("release", ignoreCase = true) ||
+        it.substringAfterLast(':') in setOf("assemble", "bundle", "build")
+}
 if (releaseRequested) {
     val missing = buildList {
         if (releaseKeystoreFile == null || !file(releaseKeystoreFile).exists()) add("KEYSTORE_FILE or release.keystore")

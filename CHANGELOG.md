@@ -4,6 +4,11 @@ All notable changes to Learning HUB are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Security hardening
+
+- **Push notifications are now per device.** Web Push subscriptions (`push_subscriptions`) are no longer included in backups or sync, and a restore or sync merge never imports them. After restoring a backup or setting up a new device, re-enable reminders notifications on that device. Subscriptions already merged from another device by an earlier build cannot be told apart from this device's own, so they are not removed automatically.
+- **Release signing has no default key.** Android release builds fail unless the real keystore and its passwords are provided (no auto-generated keystore, no built-in password).
+
 ### Cognitive Power Expansion & Metacognitive Systems
 
 - **Deck Doctor** — linter-driven deck health diagnostic and mechanical one-click fixes. Runs Piotr Wozniak's 20 Rules of Knowledge and spaced repetition hygiene across all deck cards, computes a deterministic 0–100 health score, flags leeches (suspend default) and duplicate pairs, converts sentence-length basic cards to clozes, and applies mechanical fixes atomically inside a single transaction with deletion tombstones.
