@@ -48,7 +48,7 @@ const LINE_DAYS = 30
 
 /** Heat level → fill token (calm indigo ramp, no reds). */
 const HEAT_FILL = [
-  'var(--hub-border)',
+  'var(--heat-0)',
   'var(--ac-soft)',
   'var(--ac-soft)',
   'var(--ac-strong)',
