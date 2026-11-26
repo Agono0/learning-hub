@@ -106,7 +106,7 @@ export function TodayStatTiles({ data: d }: { data: DashboardData }) {
   const focusGoal = Math.min(1, d.focusMinutesToday / FOCUS_TARGET_MINUTES)
   return (
     <>
-      <BentoTile size="sm" eyebrow="Streak" aria-label="Streak">
+      <BentoTile size="stat" eyebrow="Streak" aria-label="Streak">
         <div className="flex items-end gap-2">
           <Flame className="mb-1 h-6 w-6 text-status-warning-text" aria-hidden="true" />
           <span className="text-4xl font-bold leading-none text-strong">
@@ -124,7 +124,7 @@ export function TodayStatTiles({ data: d }: { data: DashboardData }) {
         </p>
       </BentoTile>
 
-      <BentoTile size="sm" eyebrow={`Level ${level}`} aria-label="Level progress">
+      <BentoTile size="stat" eyebrow={`Level ${level}`} aria-label="Level progress">
         <div className="flex items-end gap-2">
           <span className="text-4xl font-bold leading-none text-strong">
             <CountUp value={d.xpToday} />
@@ -137,7 +137,7 @@ export function TodayStatTiles({ data: d }: { data: DashboardData }) {
         </p>
       </BentoTile>
 
-      <BentoTile size="sm" eyebrow="Focus" aria-label="Focus today">
+      <BentoTile size="stat" eyebrow="Focus" aria-label="Focus today">
         <div className="flex items-center gap-3">
           <ProgressRing value={focusGoal} size={56} label="Focus goal" />
           <div>

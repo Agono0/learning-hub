@@ -38,9 +38,19 @@ async function prepare(
   void page
 }
 
-async function settle(page: import('@playwright/test').Page) {
+async function settle(page: import('@playwright/test').Page, theme: 'dark' | 'light' = 'dark') {
   await expect(page.locator('h1').first()).toBeVisible({ timeout: 60_000 })
   await page.waitForTimeout(900)
+  // The persisted settings row (default dark) wins over localStorage after load, so the light
+  // capture flips the root class directly. CSS variables are mode-scoped, so this is the real
+  // light stylesheet, not a filter.
+  if (theme === 'light') {
+    await page.evaluate(() => {
+      document.documentElement.classList.remove('dark')
+      document.documentElement.style.colorScheme = 'light'
+    })
+    await page.waitForTimeout(300)
+  }
 }
 
 async function noHorizontalOverflow(page: import('@playwright/test').Page) {
@@ -61,7 +71,7 @@ for (const mode of [
       test(`${r.slug}`, async ({ page, context }) => {
         await prepare(page, context, mode.theme)
         await page.goto(r.url)
-        await settle(page)
+        await settle(page, mode.theme)
         await noHorizontalOverflow(page)
         await page.screenshot({ path: path.join(OUT, `redesign-${r.slug}-${mode.name}.png`) })
         if (mode.w < 500) {

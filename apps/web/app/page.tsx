@@ -223,11 +223,8 @@ export default function DashboardPage() {
         <BentoGrid>
           <TodayHeroTile data={d} />
           <TodayStatTiles data={d} />
+          <QuickReviewWidget className="bento-lg" />
         </BentoGrid>
-      </Entrance>
-
-      <Entrance step={ENTRANCE_SLOT.quickReview}>
-        <QuickReviewWidget />
       </Entrance>
 
       {d.freshStart && (

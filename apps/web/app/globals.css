@@ -489,13 +489,18 @@ body {
 
 /* Display face for every heading level, set slightly tight for a confident, premium rhythm. */
 h1,
-h2,
+h2 {
+  font-family: var(--font-heading), var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.02em;
+  word-spacing: 0.1em;
+}
+/* Small headings use the body face: the display face loses legibility below ~18px. */
 h3,
 h4,
 h5,
 h6 {
-  font-family: var(--font-heading), var(--font-body), ui-sans-serif, system-ui, sans-serif;
-  letter-spacing: -0.02em;
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.005em;
 }
 
 /* Card surfaces used across all pages — bento tiles: generous radius, 1px hairline, a lit top
@@ -946,6 +951,9 @@ html.theme-e-ink .panel {
   min-width: 0;
 }
 @container (min-width: 36rem) {
+  .bento > .bento-stat {
+    grid-column: span 4;
+  }
   .bento > .bento-sm {
     grid-column: span 6;
   }

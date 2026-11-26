@@ -17,10 +17,10 @@ export function BentoGrid({ className, children, ...rest }: HTMLAttributes<HTMLD
   )
 }
 
-export type BentoSize = 'sm' | 'md' | 'lg'
+export type BentoSize = 'stat' | 'sm' | 'md' | 'lg'
 
 export interface BentoTileProps extends Omit<HTMLAttributes<HTMLElement>, 'title'> {
-  /** Column span at wider container widths: sm = third, md = half, lg = two thirds. */
+  /** Column span at wider container widths: stat = one of three small tiles, sm = third, md = half, lg = two thirds. */
   size?: BentoSize
   /** Spans two rows in wide containers. */
   tall?: boolean
