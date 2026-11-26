@@ -13,13 +13,13 @@ export interface PageHeaderProps {
 /** Consistent page title row — every page starts with one. */
 export function PageHeader({ title, subtitle, actions, icon }: PageHeaderProps) {
   return (
-    <header className="flex flex-wrap items-start justify-between gap-3">
+    <header className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3 pb-1">
       <div className="min-w-0">
-        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+        <h1 className="flex items-center gap-2.5 text-2xl font-bold tracking-tight text-strong sm:text-3xl">
           {icon}
           {title}
         </h1>
-        {subtitle && <p className="mt-1 text-sm text-tertiary">{subtitle}</p>}
+        {subtitle && <p className="mt-1.5 max-w-prose text-sm text-secondary">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </header>

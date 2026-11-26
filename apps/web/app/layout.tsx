@@ -1,24 +1,24 @@
 import type { Metadata, Viewport } from 'next'
-import { Fredoka, Nunito } from 'next/font/google'
+import { Inter, Sora } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/Providers'
 import { AppShell } from '@/components/AppShell'
 import { GlobalErrorBoundary } from '@/components/GlobalErrorBoundary'
 
 /**
- * Playful clay identity (ui-ux-pro-max recipe: "Soft Rounded" + "Playful
- * Creative" pairings): Fredoka for headings, Nunito for body. next/font
- * self-hosts both at build time — no runtime fetch, offline-safe.
+ * Type pairing for the bento identity: Sora for headings (geometric, tight, confident at large
+ * sizes) and Inter for body and numerals (neutral, very legible, true tabular figures).
+ * next/font self-hosts both at build time, so there is no runtime fetch and it stays offline-safe.
+ * Neither face covers Arabic: Arabic text falls back to the system UI font stack.
  */
-const fredoka = Fredoka({
+const sora = Sora({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+  weight: ['500', '600', '700'],
   variable: '--font-heading',
   display: 'swap',
 })
-const nunito = Nunito({
+const inter = Inter({
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700', '800'],
   variable: '--font-body',
   display: 'swap',
 })
@@ -51,7 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`dark ${fredoka.variable} ${nunito.variable}`}
+      className={`dark ${sora.variable} ${inter.variable}`}
       data-theme="calm"
       suppressHydrationWarning
     >

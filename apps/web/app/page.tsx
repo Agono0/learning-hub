@@ -12,13 +12,13 @@
  * <300ms — the loading skeletons and error callout stay instant).
  */
 import React, { useRef } from 'react'
-import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowDown, ArrowUp, Repeat2, RotateCcw, Sparkles, Sprout } from 'lucide-react'
+import { ArrowDown, ArrowUp, RotateCcw, Sparkles, Sprout } from 'lucide-react'
 import { levelFromXp } from '@learning-hub/core/xp'
 import { nextFreshStart, streakBrokeWithinDays } from '@learning-hub/core/freshStart'
 import { apiGet } from '@/lib/transport'
-import { Badge, Button, Callout, IconButton, PageHeader, Skeleton } from '@/ui'
+import { BentoGrid, Badge, Button, Callout, IconButton, PageHeader, Skeleton } from '@/ui'
+import { TodayHeroTile, TodayStatTiles } from '@/components/dashboard/TodayHero'
 import { DEFAULT_ORDER, useDashboardWidgets } from '@/components/dashboard/widgets'
 import { ErrorBoundary } from '@/ui'
 import { classifyRequestError } from '@/lib/use-api-error'
@@ -214,13 +214,16 @@ export default function DashboardPage() {
               >
                 <RotateCcw className="h-3.5 w-3.5" /> Reset layout
               </button>
-              <Link href="/review" className="btn h-11 px-6 text-base">
-                <Repeat2 className="h-5 w-5" />
-                {d.dueCount > 0 ? `Review ${d.dueCount} cards` : 'Start Daily Loop'}
-              </Link>
             </div>
           }
         />
+      </Entrance>
+
+      <Entrance step={ENTRANCE_SLOT.quickReview}>
+        <BentoGrid>
+          <TodayHeroTile data={d} />
+          <TodayStatTiles data={d} />
+        </BentoGrid>
       </Entrance>
 
       <Entrance step={ENTRANCE_SLOT.quickReview}>
