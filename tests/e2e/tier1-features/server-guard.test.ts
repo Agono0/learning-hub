@@ -108,15 +108,55 @@ describe('server guard: pure decisions', () => {
     expect(isJsonContentType('application/jsonp')).toBe(false)
   })
 
-  it('beyond loopback, a request with no Origin needs the token (loopback stays open)', () => {
+  it('beyond loopback with no token, every request is refused whatever Origin it forges', () => {
     const exposed = { ...base, exposed: true }
-    expect(checkRequest(req(), exposed)).toMatchObject({ ok: false, status: 401 })
+    const origins = [
+      null,
+      'http://127.0.0.1:3300', // same origin as the Host header
+      'tauri://localhost',
+      'http://tauri.localhost',
+      'chrome-extension://abcdef',
+    ]
+    for (const method of ['GET', 'POST']) {
+      for (const origin of origins) {
+        expect(checkRequest(req({ method, origin }), exposed), `${method} ${origin}`).toMatchObject({
+          ok: false,
+          status: 401,
+          reason: 'token-not-configured',
+        })
+      }
+    }
+    const listed = { ...exposed, allowedOrigins: ['https://x.lan'] }
+    expect(checkRequest(req({ origin: 'https://x.lan' }), listed).ok).toBe(false)
+  })
+
+  it('beyond loopback, the explicit opt-out or a token restores service; loopback stays open', () => {
+    const exposed = { ...base, exposed: true }
     expect(checkRequest(req(), { ...exposed, allowUnauthenticated: true }).ok).toBe(true)
+    expect(
+      checkRequest(req({ origin: 'tauri://localhost' }), { ...exposed, allowUnauthenticated: true })
+        .ok,
+    ).toBe(true)
     const withToken = { ...exposed, token: 'tok-123' }
     expect(checkRequest(req(), withToken).ok).toBe(false)
+    expect(checkRequest(req({ origin: 'tauri://localhost' }), withToken).ok).toBe(false)
     expect(checkRequest(req({ authorization: 'Bearer tok-123' }), withToken).ok).toBe(true)
+    expect(
+      checkRequest(req({ authorization: 'Bearer tok-123', origin: 'tauri://localhost' }), withToken)
+        .ok,
+    ).toBe(true)
     expect(checkRequest(req(), base).ok).toBe(true)
     expect(checkRequest(req(), { ...base, exposed: false }).ok).toBe(true)
+  })
+
+  it('matches the Bearer scheme case-insensitively and nothing looser', () => {
+    const cfg = { ...base, token: 's3cret-token' }
+    for (const scheme of ['Bearer', 'bearer', 'BEARER', 'bEaReR']) {
+      expect(checkRequest(req({ authorization: `${scheme} s3cret-token` }), cfg).ok).toBe(true)
+    }
+    expect(checkRequest(req({ authorization: 'bearer S3CRET-TOKEN' }), cfg).ok).toBe(false)
+    expect(checkRequest(req({ authorization: 'Basic s3cret-token' }), cfg).ok).toBe(false)
+    expect(checkRequest(req({ authorization: 'bearer  s3cret-token' }), cfg).ok).toBe(false)
   })
 
   it('reads settings from the environment and classifies bind addresses', () => {

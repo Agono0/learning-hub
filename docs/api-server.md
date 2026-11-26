@@ -46,19 +46,25 @@ There is no login. The server is meant for the local user's own machine. What it
   `LEARNING_HUB_ALLOWED_HOSTS=desk.lan,other.lan:4000` (comma list, `host:port` pins the port).
 - **Origin on writes.** A cross-origin `POST`/`PUT`/`PATCH`/`DELETE` gets `403`. Trusted without
   configuration: same-origin, the native shell (`tauri://localhost` on desktop and iOS,
-  `http(s)://tauri.localhost` on Windows and Android) and any `chrome-extension://` origin. Add
-  origins (a phone web app, a LAN page) with `LEARNING_HUB_ALLOWED_ORIGINS=https://phone.lan`, exact
-  strings, comma separated, and pin the extension with `LEARNING_HUB_EXTENSION_IDS=<id>,<id>`.
+  `http(s)://tauri.localhost` on Windows and Android) and any `chrome-extension://` origin. Other
+  exact origins can be exempted from this `403` with `LEARNING_HUB_ALLOWED_ORIGINS=https://x.lan`
+  (comma separated); pin the extension with `LEARNING_HUB_EXTENSION_IDS=<id>,<id>`. This is only
+  the write check. The server sends no CORS headers and does not answer `OPTIONS` preflights, so a
+  web page on another origin (a phone web app, a LAN page) cannot call it from the browser, with
+  or without a token. Put such a page behind a reverse proxy on the same origin, or use a
+  non-browser client.
 - **JSON on writes.** A write that carries a body must be `application/json` (or `+json`), else
   `415`. That is the form a cross-site page can send without a preflight (`text/plain`, form
   posts). `curl -d` defaults to a form type, so add `-H 'Content-Type: application/json'`, or set
   `LEARNING_HUB_ALLOW_ANY_CONTENT_TYPE=1` to turn the check off. Bodyless writes and all reads are
   not checked.
 - **Bearer token.** Set `LEARNING_HUB_API_TOKEN` and every request must send
-  `Authorization: Bearer <token>` (`401` otherwise). When the server listens beyond loopback
-  (`--host 0.0.0.0`, a LAN address) a request with no `Origin` header (curl, a script, another
-  machine) is refused with `401` unless a token is set; `LEARNING_HUB_ALLOW_UNAUTHENTICATED=1`
-  restores the old open behavior and the server then warns at boot. Loopback binds stay open.
+  `Authorization: Bearer <token>` (the scheme name is case-insensitive; `401` otherwise). When the
+  server listens beyond loopback (`--host 0.0.0.0`, a LAN address) a token is required: with none
+  set, every request is refused with `401`, whatever `Origin` it carries, because any client can
+  send any `Origin`. `LEARNING_HUB_ALLOW_UNAUTHENTICATED=1` turns that off and the server then warns
+  at boot. Loopback binds stay open without a token. `GET /health` is not exempt: it reports the
+  database path, so it needs the token too.
 - **Body size.** A JSON body over 1 MiB gets `413`.
 
 Compatibility: no first-party client talks to this server today (the native shell, whose

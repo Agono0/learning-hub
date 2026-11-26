@@ -9,7 +9,8 @@
  * but is a separate pure module: apps/server stays Next-free.
  *
  * What this is NOT: a request with no Origin (curl, a script, a local program) passes the origin
- * checks. Only the optional bearer token authenticates non-browser clients.
+ * checks. Only the optional bearer token authenticates non-browser clients, and Origin is never
+ * proof of identity (any client can send any value), so off loopback no token means no service.
  *
  * Pure functions: unit tested directly, wired in index.ts by `createRequestHandler`.
  */
@@ -28,7 +29,7 @@ export interface GuardConfig {
   token?: string
   /** True when the server listens beyond loopback (set from the bind address, not the env). */
   exposed?: boolean
-  /** Opt-out: serve token-less non-browser clients even when exposed (LEARNING_HUB_ALLOW_UNAUTHENTICATED=1). */
+  /** Opt-out: serve every request without a token even when exposed (LEARNING_HUB_ALLOW_UNAUTHENTICATED=1). */
   allowUnauthenticated?: boolean
   /** Opt-out: accept any Content-Type on writes (LEARNING_HUB_ALLOW_ANY_CONTENT_TYPE=1). */
   allowAnyContentType?: boolean
@@ -156,7 +157,7 @@ export function isJsonContentType(value: string | null | undefined): boolean {
 }
 
 function tokenMatches(header: string | null, token: string): boolean {
-  const m = /^Bearer ([^\s]+)$/.exec(header ?? '')
+  const m = /^bearer ([^\s]+)$/i.exec(header ?? '')
   if (!m) return false
   const a = Buffer.from(m[1]!)
   const b = Buffer.from(token)
@@ -168,17 +169,18 @@ export function checkRequest(req: GuardRequest, cfg: GuardConfig): GuardVerdict 
   if (!host || !hostAllowed(host, cfg))
     return { ok: false, status: 421, reason: 'host-not-allowed' }
 
+  // Exposed beyond loopback with no token: an Origin header is just text any client can send
+  // (`Origin: tauri://localhost`, or one that matches Host), so it proves nothing. Nothing can tell
+  // a trusted caller from an attacker, so refuse every request unless the operator opted out.
+  if (cfg.exposed && !cfg.token && !cfg.allowUnauthenticated) {
+    return { ok: false, status: 401, reason: 'token-not-configured' }
+  }
   if (cfg.token && !tokenMatches(req.authorization, cfg.token)) {
     return { ok: false, status: 401, reason: 'token-required' }
   }
 
   const safe = SAFE_METHODS.has(req.method.toUpperCase())
 
-  // Exposed beyond loopback: a request with no Origin is a script or another machine, and only the
-  // token can tell it from an attacker. Fail closed unless the operator opted out.
-  if (cfg.exposed && req.origin === null && !cfg.token && !cfg.allowUnauthenticated) {
-    return { ok: false, status: 401, reason: 'token-not-configured' }
-  }
   // A body that is not JSON on a write is what a cross-site form or text/plain fetch sends.
   if (!safe && req.hasBody && !cfg.allowAnyContentType && !isJsonContentType(req.contentType)) {
     return { ok: false, status: 415, reason: 'json-required' }
