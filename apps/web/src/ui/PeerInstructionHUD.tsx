@@ -138,7 +138,7 @@ export function PeerInstructionHUD({
             </span>
             <span className="text-[11px] text-secondary">normalized</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">(post - pre) / (100 - pre)</p>
+          <p className="text-[10px] text-tertiary line-clamp-2">(post - pre) / (100 - pre)</p>
         </div>
 
         {/* Mazur Polarization Index (PI) */}
@@ -153,7 +153,7 @@ export function PeerInstructionHUD({
             </span>
             <span className="text-[11px] text-secondary">entropy</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">Cognitive spread across choices</p>
+          <p className="text-[10px] text-tertiary line-clamp-2">Cognitive spread across choices</p>
         </div>
 
         {/* Peer Discussion Convergence (DCR) */}
@@ -168,7 +168,7 @@ export function PeerInstructionHUD({
             </span>
             <span className="text-[11px] text-secondary">consensus</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">Paired resolution rate</p>
+          <p className="text-[10px] text-tertiary line-clamp-2">Paired resolution rate</p>
         </div>
 
         {/* Isomorphic Transfer Score (Q2) */}
@@ -183,7 +183,7 @@ export function PeerInstructionHUD({
             </span>
             <span className="text-[11px] text-secondary">isomorphic</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">Novel context invariance</p>
+          <p className="text-[10px] text-tertiary line-clamp-2">Novel context invariance</p>
         </div>
       </div>
 

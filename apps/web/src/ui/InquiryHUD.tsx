@@ -112,7 +112,7 @@ export function InquiryHUD({ metrics, activeLabTitle, className = '' }: InquiryH
             </span>
             <span className="text-[11px] text-secondary">isolated</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">Chen &amp; Klahr 1999</p>
+          <p className="text-[10px] text-tertiary line-clamp-2">Chen &amp; Klahr 1999</p>
         </div>
 
         {/* 2. Confirmation Bias Index */}
@@ -131,7 +131,7 @@ export function InquiryHUD({ metrics, activeLabTitle, className = '' }: InquiryH
             </span>
             <span className="text-[11px] text-secondary">positive tests</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">Wason 1960 Ratio</p>
+          <p className="text-[10px] text-tertiary line-clamp-2">Wason 1960 Ratio</p>
         </div>
 
         {/* 3. Anomalous Data Resolution */}
@@ -146,7 +146,7 @@ export function InquiryHUD({ metrics, activeLabTitle, className = '' }: InquiryH
             </span>
             <span className="text-[11px] text-secondary">epistemic</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">Chinn &amp; Brewer 1993</p>
+          <p className="text-[10px] text-tertiary line-clamp-2">Chinn &amp; Brewer 1993</p>
         </div>
 
         {/* 4. Scientific Discovery Index */}
@@ -161,7 +161,7 @@ export function InquiryHUD({ metrics, activeLabTitle, className = '' }: InquiryH
             </span>
             <span className="text-[11px] text-secondary">/ 100 SDI</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">Composite score</p>
+          <p className="text-[10px] text-tertiary line-clamp-2">Composite score</p>
         </div>
       </div>
 

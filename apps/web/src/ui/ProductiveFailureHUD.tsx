@@ -115,7 +115,7 @@ export function ProductiveFailureHUD({
             </span>
             <span className="text-[11px] text-secondary">overall</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">Synergistic learning efficiency</p>
+          <p className="text-[10px] text-tertiary line-clamp-2">Synergistic learning efficiency</p>
         </div>
 
         {/* Generation Diversity Index (GDI) */}
@@ -130,7 +130,7 @@ export function ProductiveFailureHUD({
             </span>
             <span className="text-[11px] text-secondary">breadth</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">Novel representations explored</p>
+          <p className="text-[10px] text-tertiary line-clamp-2">Novel representations explored</p>
         </div>
 
         {/* Impasse Sensitivity Score (ISS) */}
@@ -145,7 +145,7 @@ export function ProductiveFailureHUD({
             </span>
             <span className="text-[11px] text-secondary">awareness</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">Boundary gap articulation</p>
+          <p className="text-[10px] text-tertiary line-clamp-2">Boundary gap articulation</p>
         </div>
 
         {/* Adaptive Transfer Score (ATS) */}
@@ -160,7 +160,7 @@ export function ProductiveFailureHUD({
             </span>
             <span className="text-[11px] text-secondary">deep</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">Near, medium, far invariance</p>
+          <p className="text-[10px] text-tertiary line-clamp-2">Near, medium, far invariance</p>
         </div>
       </div>
 
