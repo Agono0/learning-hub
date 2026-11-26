@@ -1371,11 +1371,12 @@ export function deleteTimeLog(id: number, database?: DbOrTx): boolean {
 
 /** Total tracked ms over the filter (worklog totals, S3-28). */
 export function sumTimeLogs(
-  opts: { taskId?: number; from?: string; to?: string; database?: DbOrTx } = {},
+  opts: { taskId?: number; day?: string; from?: string; to?: string; database?: DbOrTx } = {},
 ): number {
   const conn = opts.database ?? getDb()
   const where: SQL[] = []
   if (opts.taskId !== undefined) where.push(eq(taskTimeLogs.taskId, opts.taskId))
+  if (opts.day !== undefined) where.push(eq(taskTimeLogs.day, opts.day))
   if (opts.from !== undefined) where.push(gte(taskTimeLogs.day, opts.from))
   if (opts.to !== undefined) where.push(lte(taskTimeLogs.day, opts.to))
   const [row] = conn

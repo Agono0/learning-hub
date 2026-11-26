@@ -93,3 +93,30 @@ describe('id routes', () => {
     expect(res.status).toBe(404)
   })
 })
+
+describe('GET /api/tasks-time totals follow the same filter as the rows', () => {
+  it('a day filter narrows totalMs, not just the logs', async () => {
+    const D = await import('@learning-hub/db')
+    const task = D.createTaskItem({ title: 'sum filter' })
+    D.insertTimeLog({ taskId: task.id, day: '2031-03-01', sessionMs: 900_000 })
+    D.insertTimeLog({ taskId: task.id, day: '2031-03-01', sessionMs: 600_000 })
+    D.insertTimeLog({ taskId: task.id, day: '2031-03-02', sessionMs: 300_000 })
+
+    const get = async (qs: string) =>
+      (await (await timeList(new Request(u(`/api/tasks-time?taskId=${task.id}${qs}`)))).json()) as {
+        logs: unknown[]
+        totalMs: number
+      }
+    const all = await get('')
+    expect(all.logs).toHaveLength(3)
+    expect(all.totalMs).toBe(1_800_000)
+
+    const day1 = await get('&day=2031-03-01')
+    expect(day1.logs).toHaveLength(2)
+    expect(day1.totalMs).toBe(1_500_000)
+
+    const day2 = await get('&day=2031-03-02')
+    expect(day2.totalMs).toBe(300_000)
+    expect((await get('&day=2031-03-09')).totalMs).toBe(0)
+  })
+})
