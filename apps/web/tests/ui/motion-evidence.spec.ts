@@ -124,3 +124,45 @@ test.describe('recorded navigation', () => {
     await page.video()?.saveAs(path.join(OUT, 'motion-nav.webm'))
   })
 })
+
+/**
+ * 3D / canvas studio routes. Headless Chromium may have no GPU; this records what actually
+ * happened (WebGL available, canvases present, console/page errors) next to the screenshot and
+ * does NOT fail on WebGL-specific errors, so a blank canvas is classified, never claimed.
+ */
+test.describe('3D and canvas routes (classified, not asserted)', () => {
+  test.use({ viewport: { width: 1280, height: 800 } })
+  for (const [slug, url] of [
+    ['palace-3d', '/palace-3d'],
+    ['graph', '/graph'],
+    ['world', '/world'],
+  ] as const) {
+    test(slug, async ({ page }) => {
+      const errors: string[] = []
+      page.on('pageerror', (e) => errors.push(`pageerror: ${String(e.message).slice(0, 200)}`))
+      page.on('console', (m) => {
+        if (m.type() === 'error') errors.push(`console: ${m.text().slice(0, 200)}`)
+      })
+      page.on('response', (r) => {
+        if (r.status() >= 400) errors.push(`http ${r.status()}: ${r.url().slice(0, 160)}`)
+      })
+      await page.goto(url, { waitUntil: 'commit' })
+      await expect(page.locator('h1').first()).toBeVisible({ timeout: 60_000 })
+      await page.waitForTimeout(3000)
+      const info = await page.evaluate(() => {
+        const gl = document.createElement('canvas').getContext('webgl')
+        return {
+          h1: document.querySelector('h1')?.textContent ?? '',
+          webgl: !!gl,
+          canvases: Array.from(document.querySelectorAll('canvas')).map((c) => ({
+            w: c.width,
+            h: c.height,
+          })),
+          overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+        }
+      })
+      await page.screenshot({ path: path.join(OUT, `studio-${slug}-desktop-dark.png`) })
+      writeFileSync(path.join(OUT, `studio-${slug}.json`), JSON.stringify({ ...info, errors }))
+    })
+  }
+})
