@@ -43,6 +43,22 @@ for (const vp of viewports) {
           body: JSON.stringify(PARTIAL),
         }),
       )
+      // The deck list is mocked too: the real count depends on which specs ran earlier against
+      // the shared test database, so "2 decks" below would be an accident of test order.
+      await page.route('**/api/decks', (route) =>
+        route.request().method() === 'GET'
+          ? route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                decks: [
+                  { id: 1, name: 'Fixture A', emoji: null, total: 3, due: 0, newCards: 3 },
+                  { id: 2, name: 'Fixture B', emoji: null, total: 0, due: 0, newCards: 0 },
+                ],
+              }),
+            })
+          : route.fallback(),
+      )
       await page.goto('/backup')
       await page.locator('input[type="file"][accept=".apkg,.txt,.json"]').setInputFiles({
         name: 'fixture.txt',
