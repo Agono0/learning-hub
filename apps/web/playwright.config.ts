@@ -6,6 +6,9 @@ import { defineConfig } from '@playwright/test'
  * isolated DB clone (see tests/ui/setup/with-test-server.mjs).
  *
  * Run: npm run test:ui   (from apps/web)
+ * Shard: npm run test:ui -- --shard=1/3 with UI_SMOKE_PORT=3100|3101|3102 per shard. Each shard
+ * boots its own server on its own port and DB clone, so shards never share state. Specs inside
+ * one file stay ordered (workers: 1, fullyParallel: false keeps a file on one shard).
  */
 export default defineConfig({
   testDir: './tests/ui',
@@ -13,7 +16,9 @@ export default defineConfig({
   workers: 1,
   fullyParallel: false,
   timeout: 60_000,
-  reporter: [['list']],
+  // CI: fail on a committed test.only, annotate PRs, and keep the list output.
+  forbidOnly: !!process.env.CI,
+  reporter: process.env.CI ? [['list'], ['github']] : [['list']],
   use: {
     // Dev machines often run a system proxy (VirtualBox/VPN adapters). Without
     // this, Chromium proxies same-origin fetches to it and every client query

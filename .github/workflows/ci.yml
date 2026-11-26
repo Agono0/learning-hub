@@ -1,10 +1,26 @@
 name: CI
 
+# paths-ignore lists only files no check reads: prettier (format:check) covers every other
+# *.md and the vitest suites read docs/curriculum, so ignoring docs broadly would silently skip
+# real checks. Because a path-ignored run is not created at all, make the `CI gate` job the
+# required status check, and never add a path here that a job below consumes.
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'LICENSE'
+      - '.claude/**'
+      - 'docs/handoffs/**'
+      - '.zcode/**'
+      - 'math-333/**'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - 'LICENSE'
+      - '.claude/**'
+      - 'docs/handoffs/**'
+      - '.zcode/**'
+      - 'math-333/**'
   workflow_dispatch:
 
 permissions:
@@ -20,13 +36,22 @@ env:
   # download times out from current runners and the app only ever uses the
   # bundled CPU runtime, so skip it everywhere we npm ci.
   ONNXRUNTIME_NODE_INSTALL: skip
+  NEXT_TELEMETRY_DISABLED: '1'
 
 jobs:
-  test:
-    name: Typecheck, lint, test, e2e, build
+  # Job map (every step of the old single `test` job lives in exactly one job below):
+  #   static : typecheck, lint, prettier, commitlint (PR only)
+  #   unit   : npm test --workspaces --if-present
+  #   e2e    : db:push + db:seed, vitest e2e config
+  #   ui     : Playwright smoke suite on `next dev`, 3 shards, ports 3100/3101/3102
+  #   prod   : next build, production-build UI pass, pinned fetch smoke, native web bundle (push only)
+  #   gate   : fails unless every job above succeeded (skipped is a failure, except prod on PRs)
+  # Artifacts: arena-shots-N, visual-screenshots-N, ui-screenshots-N, playwright-report-N
+  # (failure only) per ui shard; visual-screenshots-prod from prod.
+  static:
+    name: Typecheck, lint, format, commitlint
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -55,8 +80,42 @@ jobs:
         if: github.event_name == 'pull_request'
         run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }}
 
+  unit:
+    name: Unit tests (all workspaces)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
       - name: Unit tests (all workspaces)
         run: npm test --workspaces --if-present
+
+  e2e:
+    name: E2E tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
 
       # A fresh clone has no data/learning-hub.db; the E2E suite clones it per test
       # file, so create the schema (and the idempotent seed data the quote/CLI/MCP
@@ -68,6 +127,35 @@ jobs:
 
       - name: E2E tests
         run: npx vitest run --config vitest.e2e.config.mjs
+
+  ui:
+    name: Playwright UI smoke (shard ${{ matrix.shard }}/3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    env:
+      # One server per shard on its own port; specs read UI_SMOKE_PORT directly.
+      UI_SMOKE_PORT: ${{ 3099 + matrix.shard }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Create database schema + seed
+        run: |
+          npm run db:push
+          npm run db:seed
 
       - name: Get Playwright version
         id: pw
@@ -88,16 +176,24 @@ jobs:
         if: steps.pw-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
+      - name: Cache Next.js build cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            apps/web/.next/cache
+            apps/web/.next-tauri/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            nextjs-${{ runner.os }}-
+
       - name: Playwright UI smoke tests
-        run: npm run test:ui
-        env:
-          UI_SMOKE_PORT: 3100
+        run: npm run test:ui -- --shard=${{ matrix.shard }}/3
 
       - name: Upload arena screenshots
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: arena-shots
+          name: arena-shots-${{ matrix.shard }}
           path: apps/web/test-results/shots/
           if-no-files-found: ignore
           retention-days: 7
@@ -106,7 +202,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: visual-screenshots
+          name: visual-screenshots-${{ matrix.shard }}
           path: apps/web/visual-out/
           if-no-files-found: ignore
           retention-days: 14
@@ -115,7 +211,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: |
             apps/web/playwright-report/
             apps/web/test-results/
@@ -125,31 +221,69 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: ui-screenshots
+          name: ui-screenshots-${{ matrix.shard }}
           path: apps/web/ui-screenshots/
           if-no-files-found: ignore
           retention-days: 7
 
+  prod:
+    name: Build, production UI pass, pinned fetch smoke, native bundle
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Create database schema + seed
+        run: |
+          npm run db:push
+          npm run db:seed
+
+      - name: Get Playwright version
+        id: pw
+        run: echo "version=$(npx playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+
+      - name: Install Playwright browsers
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright system deps (browsers cached)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
       - name: Cache Next.js build cache
-        if: github.event_name != 'pull_request'
         uses: actions/cache@v6
         with:
           path: |
             apps/web/.next/cache
             apps/web/.next-tauri/cache
-          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('apps/web/**/*.ts', 'apps/web/**/*.tsx', 'packages/**/*.ts') }}
+          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
           restore-keys: |
-            nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
             nextjs-${{ runner.os }}-
 
       - name: Build
-        if: github.event_name != 'pull_request'
         run: npm run build
 
       # Production render pass: serve the bundle built above with `next start` and rerun the
       # actual-route visual spec (same strict zero-error assertions) into a separate artifact.
       - name: Production-build UI pass
-        if: github.event_name != 'pull_request'
         run: npx playwright test visual-redesign.spec.ts
         working-directory: apps/web
         env:
@@ -158,7 +292,7 @@ jobs:
           VISUAL_OUT: visual-out-prod
 
       - name: Upload production-build screenshots
-        if: always() && github.event_name != 'pull_request'
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: visual-screenshots-prod
@@ -169,7 +303,6 @@ jobs:
       # Synthetic, isolated, no network egress: the built server must register the pinned
       # fetch from src/instrumentation.ts and must refuse outbound fetches when it is missing.
       - name: Pinned fetch server smoke
-        if: github.event_name != 'pull_request'
         # Run inside a fresh network namespace that has only loopback, so nothing can leave the
         # runner even if the test harness is wrong. The script refuses to run otherwise.
         run: |
@@ -178,7 +311,26 @@ jobs:
           sudo unshare -n sh -c "ip link set lo up && exec sudo -u $USER env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY -u all_proxy PATH=$PATH SMOKE_PARENT_NETNS=$PARENT_NS SMOKE_REQUIRE_NO_EGRESS=1 NEXT_TELEMETRY_DISABLED=1 node apps/web/tests/smoke/pinned-server-smoke.mjs"
 
       # The bundle the Windows/Android apps ship (static export + hub worker).
-      # Fast, and catches anything that only breaks the native build.
       - name: Build native web bundle
-        if: github.event_name != 'pull_request'
         run: npm run web:tauri
+
+  # Single required check. Keeps the old protected name's meaning: it is green only when
+  # every job really succeeded. A skipped or cancelled job is a failure, never a green pass.
+  gate:
+    name: CI gate
+    if: always()
+    needs: [static, unit, e2e, ui, prod]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every job to succeed
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          echo "$RESULTS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          bad=$(echo "$RESULTS" | jq -r --arg ev "$EVENT" '
+            to_entries[]
+            | select(.value.result != "success")
+            | select(.key != "prod" or $ev != "pull_request" or .value.result != "skipped")
+            | .key')
+          if [ -n "$bad" ]; then echo "Not successful: $bad"; exit 1; fi
