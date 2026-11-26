@@ -201,14 +201,15 @@ export function restoreAll(data: unknown, database: RawSqliteHandle = getRawDb()
       : []
 
     for (const table of [...order].reverse()) {
-      if (table === 'sync_configs' || table === 'online_identity') continue
+      if (DEVICE_LOCAL_TABLES.has(table)) continue
       database.prepare(`DELETE FROM "${table}"`).run()
     }
 
     let rowCount = 0
     for (const [table, rows] of Object.entries(backupTables)) {
-      // online_identity rows in an older backup may carry a private key: never import them.
-      if (table === 'sync_configs' || table === 'online_identity' || rows.length === 0) continue
+      // Device-local rows in a backup (an older one may carry the private key, or another
+      // device's pairing token) are never imported.
+      if (DEVICE_LOCAL_TABLES.has(table) || rows.length === 0) continue
       const columns = (database.pragma(`table_info("${table}")`) as { name: string }[]).map(
         (c) => c.name,
       )
