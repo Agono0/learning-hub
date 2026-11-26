@@ -241,6 +241,7 @@ import * as deliberate from '../server/handlers/deliberate/route'
 import * as scaffolding from '../server/handlers/scaffolding/route'
 import * as updateNotes from '../server/handlers/update/notes/route'
 import * as calendarImport from '../server/handlers/calendar/import/route'
+import * as feedbackStudioRoute from '../server/handlers/feedback-studio/route'
 
 /** Request→Response function as produced by `withRoute` (context optional). */
 export type HubHandler = (req: Request, context?: unknown) => Promise<Response>
@@ -503,6 +504,7 @@ add('deliberate', deliberate)
 add('scaffolding', scaffolding)
 add('update/notes', updateNotes)
 add('calendar/import', calendarImport)
+add('feedback-studio', feedbackStudioRoute)
 
 /** A registry match: the handler plus the resolved `[id]` params. */
 export interface HubRouteMatch {

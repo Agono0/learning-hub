@@ -39,6 +39,7 @@ import { learningPathTools } from './tools/learning-path'
 import { communityTools } from './tools/community'
 import { telemetryAudioTools } from './tools/telemetry-audio'
 import { advancedLearningTools } from './tools/advanced-learning'
+import { feedbackTools } from './tools/feedback'
 import { prototypeExemplarTools } from './tools/prototype-exemplar'
 import { cognitiveLoadTools } from './tools/cognitive-load'
 import { dualcodingTools } from './tools/dualcoding'
@@ -76,6 +77,7 @@ async function main() {
     ...communityTools,
     ...telemetryAudioTools,
     ...advancedLearningTools,
+    ...feedbackTools,
     ...prototypeExemplarTools,
     ...cognitiveLoadTools,
     ...dualcodingTools,

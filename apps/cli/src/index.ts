@@ -66,6 +66,7 @@ import {
   zpdCommands,
 } from './commands/advanced-learning'
 import { prototypeExemplarCommands } from './commands/prototype-exemplar'
+import { feedbackCommands } from './commands/feedback'
 import { cognitiveLoadCommands } from './commands/cognitive-load'
 import { dualcodingCommands } from './commands/dualcoding'
 
@@ -131,6 +132,7 @@ const builtinCommands: RegisteredCommand[] = [
   ...systemDynamicsCommands,
   ...modelInquiryCommands,
   ...prototypeExemplarCommands,
+  ...feedbackCommands,
   ...cognitiveLoadCommands,
   ...dualcodingCommands,
   ...knowledgeSpaceCommands,

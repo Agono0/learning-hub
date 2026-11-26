@@ -57,6 +57,7 @@ export {
   ElementInteractivityHUD,
   type ElementInteractivityHUDProps,
 } from './ElementInteractivityHUD'
+export { FeedbackStudioHUD, type FeedbackStudioHUDProps } from './FeedbackStudioHUD'
 export { DeliberatePracticeHUD, type DeliberatePracticeHUDProps } from './DeliberatePracticeHUD'
 export { SkillsHUD, type SkillsHUDProps } from './SkillsHUD'
 export {

@@ -473,6 +473,7 @@ export const NAV: NavGroup[] = [
       { href: '/notifications', label: 'Notifications', icon: BellRing },
       { href: '/permissions', label: 'Permissions', icon: LockKeyhole },
       { href: '/settings', label: 'Settings', icon: Settings },
+      { href: '/feedback-studio', label: 'Feedback Studio', icon: Sparkles },
     ],
   },
 ]

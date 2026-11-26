@@ -19,6 +19,7 @@ import { ideasRoutes } from './ideas'
 import { focusRoutes } from './focus'
 import { habitsRoutes } from './habits'
 import { notesRoutes } from './notes'
+import { feedbackRoutes } from './feedback'
 import { type Route } from './shared'
 
 /**
@@ -41,6 +42,7 @@ export const routes: Route[] = [
   ...focusRoutes,
   ...habitsRoutes,
   ...notesRoutes,
+  ...feedbackRoutes,
 ]
 
 export async function prototypeExemplarRouteJson(
