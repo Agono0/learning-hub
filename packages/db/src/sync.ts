@@ -22,7 +22,9 @@ import {
 } from '@learning-hub/core'
 import {
   KNOWN_TABLES,
+  aiSettingsOverlay,
   backupFileSchema,
+  type LocalAiSettings,
   normalizeBackupValue,
   presentTables,
   topologicalOrder,
@@ -467,13 +469,14 @@ export async function mergeBackup(
             `INSERT INTO "user_settings" (${columns.map((c) => `"${c}"`).join(', ')})
              VALUES (${columns.map(() => '?').join(', ')})`,
           )
-          insertStmt.run(...columns.map((c) => normalizeBackupValue(inc[c] as never)))
+          const fresh: Record<string, unknown> = { ...inc, ...aiSettingsOverlay(undefined) }
+          insertStmt.run(...columns.map((c) => normalizeBackupValue(fresh[c] as never)))
           inserted += 1
         } else if (str(inc['updated_at']) > str(local['updated_at'])) {
+          // Snapshot AI key/headers are ignored; a local key pins its endpoint (see aiSettingsOverlay).
           const merged: Record<string, unknown> = {
             ...inc,
-            ai_api_key: inc['ai_api_key'] ?? local['ai_api_key'] ?? null,
-            ai_headers: inc['ai_headers'] ?? local['ai_headers'] ?? null,
+            ...aiSettingsOverlay(local as unknown as LocalAiSettings),
           }
           const updateCols = columns.filter((c) => c !== 'id')
           database
