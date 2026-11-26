@@ -64,8 +64,13 @@ There is no login. The server is meant for the local user's own machine. What it
   set, every request is refused with `401`, whatever `Origin` it carries, because any client can
   send any `Origin`. `LEARNING_HUB_ALLOW_UNAUTHENTICATED=1` turns that off and the server then warns
   at boot. Loopback binds stay open without a token. `GET /health` is not exempt: it reports the
-  database path, so it needs the token too.
-- **Body size.** A JSON body over 1 MiB gets `413`.
+  database path, so it needs the token too. `GET /healthz` is the one exception: it needs no token,
+  works on any bind, and answers exactly `{"ok":true}` (GET only; `HEAD` and other methods follow
+  the normal rules). The Host check still applies to it.
+- **Body size.** A JSON body over 1 MiB gets `413`. The web app's own API uses the same default
+  with a few reviewed exceptions. `POST /api/review/attempt-image` now limits `imageData` to 8M
+  characters: that is a new product limit set with this hardening, not a constraint that existed
+  before, and the route accepts a body of up to that size plus 4 KiB.
 
 Compatibility: no first-party client talks to this server today (the native shell, whose
 `tauri.conf.json` serves `web/.next-tauri` and `localhost:3000` in dev, the browser extension, the

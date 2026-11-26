@@ -140,6 +140,8 @@ function sameOrigin(origin: string, host: ParsedHost): boolean {
 
 export interface GuardRequest {
   method: string
+  /** Request target (path and optional query). Only used to recognise the liveness probe. */
+  url?: string | null
   host: string | null
   origin: string | null
   secFetchSite: string | null
@@ -164,10 +166,21 @@ function tokenMatches(header: string | null, token: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b)
 }
 
+/** The one unauthenticated route: GET /healthz answers `{"ok":true}` and nothing else. */
+export const LIVENESS_PATH = '/healthz'
+
+function isLivenessProbe(req: GuardRequest): boolean {
+  return req.method === 'GET' && (req.url ?? '').split(/[?#]/)[0] === LIVENESS_PATH
+}
+
 export function checkRequest(req: GuardRequest, cfg: GuardConfig): GuardVerdict {
   const host = parseHost(req.host)
   if (!host || !hostAllowed(host, cfg))
     return { ok: false, status: 421, reason: 'host-not-allowed' }
+
+  // Liveness probe for supervisors and load balancers: exact method and path, no token, no body.
+  // The Host check above still applies. It carries no data, so Origin and token are moot.
+  if (isLivenessProbe(req)) return { ok: true }
 
   // Exposed beyond loopback with no token: an Origin header is just text any client can send
   // (`Origin: tauri://localhost`, or one that matches Host), so it proves nothing. Nothing can tell
@@ -213,6 +226,7 @@ export function guardRequest(req: IncomingMessage, res: ServerResponse, cfg: Gua
   const verdict = checkRequest(
     {
       method: req.method ?? 'GET',
+      url: req.url ?? null,
       host: header(req, 'host'),
       origin: header(req, 'origin'),
       secFetchSite: header(req, 'sec-fetch-site'),

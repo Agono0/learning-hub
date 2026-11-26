@@ -119,11 +119,13 @@ describe('server guard: pure decisions', () => {
     ]
     for (const method of ['GET', 'POST']) {
       for (const origin of origins) {
-        expect(checkRequest(req({ method, origin }), exposed), `${method} ${origin}`).toMatchObject({
-          ok: false,
-          status: 401,
-          reason: 'token-not-configured',
-        })
+        expect(checkRequest(req({ method, origin }), exposed), `${method} ${origin}`).toMatchObject(
+          {
+            ok: false,
+            status: 401,
+            reason: 'token-not-configured',
+          },
+        )
       }
     }
     const listed = { ...exposed, allowedOrigins: ['https://x.lan'] }
@@ -147,6 +149,27 @@ describe('server guard: pure decisions', () => {
     ).toBe(true)
     expect(checkRequest(req(), base).ok).toBe(true)
     expect(checkRequest(req(), { ...base, exposed: false }).ok).toBe(true)
+  })
+
+  it('GET /healthz is the one route open without a token; /health and other methods are not', () => {
+    const exposed = { ...base, exposed: true }
+    const tokened = { ...base, exposed: true, token: 'tok-123' }
+    for (const cfg of [exposed, tokened, { ...base, token: 'tok-123' }]) {
+      expect(checkRequest(req({ method: 'GET', url: '/healthz' }), cfg).ok).toBe(true)
+      expect(checkRequest(req({ method: 'GET', url: '/healthz?x=1' }), cfg).ok).toBe(true)
+      expect(checkRequest(req({ method: 'GET', url: '/health' }), cfg).ok).toBe(false)
+      expect(checkRequest(req({ method: 'GET', url: '/healthz/' }), cfg).ok).toBe(false)
+      expect(checkRequest(req({ method: 'GET', url: '/healthzz' }), cfg).ok).toBe(false)
+      expect(checkRequest(req({ method: 'GET', url: '/x/healthz' }), cfg).ok).toBe(false)
+      expect(checkRequest(req({ method: 'GET', url: '/' }), cfg).ok).toBe(false)
+      for (const method of ['HEAD', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'get']) {
+        expect(checkRequest(req({ method, url: '/healthz' }), cfg).ok, method).toBe(false)
+      }
+    }
+    // the Host check still applies, so a rebinding hostname gets nothing, not even liveness
+    expect(
+      checkRequest(req({ method: 'GET', url: '/healthz', host: 'attacker.test' }), exposed),
+    ).toMatchObject({ ok: false, status: 421 })
   })
 
   it('matches the Bearer scheme case-insensitively and nothing looser', () => {
@@ -277,6 +300,33 @@ describe('server guard: over a real socket', () => {
     expect((await send('GET', '/health', h)).status).toBe(200)
     const native = { ...h, Origin: 'tauri://localhost', 'Content-Type': 'application/json' }
     expect((await send('POST', '/ideas', native, idea)).status).toBeLessThan(300)
+  })
+
+  it('exposed with no token: /healthz answers only {"ok":true}, everything else is 401', async () => {
+    const saved = { ...cfg }
+    Object.assign(cfg, { exposed: true, token: undefined, allowUnauthenticated: false })
+    try {
+      const h = { Host: `127.0.0.1:${port}` }
+      const probe = await send('GET', '/healthz', h)
+      expect(probe.status).toBe(200)
+      expect(JSON.parse(probe.body)).toEqual({ ok: true })
+      expect(Object.keys(JSON.parse(probe.body))).toEqual(['ok'])
+      expect((await send('GET', '/health', h)).status).toBe(401)
+      expect((await send('GET', '/plugins', h)).status).toBe(401)
+      expect((await send('HEAD', '/healthz', h)).status).toBe(401)
+      expect(
+        (await send('POST', '/healthz', { ...h, 'Content-Type': 'application/json' }, '{}')).status,
+      ).toBe(401)
+      Object.assign(cfg, { token: 'tok-123' })
+      expect((await send('GET', '/healthz', h)).status).toBe(200)
+      expect((await send('GET', '/health', h)).status).toBe(401)
+      expect((await send('GET', '/health', { ...h, Authorization: 'bearer tok-123' })).status).toBe(
+        200,
+      )
+    } finally {
+      for (const k of ['exposed', 'token', 'allowUnauthenticated'] as const) delete cfg[k]
+      Object.assign(cfg, saved)
+    }
   })
 
   it('answers 413 for a body over the limit (declared and chunked)', async () => {

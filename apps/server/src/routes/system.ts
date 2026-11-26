@@ -20,6 +20,11 @@ async function health(_req: IncomingMessage, res: ServerResponse): Promise<void>
   })
 }
 
+/** GET /healthz — unauthenticated liveness probe (see guard.ts). Exactly `{"ok":true}`, nothing else. */
+async function healthz(_req: IncomingMessage, res: ServerResponse): Promise<void> {
+  sendJson(res, 200, { ok: true })
+}
+
 /** GET /decks — decks with card/due/new counts (same query as the web app). */
 /** GET /plugins — names + versions of the plugins loaded at boot (core registry). */
 async function plugins(_req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -43,6 +48,12 @@ export const systemRoutes: Route[] = [
     path: '/health',
     summary: 'liveness + resolved DB path',
     handler: health,
+  },
+  {
+    method: 'GET',
+    path: '/healthz',
+    summary: 'unauthenticated liveness probe, returns only {"ok":true}',
+    handler: healthz,
   },
   {
     method: 'GET',
