@@ -50,6 +50,7 @@ import { shareChannelTools } from './tools/share-channels'
 import { prototypeExemplarTools } from './tools/prototype-exemplar'
 import { cognitiveLoadTools } from './tools/cognitive-load'
 import { elaborativeInterrogationTools } from './tools/elaborative-interrogation'
+import { contextVariabilityTools } from './tools/context-variability'
 import { dualcodingTools } from './tools/dualcoding'
 import { taskTools } from './tools/tasks'
 import { leagueTools, remoteLeagueMembershipTools } from './tools/leagues'
@@ -98,6 +99,7 @@ async function main() {
     ...prototypeExemplarTools,
     ...cognitiveLoadTools,
     ...elaborativeInterrogationTools,
+    ...contextVariabilityTools,
     ...dualcodingTools,
     ...leagueTools,
     ...taskTools,
