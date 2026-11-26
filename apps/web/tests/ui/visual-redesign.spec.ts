@@ -242,3 +242,24 @@ test.describe('computed contrast probe', () => {
     writeFileSync(path.join(OUT, 'contrast-probe.json'), JSON.stringify(rows, null, 2))
   })
 })
+
+test.describe('nav disclosure', () => {
+  test.use({ viewport: { width: 1280, height: 800 } })
+  test('manually opened "More ways to learn" stays open across client-side navigation', async ({
+    page,
+    context,
+  }) => {
+    await prepare(page, context, 'dark')
+    await page.goto('/')
+    await settle(page)
+    const details = page.locator('nav[aria-label="Main"] details').first()
+    await expect(details).not.toHaveAttribute('open', /.*/)
+    await details.locator('summary').click()
+    await expect(details).toHaveAttribute('open', /.*/)
+    // Client-side navigation to a daily item (a Link, no full reload) must not reset the toggle.
+    await page.locator('nav[aria-label="Main"] a[href="/review"]').first().click()
+    await expect(page).toHaveURL(/\/review$/)
+    await page.waitForTimeout(500)
+    await expect(details).toHaveAttribute('open', /.*/)
+  })
+})
