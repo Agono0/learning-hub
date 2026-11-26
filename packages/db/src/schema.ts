@@ -2636,3 +2636,49 @@ export const rifDismissals = table(
   },
   (t) => [uniqueIndex('rif_dismissals_card_idx').on(t.cardId)],
 )
+
+/** Where and when the learner studied. Mutable (ended later), synced with last write wins by updated_at. */
+export const contextSessions = table(
+  'context_sessions',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    startedAt: text('started_at').notNull(),
+    /** null while the session is open. */
+    endedAt: text('ended_at'),
+    /** Normalised place name (lower case, at most 40 chars). */
+    place: text('place').notNull(),
+    noise: text('noise'),
+    tags: text('tags', { mode: 'json' }).$type<string[]>().notNull().default([]),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [
+    uniqueIndex('context_sessions_start_place_idx').on(t.startedAt, t.place),
+    index('context_sessions_started_idx').on(t.startedAt),
+  ],
+)
+
+/** Places and hours the learner must perform in (an exam hall, a work desk). Archived, never deleted, so sync stays consistent. */
+export const contextGoals = table(
+  'context_goals',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    label: text('label').notNull(),
+    place: text('place').notNull(),
+    startHour: integer('start_hour').notNull(),
+    endHour: integer('end_hour').notNull(),
+    noise: text('noise'),
+    archivedAt: text('archived_at'),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [uniqueIndex('context_goals_label_place_idx').on(t.label, t.place)],
+)

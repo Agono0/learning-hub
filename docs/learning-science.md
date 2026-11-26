@@ -830,3 +830,10 @@ Feedback answers three questions (Where am I going? How am I going? Where to nex
 | SQ3R reading mode                                                                | ✅ landed (multi-format reading) |
 | Weakness radar, study planner, Today agenda, notifications                       | ✅ landed                        |
 | Global search (FTS5) + ⌘K, glossary, cards from notes, mind map, sentence mining | ✅ landed                        |
+
+### Encoding specificity and context variability — Tulving & Thomson, 1973; Smith, Glenberg & Bjork, 1978
+
+Recall is better when the retrieval context matches the encoding context, and studying in more than one context makes memory less tied to any one of them. The effect is real but modest (Smith & Vela, 2001).
+
+- **In Learning HUB:** the Context Variability Studio (`/context-variability`, CLI `ctxv`, MCP `ctxv_*`) logs study sessions by place, compares recall at home and away, flags cards reviewed in one context only, and prepares for a performance place. It is observational and never changes a schedule. See `docs/context-variability.md`.
+- **Status:** ✅

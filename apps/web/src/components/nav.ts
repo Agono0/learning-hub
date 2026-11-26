@@ -380,6 +380,7 @@ export const NAV: NavGroup[] = [
       },
       { href: '/embodied-learning', label: 'Embodied Learning & Gesture Studio', icon: Sparkles },
       { href: '/retrieval-forgetting', label: 'Retrieval Forgetting Guard', icon: Sparkles },
+      { href: '/context-variability', label: 'Context Variability', icon: Sparkles },
     ],
   },
   {
