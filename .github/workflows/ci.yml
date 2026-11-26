@@ -33,11 +33,13 @@ jobs:
   #   static : typecheck, lint, prettier, commitlint (PR only)
   #   unit   : npm test --workspaces --if-present
   #   e2e    : db:push + db:seed, vitest e2e config
-  #   ui     : Playwright smoke suite on `next dev`, 3 shards, ports 3100/3101/3102
-  #   prod   : next build, production-build UI pass, pinned fetch smoke, native web bundle (push only)
+  #   ui     : Playwright smoke suite, 3 shards, ports 3100/3101/3102, running
+  #            against the PRODUCTION build downloaded from the prod job (LH_PROD=1)
+  #   prod   : next build, production-build UI pass, pinned fetch smoke, native web bundle
   #   gate   : fails unless every job above succeeded (skipped is a failure, except prod on PRs)
-  # Artifacts: arena-shots-N, visual-screenshots-N, ui-screenshots-N, playwright-report-N
-  # (failure only) per ui shard; visual-screenshots-prod from prod.
+  # Artifacts: next-build (prod -> ui shards), arena-shots-N, visual-screenshots-N,
+  # ui-screenshots-N, playwright-report-N (failure only) per ui shard;
+  # visual-screenshots-prod from prod.
   static:
     name: Typecheck, lint, format, commitlint
     runs-on: ubuntu-latest
@@ -120,6 +122,11 @@ jobs:
 
   ui:
     name: Playwright UI smoke (shard ${{ matrix.shard }}/3)
+    # Runs against the PRODUCTION build from the prod job, not `next dev`:
+    # cold dev-server on-demand compiles dominated every shard (~16-20 min
+    # each, no faster than the old serial suite) and a mid-test rebuild
+    # timed out leagues.spec.ts's serial lifecycle (run 45900585357).
+    needs: prod
     runs-on: ubuntu-latest
     timeout-minutes: 40
     strategy:
@@ -169,23 +176,18 @@ jobs:
         if: steps.pw-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      - name: Cache Next.js build cache
-        uses: actions/cache@v6
+      - name: Download Next.js production build
+        uses: actions/download-artifact@v7
         with:
-          path: |
-            apps/web/.next/cache
-            apps/web/.next-tauri/cache
-          # Per-shard save key: the three ui shards (and the prod job) would
-          # otherwise race to save one lockfile-keyed cache entry. The
-          # source-hash tier restores a same-deps cache from an earlier
-          # commit instead of a stale any-commit one.
-          key: nextjs-${{ runner.os }}-ui-${{ matrix.shard }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('apps/web/**/*.ts', 'apps/web/**/*.tsx', 'packages/**/*.ts') }}
-          restore-keys: |
-            nextjs-${{ runner.os }}-ui-${{ matrix.shard }}-${{ hashFiles('package-lock.json') }}-
-            nextjs-${{ runner.os }}-
+          name: next-build
+          path: apps/web/.next
 
       - name: Playwright UI smoke tests
         run: npm run test:ui -- --shard=${{ matrix.shard }}/3
+        env:
+          # Serve the downloaded production bundle (`next start`) — see the
+          # job comment. with-test-server.mjs requires .next/BUILD_ID here.
+          LH_PROD: '1'
 
       - name: Upload arena screenshots
         if: always()
@@ -226,7 +228,7 @@ jobs:
 
   prod:
     name: Build, production UI pass, pinned fetch smoke, native bundle
-    if: github.event_name != 'pull_request'
+    # Always runs: the ui shards consume this job's build artifact.
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -281,6 +283,17 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Upload Next.js production build
+        uses: actions/upload-artifact@v7
+        with:
+          name: next-build
+          path: |
+            apps/web/.next
+            !apps/web/.next/cache
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
 
       # Production render pass: serve the bundle built above with `next start` and rerun the
       # actual-route visual spec (same strict zero-error assertions) into a separate artifact.
