@@ -85,6 +85,13 @@ class MaxUpdatePlugin(private val activity: Activity) : Plugin(activity) {
       return
     }
     val apk = File(path)
+    // Defense in depth (the Rust command already confines the path): only an
+    // update APK inside this app's private data dir may be installed.
+    val inAppData = apk.canonicalPath.startsWith(activity.dataDir.canonicalPath + File.separator)
+    if (!inAppData || !apk.name.startsWith("android-update-") || !apk.name.endsWith(".apk")) {
+      invoke.reject("apkPath must be a downloaded update APK")
+      return
+    }
     if (!apk.isFile) {
       invoke.reject("APK not found at $path")
       return

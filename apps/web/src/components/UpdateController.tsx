@@ -163,7 +163,7 @@ export function UpdateController(): React.ReactElement | null {
       if (!path) {
         setNotice({
           tone: 'warning',
-          text: 'The download failed — check your connection and try again.',
+          text: 'The download failed or could not be verified. Check your connection, then re-check for updates.',
         })
         return
       }
@@ -241,14 +241,14 @@ export function UpdateController(): React.ReactElement | null {
       } else {
         setNotice({
           tone: 'warning',
-          text: 'The update download failed — check your connection and try again.',
+          text: 'The update could not be downloaded or verified. Check your connection, then re-check for updates.',
         })
       }
     } catch (err) {
       void reportError(err, { component: 'UpdateController', action: 'applyDelta' })
       setNotice({
         tone: 'warning',
-        text: 'The update could not be applied — please try again.',
+        text: 'The update could not be applied. Re-check for updates and try again.',
       })
     }
   }

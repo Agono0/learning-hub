@@ -1285,7 +1285,105 @@ pub fn lookup_in_active_slot(base_dir: &Path, rel_path: &str) -> Option<Vec<u8>>
     None
 }
 
+// ─── Signature-verified manifest registry ───────────────────────────────────
+
+/// Manifests whose minisign signature this process has verified, plus the APK
+/// hashes they list. The webview hands manifests and hashes back to later
+/// commands (`update_apply_delta_patch`, `update_download_android_apk`); without
+/// this check a compromised webview could skip `update_fetch_verified_manifest`
+/// and have the native layer promote an unsigned payload into the served slot.
+#[derive(Default)]
+struct VerifiedRegistry {
+    manifests: Vec<serde_json::Value>,
+    apk_shas: Vec<String>,
+}
+
+impl VerifiedRegistry {
+    const MAX_ENTRIES: usize = 8;
+
+    fn remember(&mut self, manifest: &UpdateManifest) {
+        let Ok(value) = serde_json::to_value(manifest) else {
+            return;
+        };
+        if !self.manifests.contains(&value) {
+            if self.manifests.len() >= Self::MAX_ENTRIES {
+                self.manifests.remove(0);
+            }
+            self.manifests.push(value);
+        }
+        if let Some(pkgs) = &manifest.android_packages {
+            for pkg in pkgs.values() {
+                let sha = pkg.sha256.to_ascii_lowercase();
+                if !self.apk_shas.contains(&sha) {
+                    if self.apk_shas.len() >= Self::MAX_ENTRIES * 4 {
+                        self.apk_shas.remove(0);
+                    }
+                    self.apk_shas.push(sha);
+                }
+            }
+        }
+    }
+
+    fn manifest_is_verified(&self, manifest: &UpdateManifest) -> bool {
+        serde_json::to_value(manifest)
+            .map(|v| self.manifests.contains(&v))
+            .unwrap_or(false)
+    }
+
+    #[cfg(any(target_os = "android", test))]
+    fn apk_sha_is_verified(&self, sha256: &str) -> bool {
+        self.apk_shas.contains(&sha256.to_ascii_lowercase())
+    }
+}
+
+static VERIFIED: LazyLock<std::sync::Mutex<VerifiedRegistry>> =
+    LazyLock::new(|| std::sync::Mutex::new(VerifiedRegistry::default()));
+
 // ─── App integration (commands + the lhslot serving seam) ────────────────────
+
+/// True when `p` is an absolute path lexically inside `base` with no `.`/`..`
+/// components. `Path::starts_with` alone is not enough: `<base>/../x` keeps its
+/// `..` component and still "starts with" `<base>`, so a webview-supplied path
+/// could climb out of the updates dir.
+fn path_within(base: &Path, p: &Path) -> bool {
+    use std::path::Component;
+    p.is_absolute()
+        && p.starts_with(base)
+        && !p
+            .components()
+            .any(|c| matches!(c, Component::ParentDir | Component::CurDir))
+}
+
+/// File-name prefix reserved for APKs written by `update_download_android_apk`
+/// (the only path that checks the hash against a signature-verified manifest).
+const APK_FILE_PREFIX: &str = "android-update-";
+
+/// True when `p` has no usable file name or uses the APK-downloader prefix.
+fn is_reserved_download_name(p: &Path) -> bool {
+    p.file_name()
+        .and_then(|n| n.to_str())
+        .map(|n| n.starts_with(APK_FILE_PREFIX))
+        .unwrap_or(true)
+}
+
+/// True when the manifest itself lists this exact patch artifact.
+fn patch_is_listed(m: &UpdateManifest, url: &str, sha256: &str, size: u64) -> bool {
+    m.patches
+        .iter()
+        .any(|p| p.url == url && p.sha256 == sha256 && p.size == size)
+}
+
+/// True when `p` is exactly a file the APK downloader writes:
+/// `<base>/android-update-<sha prefix>.apk`, directly inside the updates dir.
+#[cfg(any(target_os = "android", test))]
+fn is_update_apk_path(base: &Path, p: &Path) -> bool {
+    let name_ok = p
+        .file_name()
+        .and_then(|n| n.to_str())
+        .map(|n| n.starts_with(APK_FILE_PREFIX) && n.ends_with(".apk"))
+        .unwrap_or(false);
+    name_ok && path_within(base, p) && p.parent() == Some(base)
+}
 
 /// Updates base dir under app data: `<app_data_dir>/updates` (A/B slots plus
 /// the atomic pointer file). Lives here (not lib.rs) so the slot commands and
@@ -1338,6 +1436,11 @@ pub async fn update_android_device_info(app: tauri::AppHandle) -> Result<serde_j
     #[cfg(target_os = "android")]
     {
         use tauri::Manager;
+        // Only the APK the downloader wrote (sha256-verified, inside the
+        // updates dir) may reach the installer, never an arbitrary path.
+        if !is_update_apk_path(&slot_updates_dir(&app), Path::new(&apk_path)) {
+            return Err("apk_path must be a downloaded update APK".to_string());
+        }
         let state = app.state::<MaxUpdateAndroid>();
         state
             .0
@@ -1411,10 +1514,15 @@ pub fn update_download_file(
 
     let base = slot_updates_dir(&app);
     let dest_path = std::path::PathBuf::from(&dest);
-    if !dest_path.starts_with(&base) {
+    if !path_within(&base, &dest_path) {
         return Err(format!(
             "update download destination must live under {base:?}"
         ));
+    }
+    // The generic downloader must not be able to mint a file the installer
+    // gate trusts: those names come only from `update_download_android_apk`.
+    if is_reserved_download_name(&dest_path) {
+        return Err("destination file name is reserved for verified APK downloads".to_string());
     }
     let handle = app.clone();
     download_resumable_http(
@@ -1456,6 +1564,9 @@ pub fn update_fetch_verified_manifest(manifest_url: String) -> Result<serde_json
     verify_manifest_signature(json.as_bytes(), signature.trim(), UPDATE_PUB_KEY.trim())
         .map_err(|e| e.to_string())?;
     let manifest = parse_manifest(&json).map_err(|e| e.to_string())?;
+    if let Ok(mut reg) = VERIFIED.lock() {
+        reg.remember(&manifest);
+    }
     serde_json::to_value(&manifest).map_err(|e| e.to_string())
 }
 
@@ -1495,6 +1606,13 @@ pub fn update_download_android_apk(
     #[cfg(target_os = "android")]
     {
         use tauri::Emitter;
+        if !VERIFIED
+            .lock()
+            .map(|reg| reg.apk_sha_is_verified(&expected_sha256))
+            .unwrap_or(false)
+        {
+            return Err("APK hash is not in a signature-verified manifest".to_string());
+        }
         let base = slot_updates_dir(&app);
         let _ = fs::create_dir_all(&base);
         let suffix = if expected_sha256.len() >= 12 {
@@ -1542,6 +1660,18 @@ pub fn update_apply_delta_patch(
 
     let target: UpdateManifest =
         serde_json::from_value(target_manifest).map_err(|e| format!("parse target manifest: {e}"))?;
+    if !VERIFIED
+        .lock()
+        .map(|reg| reg.manifest_is_verified(&target))
+        .unwrap_or(false)
+    {
+        return Err("target manifest was not signature-verified by this app".to_string());
+    }
+    // The patch must be one the verified manifest lists (url, hash and size),
+    // not just any artifact the webview names.
+    if !patch_is_listed(&target, &patch_url, &patch_sha256, patch_size) {
+        return Err("patch is not listed in the verified manifest".to_string());
+    }
     let manifest_bytes = serde_json::to_vec_pretty(&target)
         .map_err(|e| format!("serialize target manifest: {e}"))?;
 
@@ -2605,5 +2735,116 @@ mod patch_tests {
             Err(UpdateError::Parse(_))
         ));
         fs::remove_dir_all(&base).ok();
+    }
+}
+
+#[cfg(test)]
+mod path_confinement_tests {
+    use super::*;
+
+    fn base() -> PathBuf {
+        std::env::temp_dir().join("lh-confine-test").join("updates")
+    }
+
+    #[test]
+    fn path_within_rejects_parent_dir_escape() {
+        let b = base();
+        assert!(path_within(&b, &b.join("slots").join("a.bin")));
+        assert!(!path_within(&b, &b.join("..").join("x")));
+        assert!(!path_within(&b, &b.join("slots").join("..").join("..").join("x")));
+        assert!(!path_within(&b, &b.parent().unwrap().join("other").join("a.bin")));
+        assert!(!path_within(&b, Path::new("updates/a.bin")));
+    }
+
+    #[test]
+    fn apk_path_must_be_the_downloaded_file() {
+        let b = base();
+        let good = b.join("android-update-0123456789ab.apk");
+        assert!(is_update_apk_path(&b, &good));
+        assert!(!is_update_apk_path(&b, &std::env::temp_dir().join("evil.apk")));
+        assert!(!is_update_apk_path(&b, &b.join("evil.apk")));
+        assert!(!is_update_apk_path(
+            &b,
+            &b.join("..").join("android-update-0123456789ab.apk")
+        ));
+        assert!(!is_update_apk_path(
+            &b,
+            &b.join("sub").join("android-update-0123456789ab.apk")
+        ));
+    }
+}
+
+#[cfg(test)]
+mod verified_registry_tests {
+    use super::*;
+
+    fn manifest(version: &str, apk_sha: Option<&str>) -> UpdateManifest {
+        let android = apk_sha.map(|sha| {
+            format!(
+                r#","androidPackages":{{"android-arm64":{{"url":"https://example.com/a.apk","sha256":"{sha}","size":10}}}}"#
+            )
+        });
+        let json = format!(
+            r#"{{"manifestVersion":1,"channel":"nightly","version":"{version}","buildSha":"abc1234","createdAt":"2026-11-22T10:00:00.000Z","minNativeVersion":"0.1.0","requiresNative":false,"files":[],"patches":[],"fullPackageUrl":"https://example.com/app.zip"{}}}"#,
+            android.unwrap_or_default()
+        );
+        parse_manifest(&json).unwrap()
+    }
+
+    #[test]
+    fn only_remembered_manifests_are_verified() {
+        let mut reg = VerifiedRegistry::default();
+        let good = manifest("nightly-1", None);
+        assert!(!reg.manifest_is_verified(&good));
+        reg.remember(&good);
+        assert!(reg.manifest_is_verified(&good));
+        // A webview-supplied manifest that differs in any field is rejected.
+        assert!(!reg.manifest_is_verified(&manifest("nightly-2", None)));
+    }
+
+    #[test]
+    fn apk_hashes_come_only_from_verified_manifests() {
+        let sha = "ab".repeat(32);
+        let mut reg = VerifiedRegistry::default();
+        assert!(!reg.apk_sha_is_verified(&sha));
+        reg.remember(&manifest("nightly-1", Some(&sha)));
+        assert!(reg.apk_sha_is_verified(&sha));
+        assert!(reg.apk_sha_is_verified(&sha.to_uppercase()));
+        assert!(!reg.apk_sha_is_verified(&"cd".repeat(32)));
+    }
+
+    #[test]
+    fn registry_is_bounded() {
+        let mut reg = VerifiedRegistry::default();
+        for i in 0..20 {
+            reg.remember(&manifest(&format!("nightly-{i}"), None));
+        }
+        assert!(reg.manifests.len() <= VerifiedRegistry::MAX_ENTRIES);
+        assert!(!reg.manifest_is_verified(&manifest("nightly-0", None)));
+        assert!(reg.manifest_is_verified(&manifest("nightly-19", None)));
+    }
+}
+
+#[cfg(test)]
+mod ota_gate_tests {
+    use super::*;
+
+    #[test]
+    fn generic_downloader_cannot_use_the_apk_name_prefix() {
+        let b = std::env::temp_dir().join("lh-gate").join("updates");
+        assert!(is_reserved_download_name(&b.join("android-update-0123456789ab.apk")));
+        assert!(is_reserved_download_name(&b.join("android-update-x")));
+        assert!(!is_reserved_download_name(&b.join("patch-0123456789ab.zip")));
+        assert!(is_reserved_download_name(Path::new("/")));
+    }
+
+    #[test]
+    fn only_listed_patches_are_accepted() {
+        let json = r#"{"manifestVersion":1,"channel":"nightly","version":"n2","buildSha":"abc1234","createdAt":"2026-11-22T10:00:00.000Z","minNativeVersion":"0.1.0","requiresNative":false,"files":[],"patches":[{"fromVersion":"n1","url":"https://example.com/p.zip","sha256":"aa","size":5}],"fullPackageUrl":"https://example.com/app.zip"}"#;
+        let m = parse_manifest(json).unwrap();
+        assert!(patch_is_listed(&m, "https://example.com/p.zip", "aa", 5));
+        assert!(!patch_is_listed(&m, "https://evil.example/p.zip", "aa", 5));
+        assert!(!patch_is_listed(&m, "https://example.com/p.zip", "bb", 5));
+        assert!(!patch_is_listed(&m, "https://example.com/p.zip", "aa", 6));
     }
 }
