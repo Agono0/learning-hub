@@ -55,9 +55,17 @@ async function buildPrompt(
     case 'feynman-student':
       return `I want to teach you a concept, and you should interview me like a curious 12-year-old.\n\nConcept: ${text('concept') || '(named in my explanation)'}\n\nMy explanation so far:\n"""\n${text('explanation') || '(I will explain in my reply)'}\n"""`
     case 'feynman-grader': {
-      const sessionId = Number(params.get('sessionId') ?? 0)
-      if (!sessionId)
-        throw new Error('sessionId query param required for the feynman-grader envelope')
+      const rawId = params.get('sessionId')
+      // No sessionId at all is the offline path (the Feynman page asks for the rubric on mount,
+      // before any session exists): the learner pastes their own teach-back, nothing is invented.
+      // A supplied id is never coerced to "absent": it must be a positive integer and exist.
+      if (rawId === null) {
+        return `Concept the learner was teaching: ${text('concept') || '(name the concept here)'}\n\nTeach-back transcript:\n[PASTE YOUR TEACH-BACK EXPLANATION HERE: no saved session was linked, so replace this line with what you explained, in your own words]`
+      }
+      if (!/^[1-9]\d{0,14}$/.test(rawId)) {
+        throw new Error('sessionId must be a positive integer')
+      }
+      const sessionId = Number(rawId)
       const session = getChatSession(sessionId)
       if (!session) throw new Error(`chat session ${sessionId} not found`)
       const transcript = ((session.messages as { role: string; content: string }[]) ?? [])
