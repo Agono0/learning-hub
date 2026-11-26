@@ -231,6 +231,10 @@ export function computeRecordNaturalKey(
       return `deck:${str(row['deck_id'])}:at:${str(row['created_at'])}`
     case 'rif_dismissals':
       return `card:${str(row['card_id'])}`
+    case 'context_sessions':
+      return `start:${str(row['started_at'])}:place:${str(row['place'])}`
+    case 'context_goals':
+      return `label:${str(row['label'])}:place:${str(row['place'])}`
     default:
       return null
   }
