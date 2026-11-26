@@ -340,10 +340,20 @@ export default function DecksPage() {
           title="Decks & Cards"
           actions={
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="primary" onClick={() => setEditing('new')} disabled={!activeDeck}>
+              <Button
+                variant="primary"
+                onClick={() => setEditing('new')}
+                disabled={!activeDeck}
+                aria-describedby={activeDeck ? undefined : 'decks-select-hint'}
+              >
                 <Plus className="h-4 w-4" /> New card
               </Button>
-              <Button variant="ghost" onClick={() => setAiOpen(true)} disabled={!activeDeck}>
+              <Button
+                variant="ghost"
+                onClick={() => setAiOpen(true)}
+                disabled={!activeDeck}
+                aria-describedby={activeDeck ? undefined : 'decks-select-hint'}
+              >
                 <Wand2 className="h-4 w-4" /> AI generate
               </Button>
               <Menu
@@ -377,6 +387,11 @@ export default function DecksPage() {
             </div>
           }
         />
+        {!activeDeck && (
+          <p id="decks-select-hint" className="mt-2 text-sm text-secondary">
+            Select a deck below to add or generate cards.
+          </p>
+        )}
       </ClayIn>
 
       {/* deck rail — entrance beat 1 */}

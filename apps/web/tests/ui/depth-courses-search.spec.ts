@@ -185,6 +185,8 @@ test('decks header actions: disabled with All decks, enabled with a deck (comput
         background: cs.backgroundColor,
       }
     })
+  await expect(page.locator('#decks-select-hint')).toBeVisible()
+  await expect(newCard).toHaveAttribute('aria-describedby', 'decks-select-hint')
   const before = { newCard: await probe(newCard), ai: await probe(ai) }
   // Browser-measured computed values; not a contrast ratio, and disabled controls are exempt from WCAG text contrast.
   await page
@@ -199,6 +201,7 @@ test('decks header actions: disabled with All decks, enabled with a deck (comput
     JSON.stringify({ before, after }, null, 2),
   )
   await page.screenshot({ path: path.join(OUT, 'depth-decks-actions-enabled.png') })
+  await expect(page.locator('#decks-select-hint')).toHaveCount(0)
   expect(before.newCard.disabled).toBe(true)
   expect(after.newCard.disabled).toBe(false)
   expect(after.ai.disabled).toBe(false)
