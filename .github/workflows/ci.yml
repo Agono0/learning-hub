@@ -135,10 +135,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        include:
+          - { shard: 1, port: 3100 }
+          - { shard: 2, port: 3101 }
+          - { shard: 3, port: 3102 }
     env:
       # One server per shard on its own port; specs read UI_SMOKE_PORT directly.
-      UI_SMOKE_PORT: ${{ 3099 + matrix.shard }}
+      UI_SMOKE_PORT: ${{ matrix.port }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
