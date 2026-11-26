@@ -52,6 +52,7 @@ import { cognitiveLoadTools } from './tools/cognitive-load'
 import { elaborativeInterrogationTools } from './tools/elaborative-interrogation'
 import { contextVariabilityTools } from './tools/context-variability'
 import { dualcodingTools } from './tools/dualcoding'
+import { taskReportTools } from './tools/tasks-reports'
 import { taskTools } from './tools/tasks'
 import { taskOrganizeTools } from './tools/tasks-organize'
 import { leagueTools, remoteLeagueMembershipTools } from './tools/leagues'
@@ -104,6 +105,7 @@ async function main() {
     ...interferenceTools,
     ...contextVariabilityTools,
     ...dualcodingTools,
+    ...taskReportTools,
     ...leagueTools,
     ...taskTools,
     ...taskOrganizeTools,
