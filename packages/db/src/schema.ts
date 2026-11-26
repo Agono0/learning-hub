@@ -2637,6 +2637,63 @@ export const rifDismissals = table(
   (t) => [uniqueIndex('rif_dismissals_card_idx').on(t.cardId)],
 )
 
+/**
+ * The learner's decision about a lookalike pair of cards (confirmed as a real
+ * confusion, or dismissed as harmless). card_a_id is always the smaller id.
+ * Mutable and synced with last write wins by updated_at. A reset sets status
+ * to 'cleared' and keeps the row, so it wins over an older decision on another device.
+ */
+export const interferencePairs = table(
+  'interference_pairs',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    cardAId: integer('card_a_id')
+      .notNull()
+      .references(() => cards.id, { onDelete: 'cascade' }),
+    cardBId: integer('card_b_id')
+      .notNull()
+      .references(() => cards.id, { onDelete: 'cascade' }),
+    status: text('status').$type<'confirmed' | 'dismissed' | 'cleared'>().notNull(),
+    note: text('note'),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [uniqueIndex('interference_pairs_ab_idx').on(t.cardAId, t.cardBId)],
+)
+
+/**
+ * Discrimination drill tallies, one row per pair per UTC day (counts are added
+ * to the day's row, so growth is bounded and nothing is deleted). Mutable, synced
+ * with last write wins by updated_at.
+ */
+export const interferenceDrills = table(
+  'interference_drills',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    cardAId: integer('card_a_id')
+      .notNull()
+      .references(() => cards.id, { onDelete: 'cascade' }),
+    cardBId: integer('card_b_id')
+      .notNull()
+      .references(() => cards.id, { onDelete: 'cascade' }),
+    /** UTC day, YYYY-MM-DD. */
+    day: text('day').notNull(),
+    correct: integer('correct').notNull().default(0),
+    total: integer('total').notNull().default(0),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [uniqueIndex('interference_drills_ab_day_idx').on(t.cardAId, t.cardBId, t.day)],
+)
+
 /** Where and when the learner studied. Mutable (ended later), synced with last write wins by updated_at. */
 export const contextSessions = table(
   'context_sessions',
