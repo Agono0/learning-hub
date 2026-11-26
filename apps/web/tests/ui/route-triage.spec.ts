@@ -46,6 +46,8 @@ test('route survey at 390px records status, errors, h1 and overflow', async ({ p
     let h1 = false
     let overflow = -1
     let note = ''
+    let culprits: string[] = []
+    let firstHeading = ''
     try {
       const res = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45_000 })
       status = res?.status() ?? 0
@@ -59,12 +61,44 @@ test('route survey at 390px records status, errors, h1 and overflow', async ({ p
       overflow = await page.evaluate(
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       )
+      if (overflow > 0) {
+        culprits = await page.evaluate(() => {
+          const w = document.documentElement.clientWidth
+          const out: Array<{ right: number; d: string }> = []
+          for (const el of Array.from(document.body.querySelectorAll('*'))) {
+            const r = el.getBoundingClientRect()
+            if (r.width > 0 && r.right > w + 1) {
+              const cls = (el.getAttribute('class') ?? '').slice(0, 70)
+              out.push({
+                right: Math.round(r.right),
+                d: `${el.tagName.toLowerCase()}.${cls} w=${Math.round(r.width)}`,
+              })
+            }
+          }
+          out.sort((a, b) => b.right - a.right)
+          return out.slice(0, 3).map((o) => `right=${o.right} ${o.d}`)
+        })
+      }
+      if (!h1) {
+        firstHeading = await page.evaluate(
+          () => document.querySelector('h2,h3,[role=heading]')?.textContent?.slice(0, 60) ?? '',
+        )
+      }
     } catch (e) {
       note = `did not load: ${(e as Error).message.slice(0, 120)}`
     }
     page.off('console', onErr)
     page.off('pageerror', onPage)
-    rows.push({ url, status, h1, overflow, errors: errors.slice(0, 4), note })
+    rows.push({
+      url,
+      status,
+      h1,
+      firstHeading,
+      overflow,
+      culprits,
+      errors: errors.slice(0, 4),
+      note,
+    })
   }
   fs.writeFileSync(path.join(OUT, 'route-triage.json'), JSON.stringify(rows, null, 2))
   expect(rows.length).toBeGreaterThan(50)
