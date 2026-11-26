@@ -29,4 +29,12 @@ describe('host policy: IPv4-translated IPv6 (::ffff:0:0:0/96)', () => {
     expect(classifyIp('2606:4700:4700::1111')).toBeNull()
     expect(checkHostUrl('https://[2606:4700:4700::1111]/x').ok).toBe(true)
   })
+
+  it('keeps 192.0.x scoped to the IANA /24 rows: public neighbours stay allowed', () => {
+    expect(classifyIp('192.0.0.1')).toBe('reserved')
+    expect(classifyIp('192.0.2.1')).toBe('reserved')
+    expect(classifyIp('192.0.3.1')).toBeNull()
+    expect(classifyIp('192.0.1.1')).toBeNull()
+    expect(classifyIp('::ffff:c000:301')).toBe('ipv4-embedded')
+  })
 })

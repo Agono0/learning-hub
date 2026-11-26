@@ -31,9 +31,23 @@ const PRIVATE: [string, string][] = [
   ['benchmarking high', '198.19.255.254'],
   ['documentation 198.51.100', '198.51.100.7'],
   ['documentation 203.0.113', '203.0.113.9'],
+  // IANA IPv4 special-purpose registry: 192.0.0.0/24 and 192.0.2.0/24 only within 192.0.0.0/16.
+  ['IETF protocol assignments low', '192.0.0.1'],
+  ['IETF protocol assignments high', '192.0.0.255'],
+  ['documentation TEST-NET-1', '192.0.2.5'],
+  ['mapped TEST-NET-1', '::ffff:c000:205'],
+  ['6to4 of 192.0.0.1', '2002:c000:1::'],
 ]
 
 const PUBLIC: [string, string][] = [
+  // Public neighbours inside 192.0.0.0/16 that the registry does not list.
+  ['192.0.1.1 (between the two reserved /24s)', '192.0.1.1'],
+  ['192.0.3.1 (just above TEST-NET-1)', '192.0.3.1'],
+  ['192.0.255.254', '192.0.255.254'],
+  ['mapped 192.0.3.1', '::ffff:c000:301'],
+  ['AS112-v4 192.31.196.1 (globally reachable)', '192.31.196.1'],
+  ['AMT 192.52.193.1 (globally reachable)', '192.52.193.1'],
+  ['Direct Delegation AS112 192.175.48.1', '192.175.48.1'],
   ['NAT64 of a public IPv4', '64:ff9b::808:808'],
   ['6to4 of a public IPv4', '2002:808:808::'],
   ['IPv4-translated public', '::ffff:0:808:808'],

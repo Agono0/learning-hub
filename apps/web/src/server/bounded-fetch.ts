@@ -64,7 +64,8 @@ export function ipv4Private(host: string): boolean {
     (a === 169 && b === 254) ||
     (a === 172 && b >= 16 && b <= 31) ||
     (a === 192 && b === 168) ||
-    (a === 192 && b === 0) ||
+    (a === 192 && b === 0 && c === 0) || // IETF protocol assignments 192.0.0.0/24, IANA registry
+    (a === 192 && b === 0 && c === 2) || // documentation TEST-NET-1 192.0.2.0/24, IANA registry
     (a === 198 && (b === 18 || b === 19)) || // benchmarking, RFC 2544
     (a === 198 && b === 51 && c === 100) || // documentation
     (a === 203 && b === 0 && c === 113) || // documentation
