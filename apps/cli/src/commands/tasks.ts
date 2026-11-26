@@ -29,9 +29,15 @@ function fail(message: string): void {
   process.exitCode = 1
 }
 
+class FlagError extends Error {}
+
+/** Value of `--flag <value>`; undefined when absent. A flag with no value, or one followed by another flag, is an error. */
 function parseFlag(args: string[], flag: string): string | undefined {
   const idx = args.indexOf(flag)
-  return idx !== -1 && idx + 1 < args.length ? args[idx + 1] : undefined
+  if (idx === -1) return undefined
+  const value = args[idx + 1]
+  if (value === undefined || value.startsWith('--')) throw new FlagError(`${flag} needs a value`)
+  return value
 }
 
 function parseId(raw: string | undefined): number | null {
@@ -89,7 +95,7 @@ function listCommand(args: string[]): void {
 
 function addCommand(args: string[]): void {
   const title = args[1]
-  if (!title || !title.trim()) {
+  if (!title || !title.trim() || title.startsWith('--')) {
     console.error(USAGE)
     process.exitCode = 1
     return
@@ -151,6 +157,15 @@ function trackCommand(args: string[]): void {
 }
 
 export function tasksCommand(args: string[]): void {
+  try {
+    dispatch(args)
+  } catch (err) {
+    if (err instanceof FlagError) return fail(err.message)
+    throw err
+  }
+}
+
+function dispatch(args: string[]): void {
   const sub = args[0] || 'list'
   if (sub === 'list') return listCommand(args)
   if (sub === 'add') return addCommand(args)

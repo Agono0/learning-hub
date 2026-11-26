@@ -8,7 +8,12 @@
  * unknown id) come back as `{ ok: false, error }`, like the habit tools.
  */
 import { z } from 'zod'
-import { TaskDomainError, createTaskInputSchema, taskPrioritySchema } from '@learning-hub/core'
+import {
+  TaskDomainError,
+  createTaskInputSchema,
+  dayKeySchema,
+  taskPrioritySchema,
+} from '@learning-hub/core'
 import {
   completeTaskItem,
   createTaskItem,
@@ -20,6 +25,12 @@ import {
 import { json, tool, type RegisteredTool } from '../tool-kit'
 
 const taskId = z.number().int().positive()
+
+/** YYYY-MM-DD that is a real calendar date (the regex alone lets 2026-02-30 and 2026-13-45 through). */
+const realDay = dayKeySchema.refine(
+  (d) => new Date(`${d}T00:00:00.000Z`).toISOString().slice(0, 10) === d,
+  'Expected a real calendar date',
+)
 
 /** Domain-rule and "<kind> #<id> not found" errors become tool results; the rest rethrow. */
 function failure(err: unknown) {
@@ -108,10 +119,7 @@ export const taskTools: RegisteredTool[] = [
     {
       id: taskId,
       minutes: z.number().positive().max(1440),
-      day: z
-        .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/)
-        .optional(),
+      day: realDay.optional(),
     },
     ({ id, minutes, day }) => {
       if (!getTaskItem(id)) return json({ ok: false, error: `task #${id} not found` })

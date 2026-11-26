@@ -130,7 +130,18 @@ describe('MCP task tools', () => {
     await expect(
       call('task_track_time', { id: t.task.id, minutes: 5, day: '10/03/2026' }),
     ).rejects.toThrow()
+    for (const day of ['2026-13-45', '2026-02-30', '2026-00-10', '2026-04-31']) {
+      await expect(
+        call('task_track_time', { id: t.task.id, minutes: 5, day }),
+        day,
+      ).rejects.toThrow()
+    }
     expect(D.sumTimeLogs({ taskId: t.task.id })).toBe(25 * 60_000)
+    // a real leap day is accepted
+    expect(
+      (await call('task_track_time', { id: t.task.id, minutes: 1, day: '2028-02-29' })).ok,
+    ).toBe(true)
+    expect(D.sumTimeLogs({ taskId: t.task.id })).toBe(26 * 60_000)
   })
 })
 
@@ -158,6 +169,30 @@ describe('tasks CLI command', () => {
 
     expect(runCli(['track', String(id), '10']).out).toMatch(/Logged 10 min/)
     expect(D.sumTimeLogs({ taskId: id })).toBe(10 * 60_000)
+  })
+
+  it('does not take a flag as the title or as a flag value', () => {
+    const before = D.listTaskItems({ includeDone: true }).length
+    for (const args of [
+      ['add', '--project'],
+      ['add', '--project', String(projectId), 'Late title'],
+      ['add', 'x', '--priority', '--due'],
+      ['add', 'x', '--project', '--priority', 'low'],
+      ['add', 'x', '--due'],
+      ['list', '--limit', '--all'],
+      ['list', '--project'],
+    ]) {
+      const r = runCli(args)
+      expect(r.code, args.join(' ')).toBe(1)
+      expect(r.err, args.join(' ')).not.toBe('')
+      process.exitCode = undefined
+      vi.restoreAllMocks()
+    }
+    expect(D.listTaskItems({ includeDone: true }).length).toBe(before)
+    // a normal call with flags after the title still works
+    expect(
+      runCli(['add', 'Flags last', '--priority', 'medium', '--due', '2026-05-01']).code,
+    ).toBeUndefined()
   })
 
   it('rejects bad input with exit code 1 and writes nothing', () => {
