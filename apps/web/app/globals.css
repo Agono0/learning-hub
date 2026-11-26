@@ -1032,9 +1032,12 @@ html.theme-e-ink .panel {
   background-image:
     radial-gradient(60rem circle at 0% 0%, var(--bento-glow), transparent 55%), var(--bento-sheen);
 }
-html.theme-e-ink .bento-tile::before,
-html.theme-e-ink .bento-hero {
+html.theme-e-ink .bento-tile::before {
   display: none;
+}
+/* The hero keeps its content in e-ink; only the accent wash goes (a combined display:none rule
+   used to hide the whole "Up next" tile). */
+html.theme-e-ink .bento-hero {
   background-image: none !important;
 }
 

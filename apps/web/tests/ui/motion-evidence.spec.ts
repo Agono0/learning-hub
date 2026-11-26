@@ -228,6 +228,8 @@ test.describe('e-ink theme captures', () => {
           JSON.stringify({ animatedElements: anim }),
         )
         expect(anim).toBe(0)
+        // Regression: a combined display:none rule once hid the whole hero tile in e-ink.
+        if (slug === 'today') await expect(page.locator('#today-next-title')).toBeVisible()
       })
     }
   }
