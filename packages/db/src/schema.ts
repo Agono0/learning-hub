@@ -2584,6 +2584,21 @@ export const eiAttempts = table(
     predicted: real('predicted'),
     fsrsRating: integer('fsrs_rating').notNull(),
     rubric: text('rubric', { mode: 'json' }).$type<unknown[]>().notNull().default([]),
+/** Append-only history of retrieval-induced-forgetting audits (one summary row per saved audit). */
+export const rifAudits = table(
+  'rif_audits',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    /** Deck the audit was limited to, or null for every deck. Not a foreign key: history outlives decks. */
+    deckId: integer('deck_id'),
+    windowDays: integer('window_days').notNull(),
+    scanned: integer('scanned').notNull(),
+    clustered: integer('clustered').notNull(),
+    atRisk: integer('at_risk').notNull(),
+    watch: integer('watch').notNull(),
+    meanRisk: real('mean_risk').notNull(),
+    /** The riskiest cards at the time: [{ cardId, risk, band }]. */
+    top: text('top', { mode: 'json' }).$type<unknown[]>().notNull().default([]),
     createdAt: text('created_at')
       .notNull()
       .$defaultFn(() => new Date().toISOString()),
@@ -2592,4 +2607,21 @@ export const eiAttempts = table(
     index('ei_attempts_fact_idx').on(t.factId, t.createdAt),
     index('ei_attempts_created_idx').on(t.createdAt),
   ],
+  (t) => [index('rif_audits_created_idx').on(t.createdAt)],
+)
+
+/** Cards the learner excluded from the guard. One row per card. */
+export const rifDismissals = table(
+  'rif_dismissals',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    cardId: integer('card_id')
+      .notNull()
+      .references(() => cards.id, { onDelete: 'cascade' }),
+    reason: text('reason'),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [uniqueIndex('rif_dismissals_card_idx').on(t.cardId)],
 )

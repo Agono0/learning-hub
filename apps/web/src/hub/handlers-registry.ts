@@ -261,6 +261,7 @@ import * as feedbackStudioRoute from '../server/handlers/feedback-studio/route'
 import * as elaborativeInterrogationRoute from '../server/handlers/elaborative-interrogation/route'
 import * as elaborativeInterrogationBankRoute from '../server/handlers/elaborative-interrogation/bank/route'
 import * as freeRecallRoute from '../server/handlers/free-recall/route'
+import * as retrievalForgettingRoute from '../server/handlers/retrieval-forgetting/route'
 
 /** Request→Response function as produced by `withRoute` (context optional). */
 export type HubHandler = (req: Request, context?: unknown) => Promise<Response>
@@ -543,6 +544,7 @@ add('feedback-studio', feedbackStudioRoute)
 add('elaborative-interrogation', elaborativeInterrogationRoute)
 add('elaborative-interrogation/bank', elaborativeInterrogationBankRoute)
 add('free-recall', freeRecallRoute)
+add('retrieval-forgetting', retrievalForgettingRoute)
 
 /** A registry match: the handler plus the resolved `[id]` params. */
 export interface HubRouteMatch {
