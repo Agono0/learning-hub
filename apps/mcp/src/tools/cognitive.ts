@@ -483,7 +483,7 @@ export const cognitiveTools: RegisteredTool[] = [
             problemId: z.string(),
             trueCategoryId: z.string(),
             chosenCategoryId: z.string(),
-            reactionMs: z.number().optional(),
+            reactionMs: z.number().nonnegative().max(3_600_000).optional(),
           }),
         )
         .max(1000)
@@ -560,7 +560,7 @@ export const cognitiveTools: RegisteredTool[] = [
           articulatedConvergenceSchema: z.string(),
           decoyRejectionRationale: z.string().optional(),
           confidenceScore: z.number().min(1).max(5),
-          timeSpentMs: z.number().nonnegative(),
+          timeSpentMs: z.number().nonnegative().max(86_400_000),
         })
         .optional()
         .describe('Omit to list suites; provide to evaluate one structure-mapping attempt'),
