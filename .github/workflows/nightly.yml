@@ -75,8 +75,11 @@ jobs:
   meta:
     name: Compute nightly metadata
     runs-on: ubuntu-latest
-    # workflow_run: publish only when the triggering CI run on main succeeded.
-    if: ${{ !inputs.measure_patch && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') }}
+    # workflow_run: publish only when the triggering CI run succeeded AS A
+    # PUSH ON THIS REPOSITORY. A fork's completed CI run (or a PR-triggered
+    # one) must never arm the privileged signing/publish jobs downstream —
+    # the meta job's skip cascades through every `needs.meta.result` guard.
+    if: ${{ !inputs.measure_patch && (github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository)) }}
     timeout-minutes: 10
     outputs:
       version: ${{ steps.meta.outputs.version }}
@@ -86,6 +89,7 @@ jobs:
       native_version: ${{ steps.meta.outputs.native_version }}
       requires_native: ${{ steps.meta.outputs.requires_native }}
       prev_tag: ${{ steps.meta.outputs.prev_tag }}
+      publish: ${{ steps.meta.outputs.publish }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -101,21 +105,37 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
           SHORT_SHA="${HEAD_SHA::7}"
           NIGHT_DATE="$(date -u +%Y%m%d)"
           VERSION="${NIGHT_DATE}-${SHORT_SHA}"
           TAG="nightly-${VERSION}"
-          # Native-shell version: 0.1.<UTC date> (semver, Android
-          # versionCode-safe: major*1e6 + minor*1e3 + patch). Date-based so the
-          # nightly pipeline and native.yml's `latest` APKs share one monotonic
-          # scale — per-workflow run numbers drift apart and caused downgrade
-          # rejects. latest.json is only republished when requires_native is
-          # true, so same-day web-only releases never prompt an NSIS reinstall.
-          SHELL_VERSION="0.1.$(date -u +%y%m%d)"
+          # Native-shell version: 0.1.<UTC date * 100 + run_number % 100>.
+          # Semver-numeric patch; Android versionCode-safe under Tauri's
+          # derivation (major*1e6 + minor*1e3 + patch <= ~99.2M, far below the
+          # 2.1e9 cap). The date dominates so versions increase across days;
+          # the run number breaks same-day ties — two same-day builds used to
+          # share a version, so the second was never offered via the
+          # latest.json compare and Android saw an equal-version reinstall.
+          # Date-based so this pipeline and native.yml's `latest` APKs share
+          # one scale. Wraps only past 100 runs of one workflow per UTC day.
+          SHELL_VERSION="0.1.$(( $(date -u +%y%m%d) * 100 + (${GITHUB_RUN_NUMBER:-0} % 100) ))"
 
           REQUIRES_NATIVE=false
+          # Manual dispatch from a branch that is not main (or a version tag)
+          # must never create the nightly release or move channel pointers —
+          # dry_run=false there means "build for inspection only". Scheduled
+          # and workflow_run runs always target main, so they may publish.
+          PUBLISH=true
+          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
+            case "${REF_NAME}" in
+              main|v*) ;;
+              *) PUBLISH=false ;;
+            esac
+          fi
           PREV_TAG="$(gh release list --limit 30 --json tagName --jq '[.[].tagName | select(startswith("nightly-"))][0] // ""')"
           if [ -n "$PREV_TAG" ]; then
             # Everything that can change the built shell — mirrors native.yml's
@@ -135,8 +155,9 @@ jobs:
             echo "native_version=${SHELL_VERSION}"
             echo "requires_native=${REQUIRES_NATIVE}"
             echo "prev_tag=${PREV_TAG}"
+            echo "publish=${PUBLISH}"
           } >> "$GITHUB_OUTPUT"
-          echo "Nightly ${VERSION} (tag ${TAG}), shell ${SHELL_VERSION}, prev=${PREV_TAG:-none}, requiresNative=${REQUIRES_NATIVE}"
+          echo "Nightly ${VERSION} (tag ${TAG}), shell ${SHELL_VERSION}, prev=${PREV_TAG:-none}, requiresNative=${REQUIRES_NATIVE}, publish=${PUBLISH}"
 
   web-export:
     name: Web export
@@ -149,6 +170,11 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # workflow_run: build the exact commit CI just proved green, not the
+          # default-branch tip (github.sha on workflow_run is the workflow-file
+          # commit, not the triggering head).
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -216,6 +242,10 @@ jobs:
             tauri-target: x86_64
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # workflow_run: same pinned commit as meta and web-export — the APKs
+          # must wrap the export built from the same SHA CI proved green.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Require persisted Android keystore (O1-22)
         env:
@@ -551,7 +581,7 @@ jobs:
           head -c 2000 dist/nightly/manifest.json
 
       - name: Create tag + prerelease with assets
-        if: ${{ !inputs.dry_run && steps.detect.outputs.skip != 'true' }}
+        if: ${{ !inputs.dry_run && steps.detect.outputs.skip != 'true' && needs.meta.outputs.publish == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -588,7 +618,7 @@ jobs:
       # O1-11 pointer hosting: ONE stable URL per channel on the fixed
       # `channel-pointers` release (the nightly tag changes every night).
       - name: Publish nightly pointer + latest.json to channel-pointers
-        if: ${{ !inputs.dry_run && steps.detect.outputs.skip != 'true' }}
+        if: ${{ !inputs.dry_run && steps.detect.outputs.skip != 'true' && needs.meta.outputs.publish == 'true' }}
         shell: bash
         run: |
           set -euo pipefail

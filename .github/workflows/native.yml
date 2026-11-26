@@ -113,9 +113,12 @@ jobs:
           name: tauri-web-export
           path: apps/web/.next-tauri
 
-      # Stamp a real version into the shell: 0.1.<UTC date> (same scheme as
-      # nightly.yml). Without this, `latest` APKs ship as 0.1.0 (versionCode
-      # 1000) and Android refuses them as a downgrade over any nightly.
+      # Stamp a real, monotonic version into the shell: 0.1.<UTC date * 100
+      # + run_number % 100> (same scheme as nightly.yml — the date dominates
+      # across days, the run number breaks same-day ties; semver-numeric
+      # patch, versionCode-safe under major*1e6 + minor*1e3 + patch).
+      # Without this, `latest` APKs ship as 0.1.0 (versionCode 1000) and
+      # Android refuses them as a downgrade over any nightly.
       - name: Bake shell version
         shell: bash
         run: |
@@ -124,8 +127,9 @@ jobs:
             const p = "apps/native/src-tauri/tauri.conf.json";
             const c = JSON.parse(fs.readFileSync(p, "utf8"));
             const d = new Date();
-            const stamp = `${String(d.getUTCFullYear()).slice(2)}${String(d.getUTCMonth() + 1).padStart(2, "0")}${String(d.getUTCDate()).padStart(2, "0")}`;
-            c.version = `0.1.${stamp}`;
+            const ymd = Number(`${String(d.getUTCFullYear()).slice(2)}${String(d.getUTCMonth() + 1).padStart(2, "0")}${String(d.getUTCDate()).padStart(2, "0")}`);
+            const seq = Number(process.env.GITHUB_RUN_NUMBER || "0") % 100;
+            c.version = `0.1.${ymd * 100 + seq}`;
             fs.writeFileSync(p, JSON.stringify(c, null, 2) + "\n");
             console.log("shell version →", c.version);
           '
@@ -222,8 +226,9 @@ jobs:
           name: tauri-web-export
           path: apps/web/.next-tauri
 
-      # Same shell version stamp as the Windows job (0.1.<UTC date>) — see the
-      # "Bake shell version" step there for why 0.1.0 must never ship.
+      # Same monotonic shell version scheme as the Windows job
+      # (0.1.<UTC date * 100 + run_number % 100>) — see the "Bake shell
+      # version" step there for why 0.1.0 must never ship.
       - name: Bake shell version
         shell: bash
         run: |
@@ -232,8 +237,9 @@ jobs:
             const p = "apps/native/src-tauri/tauri.conf.json";
             const c = JSON.parse(fs.readFileSync(p, "utf8"));
             const d = new Date();
-            const stamp = `${String(d.getUTCFullYear()).slice(2)}${String(d.getUTCMonth() + 1).padStart(2, "0")}${String(d.getUTCDate()).padStart(2, "0")}`;
-            c.version = `0.1.${stamp}`;
+            const ymd = Number(`${String(d.getUTCFullYear()).slice(2)}${String(d.getUTCMonth() + 1).padStart(2, "0")}${String(d.getUTCDate()).padStart(2, "0")}`);
+            const seq = Number(process.env.GITHUB_RUN_NUMBER || "0") % 100;
+            c.version = `0.1.${ymd * 100 + seq}`;
             fs.writeFileSync(p, JSON.stringify(c, null, 2) + "\n");
             console.log("shell version →", c.version);
           '

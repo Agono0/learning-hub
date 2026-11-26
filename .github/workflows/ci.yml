@@ -1,26 +1,16 @@
 name: CI
 
-# paths-ignore lists only files no check reads: prettier (format:check) covers every other
-# *.md and the vitest suites read docs/curriculum, so ignoring docs broadly would silently skip
-# real checks. Because a path-ignored run is not created at all, make the aggregate gate job (named like the old single job) the
-# required status check, and never add a path here that a job below consumes.
+# No paths-ignore: the aggregate gate job (named like the old single job) is
+# the required status check, and a path-ignored run is never created at all —
+# a docs-only PR would then sit forever waiting for a check that never
+# reports. Docs-only changes cost one green run; that is the price of a
+# required gate. The nightly pipeline still detects an unchanged export and
+# publishes nothing, so a docs-only main push ships zero bytes.
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - 'LICENSE'
-      - '.claude/**'
-      - 'docs/handoffs/**'
-      - '.zcode/**'
-      - 'math-333/**'
   pull_request:
     branches: [main]
-    paths-ignore:
-      - 'LICENSE'
-      - '.claude/**'
-      - 'docs/handoffs/**'
-      - '.zcode/**'
-      - 'math-333/**'
   workflow_dispatch:
 
 permissions:
@@ -185,8 +175,13 @@ jobs:
           path: |
             apps/web/.next/cache
             apps/web/.next-tauri/cache
-          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          # Per-shard save key: the three ui shards (and the prod job) would
+          # otherwise race to save one lockfile-keyed cache entry. The
+          # source-hash tier restores a same-deps cache from an earlier
+          # commit instead of a stale any-commit one.
+          key: nextjs-${{ runner.os }}-ui-${{ matrix.shard }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('apps/web/**/*.ts', 'apps/web/**/*.tsx', 'packages/**/*.ts') }}
           restore-keys: |
+            nextjs-${{ runner.os }}-ui-${{ matrix.shard }}-${{ hashFiles('package-lock.json') }}-
             nextjs-${{ runner.os }}-
 
       - name: Playwright UI smoke tests
@@ -277,8 +272,11 @@ jobs:
           path: |
             apps/web/.next/cache
             apps/web/.next-tauri/cache
-          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          # Job-scoped save key (see the ui job) so concurrent jobs never
+          # race the same cache entry; source-hash tier avoids stale hits.
+          key: nextjs-${{ runner.os }}-prod-${{ hashFiles('package-lock.json') }}-${{ hashFiles('apps/web/**/*.ts', 'apps/web/**/*.tsx', 'packages/**/*.ts') }}
           restore-keys: |
+            nextjs-${{ runner.os }}-prod-${{ hashFiles('package-lock.json') }}-
             nextjs-${{ runner.os }}-
 
       - name: Build
