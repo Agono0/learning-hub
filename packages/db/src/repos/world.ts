@@ -20,7 +20,7 @@ import {
   userAvatars,
   userWorldSettings,
 } from '../schema'
-import { withTransaction } from '../transaction'
+import { withTransaction, type Transaction } from '../transaction'
 
 export interface UserAvatarRow {
   id: number
@@ -189,9 +189,25 @@ export function recordCoinTransaction(data: {
   reason: string
   referenceId?: string | null
 }): CoinLedgerRow {
-  const userId = data.userId ?? 'default'
+  return withTransaction((tx) => recordCoinTransactionInTx(tx, data))
+}
 
-  return withTransaction((db) => {
+/**
+ * The ledger insert above, for callers that already hold a transaction
+ * (e.g. executeBatchReview's afterReviews hook) and need the coin mint to
+ * commit or roll back atomically with their other writes.
+ */
+export function recordCoinTransactionInTx(
+  db: Transaction,
+  data: {
+    userId?: string
+    amount: number
+    reason: string
+    referenceId?: string | null
+  },
+): CoinLedgerRow {
+  const userId = data.userId ?? 'default'
+  {
     const latest = db
       .select()
       .from(studyCoinLedger)
@@ -236,7 +252,7 @@ export function recordCoinTransaction(data: {
       .all()
 
     return tx!
-  })
+  }
 }
 
 export interface MarketItemRow {

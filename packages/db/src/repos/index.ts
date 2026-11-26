@@ -3,6 +3,7 @@
  * (web handlers, MCP tools, CLI, headless server). Put a query here as soon
  * as a second caller needs it.
  */
+export * from './arena'
 export * from './curriculum'
 export * from './cognitive-trials'
 export * from './cards'

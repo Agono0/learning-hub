@@ -119,6 +119,18 @@ export interface AchievementStats {
   certificates: number
   /** course exam attempts with score ≥ 0.8 */
   examsAced: number
+  /** settled review-arena runs */
+  arenaRuns: number
+  /** arena victories (queue cleared) */
+  arenaVictories: number
+  /** best combo ever landed in the arena */
+  arenaBestCombo: number
+  /** boss runs won (15+ challenge queues cleared) */
+  arenaBossWins: number
+  /** victories at 100% accuracy over a 10+ round queue */
+  arenaFlawlessWins: number
+  /** lifetime critical strikes landed in the arena */
+  arenaTotalCrits: number
 }
 
 /** One achievement badge and its unlock predicate over AchievementStats. */
@@ -131,6 +143,67 @@ export interface Achievement {
 
 /** The full achievement catalog (white-hat milestones only). */
 export const ACHIEVEMENTS: Achievement[] = [
+  {
+    key: 'arena_first',
+    title: 'First Blood',
+    description: 'Finish your first Review Arena run.',
+    check: (s) => s.arenaRuns >= 1,
+  },
+  {
+    key: 'arena_10_wins',
+    title: 'Arena Regular',
+    description: 'Win 10 Review Arena runs. Retrieval under pressure, repeated.',
+    check: (s) => s.arenaVictories >= 10,
+  },
+  {
+    key: 'arena_combo_10',
+    title: 'Untouchable',
+    description: 'Land a 10-combo in the arena — ten confident strikes in a row.',
+    check: (s) => s.arenaBestCombo >= 10,
+  },
+  {
+    key: 'arena_boss_slayer',
+    title: 'Boss Slayer',
+    description: 'Win a boss run (15+ challenges). Long queues, held nerve.',
+    check: (s) => s.arenaBossWins >= 1,
+  },
+  {
+    key: 'arena_veteran',
+    title: 'Arena Veteran',
+    description: 'Finish 25 Review Arena runs. Showing up is the whole game.',
+    check: (s) => s.arenaRuns >= 25,
+  },
+  {
+    key: 'arena_champion',
+    title: 'Arena Champion',
+    description: 'Win 25 Review Arena runs. A quarter-century of cleared queues.',
+    check: (s) => s.arenaVictories >= 25,
+  },
+  {
+    key: 'arena_combo_20',
+    title: 'Perfect Flow',
+    description: 'Land a 20-combo in the arena — twenty confident strikes without a stumble.',
+    check: (s) => s.arenaBestCombo >= 20,
+  },
+  {
+    key: 'arena_boss_veteran',
+    title: 'Boss Veteran',
+    description: 'Win 10 boss runs. Every phase, every enrage, survived.',
+    check: (s) => s.arenaBossWins >= 10,
+  },
+  {
+    key: 'arena_flawless',
+    title: 'Flawless Victory',
+    description: 'Win a 10+ round arena run at 100% accuracy. Not one card missed.',
+    check: (s) => s.arenaFlawlessWins >= 1,
+  },
+  {
+    key: 'arena_crit_50',
+    title: 'Critical Faculty',
+    description: 'Land 50 critical strikes in the arena — fast, confident, correct, fifty times.',
+    check: (s) => s.arenaTotalCrits >= 50,
+  },
+
   {
     key: 'first_review',
     title: 'First Step',
