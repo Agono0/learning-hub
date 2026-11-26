@@ -24,6 +24,8 @@ export interface DetectResult {
   truncated: boolean
   /** Distinct words too common to link cards. When this is high, cards that differ only in a templated slot are linked through the shared-prefix and shared-answer keys instead. */
   skippedWords: number
+  /** Prefix or answer groups with too many cards to compare all pairs (for example one answer shared by hundreds of cards). */
+  skippedGroups: number
   /** Cards linked to no other card by any key: the audit could not compare them. */
   unlinkedCards: number
 }
@@ -66,6 +68,7 @@ export function findCandidates(allCards: InfCard[], opts: DetectOptions = {}): D
   const candidates: Candidate[] = []
   let scored = 0
   let skippedWords = 0
+  let skippedGroups = 0
 
   const lists: number[][] = []
   for (const [key, ids] of [...postings.entries()].sort(
@@ -76,6 +79,7 @@ export function findCandidates(allCards: InfCard[], opts: DetectOptions = {}): D
     // Word keys that are common are skipped (and counted); prefix and answer keys only obey the posting cap.
     if (key.startsWith('w:') ? tooMany || ids.length >= commonAt : tooMany) {
       if (key.startsWith('w:')) skippedWords++
+      else skippedGroups++
       continue
     }
     lists.push(ids)
@@ -116,6 +120,7 @@ export function findCandidates(allCards: InfCard[], opts: DetectOptions = {}): D
     scanned: cards.length,
     truncated,
     skippedWords,
+    skippedGroups,
     unlinkedCards: cards.length - linked.size,
   }
 }

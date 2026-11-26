@@ -37,3 +37,4 @@ Cards that look alike compete when you try to recall them. When two cards share 
 ## Templated decks
 
 Cards are linked by shared words, by the same first three words of the cue, and by an identical answer. Words that appear in too many cards are skipped and counted (`skippedWords`); for a deck of cards like "Capital of X" the shared-prefix and shared-answer links still find candidates. Per-card text features are computed once per scan. Cards that share nothing with any other card are counted as `unlinkedCards` and the report says so rather than claiming no lookalikes.
+Prefix or answer groups with more than 60 cards are too large to compare pair by pair. They are counted as `skippedGroups` and the report says so.

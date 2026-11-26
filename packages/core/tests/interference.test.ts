@@ -128,6 +128,12 @@ describe('candidate search', () => {
     expect(none.skippedWords).toBeGreaterThan(0)
     expect(none.unlinkedCards).toBeGreaterThan(0)
   })
+  it('counts prefix or answer groups too large to compare', () => {
+    const many = Array.from({ length: INF_DEFAULTS.maxPosting + 5 }, (_, i) =>
+      card(i + 1, `Question ${i} zz${i}`, 'Same answer'),
+    )
+    expect(findCandidates(many).skippedGroups).toBeGreaterThan(0)
+  })
   it('counts cards that were not linked to any other card', () => {
     expect(findCandidates(deck).unlinkedCards).toBe(2)
   })

@@ -42,6 +42,7 @@ export interface InfAudit {
   scanned: number
   truncated: boolean
   skippedWords: number
+  skippedGroups: number
   unlinkedCards: number
   /** Pairs found before dismissed ones were removed. */
   found: number
@@ -152,6 +153,7 @@ export function runInterferenceAudit(
     scanned: found.scanned,
     truncated: found.truncated,
     skippedWords: found.skippedWords,
+    skippedGroups: found.skippedGroups,
     unlinkedCards: found.unlinkedCards,
     found: found.candidates.length,
     dismissed,

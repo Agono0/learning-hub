@@ -21,6 +21,10 @@ export function summarizeInterference(a: InfAudit): InfReport {
     caveats.push(
       `${a.skippedWords} very common word(s) were too frequent to link cards. Cards that differ only in a templated slot are linked by their shared opening words or identical answer instead.`,
     )
+  if (a.skippedGroups > 0)
+    caveats.push(
+      `${a.skippedGroups} group(s) of cards sharing the same opening words or the same answer were too large to compare pair by pair. Narrow the audit to one deck to check them.`,
+    )
   if (a.unlinkedCards > 0 && a.unlinkedCards >= a.scanned * 0.5)
     caveats.push(
       `${a.unlinkedCards} of ${a.scanned} cards shared no usable words or answer with any other card, so they could not be compared.`,
