@@ -118,3 +118,22 @@ test('courses empty fixture state renders (real fixtures)', async ({ page }) => 
     timeout: 60_000,
   })
 })
+
+for (const vp of [
+  { name: 'desktop-dark', width: 1280, height: 800, theme: 'dark' },
+  { name: 'narrow-light', width: 390, height: 844, theme: 'light' },
+]) {
+  test(`decks card rows reflow, ${vp.name} (real fixtures)`, async ({ page }) => {
+    await page.setViewportSize({ width: vp.width, height: vp.height })
+    await page.addInitScript((t) => window.localStorage.setItem('lh-theme', t), vp.theme)
+    await page.goto('/decks')
+    const edit = page.getByRole('button', { name: /^Edit card:/ }).first()
+    await expect(edit).toBeVisible({ timeout: 60_000 })
+    await page.waitForTimeout(1500)
+    await page.screenshot({ path: path.join(OUT, `depth-decks-${vp.name}.png`), fullPage: true })
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    )
+    expect(overflow).toBeLessThanOrEqual(0)
+  })
+}
