@@ -26,6 +26,7 @@ import { feedbackRoutes } from './feedback'
 import { shareChannelRoutes } from './share-channels'
 import { tasksRoutes } from './tasks'
 import { planningRoutes } from './planning'
+import { goalsRoutes } from './goals'
 import { type Route } from './shared'
 
 /**
@@ -55,6 +56,7 @@ export const routes: Route[] = [
   ...shareChannelRoutes,
   ...tasksRoutes,
   ...planningRoutes,
+  ...goalsRoutes,
 ]
 
 export async function prototypeExemplarRouteJson(
