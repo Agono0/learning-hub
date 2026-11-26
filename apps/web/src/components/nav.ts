@@ -403,6 +403,12 @@ export const NAV: NavGroup[] = [
         shortLabel: 'Debate',
       },
       {
+        href: '/arena-3d',
+        label: 'Review Arena',
+        icon: Trophy,
+        shortLabel: 'Arena',
+      },
+      {
         href: '/scaffolding',
         label: 'Faded Scaffolding',
         icon: Layers,

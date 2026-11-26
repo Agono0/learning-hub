@@ -98,6 +98,16 @@ describe('generateDailyQuests', () => {
 
 describe('achievements', () => {
   const KEYS = [
+    'arena_first',
+    'arena_10_wins',
+    'arena_combo_10',
+    'arena_boss_slayer',
+    'arena_veteran',
+    'arena_champion',
+    'arena_combo_20',
+    'arena_boss_veteran',
+    'arena_flawless',
+    'arena_crit_50',
     'first_review',
     'reviews_100',
     'reviews_1000',
@@ -118,7 +128,7 @@ describe('achievements', () => {
     'palace_built',
   ]
 
-  it('has the full 18-milestone white-hat catalog', () => {
+  it('has the full 28-milestone white-hat catalog', () => {
     expect(ACHIEVEMENTS.map((a) => a.key)).toEqual(KEYS)
     for (const a of ACHIEVEMENTS) {
       expect(a.title.length).toBeGreaterThan(0)
@@ -143,6 +153,12 @@ describe('achievements', () => {
     palacesBuilt: 0,
     certificates: 0,
     examsAced: 0,
+    arenaRuns: 0,
+    arenaVictories: 0,
+    arenaBestCombo: 0,
+    arenaBossWins: 0,
+    arenaFlawlessWins: 0,
+    arenaTotalCrits: 0,
   }
 
   it('nothing is unlocked at zero stats', () => {
@@ -211,6 +227,39 @@ describe('achievements', () => {
     expect(
       ACHIEVEMENTS.find((a) => a.key === 'palace_built')?.check({ ...zeros, palacesBuilt: 1 }),
     ).toBe(true)
+    expect(
+      ACHIEVEMENTS.find((a) => a.key === 'arena_veteran')?.check({ ...zeros, arenaRuns: 25 }),
+    ).toBe(true)
+    expect(
+      ACHIEVEMENTS.find((a) => a.key === 'arena_veteran')?.check({ ...zeros, arenaRuns: 24 }),
+    ).toBe(false)
+    expect(
+      ACHIEVEMENTS.find((a) => a.key === 'arena_champion')?.check({ ...zeros, arenaVictories: 25 }),
+    ).toBe(true)
+    expect(
+      ACHIEVEMENTS.find((a) => a.key === 'arena_combo_20')?.check({ ...zeros, arenaBestCombo: 20 }),
+    ).toBe(true)
+    expect(
+      ACHIEVEMENTS.find((a) => a.key === 'arena_combo_20')?.check({ ...zeros, arenaBestCombo: 19 }),
+    ).toBe(false)
+    expect(
+      ACHIEVEMENTS.find((a) => a.key === 'arena_boss_veteran')?.check({
+        ...zeros,
+        arenaBossWins: 10,
+      }),
+    ).toBe(true)
+    expect(
+      ACHIEVEMENTS.find((a) => a.key === 'arena_flawless')?.check({
+        ...zeros,
+        arenaFlawlessWins: 1,
+      }),
+    ).toBe(true)
+    expect(
+      ACHIEVEMENTS.find((a) => a.key === 'arena_crit_50')?.check({ ...zeros, arenaTotalCrits: 50 }),
+    ).toBe(true)
+    expect(
+      ACHIEVEMENTS.find((a) => a.key === 'arena_crit_50')?.check({ ...zeros, arenaTotalCrits: 49 }),
+    ).toBe(false)
   })
 })
 

@@ -13,6 +13,7 @@ import {
 } from '@learning-hub/core'
 import { getDb, type LearningHubDB } from '../index'
 import {
+  arenaRuns,
   achievements,
   cards,
   certificates,
@@ -32,7 +33,7 @@ import {
   userSettings,
   xpEvents,
 } from '../schema'
-import { withTransaction } from '../transaction'
+import { withTransaction, type Transaction } from '../transaction'
 import { awardXp } from './xp'
 
 export type QuestRow = typeof quests.$inferSelect
@@ -253,7 +254,7 @@ export function getDailyQuest(date: string, opts: { db?: LearningHubDB } = {}): 
 /**
  * Ensure all catalog items from ACHIEVEMENTS exist in the database.
  */
-export function ensureAchievementCatalog(opts: { db?: LearningHubDB } = {}): void {
+export function ensureAchievementCatalog(opts: { db?: LearningHubDB | Transaction } = {}): void {
   const db = opts.db ?? getDb()
   const rows = db.select().from(achievements).all()
   const known = new Set(rows.map((r) => r.key))
@@ -269,7 +270,9 @@ export function ensureAchievementCatalog(opts: { db?: LearningHubDB } = {}): voi
 /**
  * Compute current aggregates across review, focus, streak, courses, skills, and ideas.
  */
-export function getAchievementStats(opts: { db?: LearningHubDB } = {}): AchievementStats {
+export function getAchievementStats(
+  opts: { db?: LearningHubDB | Transaction } = {},
+): AchievementStats {
   const db = opts.db ?? getDb()
 
   const [reviewCount] = db
@@ -347,6 +350,18 @@ export function getAchievementStats(opts: { db?: LearningHubDB } = {}): Achievem
     .where(sql`${courseExamAttempts.score} >= 0.8`)
     .all()
 
+  const [arenaAgg] = db
+    .select({
+      runs: sql<number>`count(*)`,
+      victories: sql<number>`sum(case when ${arenaRuns.result} = 'victory' then 1 else 0 end)`,
+      bestCombo: sql<number>`coalesce(max(${arenaRuns.bestCombo}), 0)`,
+      bossWins: sql<number>`sum(case when ${arenaRuns.result} = 'victory' and ${arenaRuns.boss} = true then 1 else 0 end)`,
+      flawlessWins: sql<number>`sum(case when ${arenaRuns.result} = 'victory' and ${arenaRuns.rounds} >= 10 and ${arenaRuns.correct} = ${arenaRuns.rounds} then 1 else 0 end)`,
+      totalCrits: sql<number>`coalesce(sum(${arenaRuns.crits}), 0)`,
+    })
+    .from(arenaRuns)
+    .all()
+
   return {
     totalReviews: reviewCount?.n ?? 0,
     streakBest: streakRow?.best ?? 0,
@@ -363,6 +378,12 @@ export function getAchievementStats(opts: { db?: LearningHubDB } = {}): Achievem
     palacesBuilt: palaceCount?.n ?? 0,
     certificates: certificateCount?.n ?? 0,
     examsAced: examsAced?.n ?? 0,
+    arenaRuns: Number(arenaAgg?.runs ?? 0),
+    arenaVictories: Number(arenaAgg?.victories ?? 0),
+    arenaBestCombo: Number(arenaAgg?.bestCombo ?? 0),
+    arenaBossWins: Number(arenaAgg?.bossWins ?? 0),
+    arenaFlawlessWins: Number(arenaAgg?.flawlessWins ?? 0),
+    arenaTotalCrits: Number(arenaAgg?.totalCrits ?? 0),
   }
 }
 
@@ -373,7 +394,7 @@ export function getAchievementStats(opts: { db?: LearningHubDB } = {}): Achievem
 export function evaluateAndUnlockAchievements(
   opts: {
     now?: Date
-    db?: LearningHubDB
+    db?: LearningHubDB | Transaction
   } = {},
 ): UnlockedAchievementsResult {
   const db = opts.db ?? getDb()

@@ -22,6 +22,13 @@ import * as aiGenerate from '../server/handlers/ai/generate/route'
 import * as aiRubric from '../server/handlers/ai/rubric/route'
 import * as aiTransport from '../server/handlers/ai/transport/route'
 import * as analytics from '../server/handlers/analytics/route'
+import * as arenaHistoryId from '../server/handlers/arena/history/[id]/route'
+import * as arenaHistory from '../server/handlers/arena/history/route'
+import * as arenaCardId from '../server/handlers/arena/card/[id]/route'
+import * as arenaExport from '../server/handlers/arena/export/route'
+import * as arenaNemesis from '../server/handlers/arena/nemesis/route'
+import * as arenaProgress from '../server/handlers/arena/progress/route'
+import * as arena from '../server/handlers/arena/route'
 import * as ankiConnect from '../server/handlers/anki/connect/route'
 import * as audioDigest from '../server/handlers/audio/digest/route'
 import * as audioGrade from '../server/handlers/audio/grade/route'
@@ -291,6 +298,13 @@ add('ai/generate', aiGenerate)
 add('ai/rubric', aiRubric)
 add('ai/transport', aiTransport)
 add('analytics', analytics)
+add('arena', arena)
+add('arena/history', arenaHistory)
+add('arena/history/[id]', arenaHistoryId)
+add('arena/card/[id]', arenaCardId)
+add('arena/export', arenaExport)
+add('arena/nemesis', arenaNemesis)
+add('arena/progress', arenaProgress)
 add('anki/connect', ankiConnect)
 add('audio/digest', audioDigest)
 add('audio/grade', audioGrade)

@@ -70,8 +70,13 @@ export function ChipPicker<T extends string>({
   multiple = false,
   className,
 }: ChipPickerProps<T>): React.ReactElement {
-  // Lazy one-shot gate for the press scale; stable across re-renders.
-  const [motionAllowed] = React.useState(motionOK)
+  // Press scale is enabled after mount. A lazy initializer reads window, so the
+  // client's first render (whileTap makes motion.button focusable: tabIndex=0)
+  // disagreed with the server HTML and raised a hydration mismatch.
+  const [motionAllowed, setMotionAllowed] = React.useState(false)
+  React.useEffect(() => {
+    setMotionAllowed(motionOK())
+  }, [])
   return (
     <div
       role={multiple ? 'group' : 'radiogroup'}
