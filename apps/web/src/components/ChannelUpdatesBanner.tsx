@@ -9,6 +9,10 @@
  * never touches notes, scheduling state or local edits; conflicts are
  * reported, not hidden.
  */
+import {
+  parseStoredSubscriptions,
+  writeStoredSubscriptions,
+} from '@/lib/channel-subscriptions-storage'
 import { useCallback, useEffect, useState } from 'react'
 
 import { apiSend } from '@/lib/transport'
@@ -42,15 +46,14 @@ const STORAGE_KEY = 'lh-share-channels-v1'
 
 function loadSubscriptions(): SubscriptionRecord[] {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as SubscriptionRecord[]) : []
+    return parseStoredSubscriptions<SubscriptionRecord>(window.localStorage.getItem(STORAGE_KEY))
   } catch {
     return []
   }
 }
 
 function saveSubscriptions(subs: SubscriptionRecord[]): void {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(subs))
+  writeStoredSubscriptions(STORAGE_KEY, subs)
 }
 
 async function post<T>(body: unknown): Promise<{ ok: boolean; data: T }> {
