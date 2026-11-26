@@ -100,7 +100,10 @@ function cleanup() {
 // root node_modules).
 import { createRequire } from 'node:module'
 const nextBin = createRequire(path.join(webDir, 'package.json')).resolve('next/dist/bin/next')
-const child = spawn(process.execPath, [nextBin, 'dev', '-p', String(PORT)], {
+// LH_PROD=1 serves the already-built production bundle (`next start`) instead of `next dev`,
+// so the same specs can prove the production render, not only the dev server.
+const nextMode = process.env.LH_PROD === '1' ? 'start' : 'dev'
+const child = spawn(process.execPath, [nextBin, nextMode, '-p', String(PORT)], {
   cwd: webDir,
   env: {
     ...process.env,
