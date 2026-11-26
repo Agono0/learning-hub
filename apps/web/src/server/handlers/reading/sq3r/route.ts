@@ -2,6 +2,7 @@
  * /api/reading/sq3r — Guided SQ3R (Survey → Question → Read → Recite → Review)
  * study session persistence and 1-click Q&A → FSRS flashcard conversion.
  */
+import { queryId } from '@/lib/query-params'
 import { z } from 'zod'
 import {
   convertSq3rToCards,
@@ -32,8 +33,8 @@ const convertCardsSchema = z.object({
 })
 
 export const GET = withRoute(async (req: Request) => {
-  const sourceId = Number(new URL(req.url).searchParams.get('sourceId'))
-  if (!Number.isInteger(sourceId) || sourceId <= 0) {
+  const sourceId = queryId(new URL(req.url).searchParams, 'sourceId')
+  if (sourceId === null) {
     throw new ApiError(400, 'sourceId query parameter required')
   }
 

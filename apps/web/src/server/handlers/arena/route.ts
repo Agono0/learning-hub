@@ -36,6 +36,7 @@
  * modified client — graded reviews still run on the honor system, as in the
  * normal review queue.
  */
+import { queryInt } from '@/lib/query-params'
 import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm'
 import {
   awardXp,
@@ -137,10 +138,11 @@ export const GET = withRoute(async function GET(req: Request) {
   const url = new URL(req.url)
   const deckIdsParam = url.searchParams.get('deckIds')
   const rematchParam = url.searchParams.get('rematch')
-  const limit = Math.min(
-    Math.max(Number(url.searchParams.get('limit') ?? ARENA_DEFAULT_LIMIT), ARENA_MIN_LIMIT),
-    ARENA_MAX_LIMIT,
-  )
+  const limit = queryInt(url.searchParams, 'limit', {
+    fallback: ARENA_DEFAULT_LIMIT,
+    min: ARENA_MIN_LIMIT,
+    max: ARENA_MAX_LIMIT,
+  })
   const now = new Date()
 
   // Daily modifier: one rotating rule twist per UTC day, layered over the

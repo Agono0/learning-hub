@@ -1,6 +1,7 @@
 /**
  * /api/world/plots — Plant and query trees in the 3D Low-Poly Forest world.
  */
+import { queryLimit } from '@/lib/query-params'
 import { z } from 'zod'
 import { addForestPlot, getForestPlots, getUserAvatar } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
@@ -17,7 +18,7 @@ const addPlotSchema = z.object({
 
 export const GET = withRoute(async (req: Request) => {
   const url = new URL(req.url)
-  const limit = Math.min(200, Math.max(1, Number(url.searchParams.get('limit') || 100)))
+  const limit = queryLimit(url.searchParams, 100, 200)
   const plots = getForestPlots('default', limit)
 
   return Response.json({

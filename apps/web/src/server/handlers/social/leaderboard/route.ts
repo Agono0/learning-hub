@@ -1,6 +1,7 @@
 /**
  * /api/social/leaderboard — Decentralized Gist friend connections & leaderboard stats.
  */
+import { queryId } from '@/lib/query-params'
 import { z } from 'zod'
 import { addFriend, deleteFriend, generateUserStatsEnvelope, listFriends } from '@learning-hub/db'
 import { ApiError, readJson, withRoute } from '@/lib/api'
@@ -47,8 +48,8 @@ export const POST = withRoute(async (req: Request) => {
 
 export const DELETE = withRoute(async (req: Request) => {
   const url = new URL(req.url)
-  const id = Number(url.searchParams.get('id'))
-  if (!id) throw new ApiError(400, 'id parameter required')
+  const id = queryId(url.searchParams, 'id')
+  if (id === null) throw new ApiError(400, 'id parameter required')
 
   const ok = deleteFriend(id)
   if (!ok) throw new ApiError(404, 'Friend not found')

@@ -8,6 +8,7 @@
  *   reports counts). One atomic BEGIN IMMEDIATE transaction covers cards +
  *   revlog (collision-safe ids) + xp_events + streak + Elo/BKT mastery.
  */
+import { queryId, queryInt } from '@/lib/query-params'
 import { and, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, cards, executeBatchReview } from '@learning-hub/db'
@@ -16,9 +17,9 @@ import { readJson, withRoute } from '@/lib/api'
 
 export async function GET(req: Request) {
   const url = new URL(req.url)
-  const deckId = Number(url.searchParams.get('deckId') ?? 0)
-  const maxPairs = Math.min(Number(url.searchParams.get('maxPairs') ?? 8), 12)
-  if (!deckId) return Response.json({ error: 'deckId required' }, { status: 400 })
+  const deckId = queryId(url.searchParams, 'deckId')
+  const maxPairs = queryInt(url.searchParams, 'maxPairs', { fallback: 8, min: 2, max: 12 })
+  if (deckId === null) return Response.json({ error: 'deckId required' }, { status: 400 })
   const rows = await db
     .select()
     .from(cards)

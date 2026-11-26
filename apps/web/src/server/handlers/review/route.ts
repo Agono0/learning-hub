@@ -16,6 +16,7 @@
  *   mastery. The response includes the PRE-review card state so the client can
  *   keep an undo buffer (see /api/review/undo).
  */
+import { queryLimit } from '@/lib/query-params'
 import { and, eq, inArray, lte, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import {
@@ -85,7 +86,7 @@ export async function GET(req: Request) {
   const deckId = url.searchParams.get('deckId')
   const deckIdsParam = url.searchParams.get('deckIds')
   const courseId = url.searchParams.get('courseId')
-  const limit = Math.min(Number(url.searchParams.get('limit') ?? 20), 100)
+  const limit = queryLimit(url.searchParams, 20, 100)
   const mode = (url.searchParams.get('mode') ?? 'normal') as SessionMode
   const now = new Date()
 

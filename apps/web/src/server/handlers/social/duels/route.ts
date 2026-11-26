@@ -1,6 +1,7 @@
 /**
  * /api/social/duels — 1v1 rapid-recall duel matchmaking & results.
  */
+import { queryLimit } from '@/lib/query-params'
 import { z } from 'zod'
 import { calculateElo } from '@learning-hub/core/guilds'
 import { listRecentDuels, recordDuelResult } from '@learning-hub/db'
@@ -18,7 +19,7 @@ const recordDuelSchema = z.object({
 
 export const GET = withRoute(async (req: Request) => {
   const url = new URL(req.url)
-  const limit = Math.min(50, Math.max(1, Number(url.searchParams.get('limit') || 10)))
+  const limit = queryLimit(url.searchParams, 10, 50)
   const duels = listRecentDuels(limit)
 
   return Response.json({

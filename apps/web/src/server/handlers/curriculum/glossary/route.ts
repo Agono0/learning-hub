@@ -3,6 +3,7 @@
  * lesson's keyTerms (LHCF) with a link back to the lesson and, when the term
  * appears on a card in the course deck, that card — glossary → retrieval.
  */
+import { queryId } from '@/lib/query-params'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { cards, courses, lessons, units } from '@learning-hub/db'
@@ -20,8 +21,8 @@ export interface GlossaryEntry {
 /** GET — the glossary for one course, alphabetical. */
 export const GET = withRoute(async (req: Request) => {
   const url = new URL(req.url)
-  const courseId = Number(url.searchParams.get('courseId'))
-  if (!Number.isInteger(courseId) || courseId <= 0) {
+  const courseId = queryId(url.searchParams, 'courseId')
+  if (courseId === null) {
     return Response.json({ ok: false, error: 'courseId required' }, { status: 400 })
   }
   const [course] = await db.select().from(courses).where(eq(courses.id, courseId)).limit(1)

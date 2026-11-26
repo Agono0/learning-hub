@@ -1,6 +1,7 @@
 /**
  * /api/review/attempt-image — Append-only audit of handwritten / sketch card attempts.
  */
+import { queryId } from '@/lib/query-params'
 import { z } from 'zod'
 import { getLatestCardAttemptImage, logCardAttemptImage } from '@learning-hub/db'
 import { ApiError, readJson, withRoute } from '@/lib/api'
@@ -13,8 +14,8 @@ const attemptImageSchema = z.object({
 
 export const GET = withRoute(async (req: Request) => {
   const url = new URL(req.url)
-  const cardId = Number(url.searchParams.get('cardId'))
-  if (!cardId) throw new ApiError(400, 'cardId query parameter required')
+  const cardId = queryId(url.searchParams, 'cardId')
+  if (cardId === null) throw new ApiError(400, 'cardId query parameter required')
 
   const attempt = getLatestCardAttemptImage(cardId)
   return Response.json({ ok: true, attempt })
