@@ -39,9 +39,7 @@ export async function apiGetRetry<T>(path: string, options: RetryOptions = {}): 
       return await apiGet<T>(path)
     } catch (err) {
       lastError = err
-      const status = (err as { status?: number }).status
       lastAppError = classifyError(err, { online: isOnline() })
-      void status
       if (attempt < maxAttempts && shouldRetry(lastAppError, attempt)) {
         await sleep(nextRetryMs(attempt))
         continue
@@ -65,6 +63,8 @@ export async function apiGetRetry<T>(path: string, options: RetryOptions = {}): 
     err.canRetry = lastAppError.canRetry
     err.detail = lastAppError.detail
   }
+  const lastStatus = (lastError as { status?: unknown } | null)?.status
+  if (typeof lastStatus === 'number') err.status = lastStatus
   err.cause = lastError
   throw err
 }
