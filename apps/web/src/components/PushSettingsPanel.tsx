@@ -35,7 +35,12 @@ export function PushSettingsPanel() {
     onSuccess: () => setSubscribed(true),
   })
 
-  const supported = isPushSupported()
+  // Hydration-safe: browser capability is unknown on the server, so start false and resolve
+  // after mount (reading it during render made the server and client text differ).
+  const [supported, setSupported] = React.useState(false)
+  React.useEffect(() => {
+    setSupported(isPushSupported())
+  }, [])
   const configured = Boolean(vapid.data?.vapidPublicKey)
 
   return (
