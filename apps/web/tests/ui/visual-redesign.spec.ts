@@ -264,6 +264,47 @@ test.describe('nav disclosure', () => {
   })
 })
 
+test.describe('nav disclosure follows the route', () => {
+  test.use({ viewport: { width: 1280, height: 800 } })
+  test('a deep link opens the group and the "More ways to learn" fold that hold the active item', async ({
+    page,
+    context,
+  }) => {
+    await prepare(page, context, 'dark')
+    // Persisted state says Explore is collapsed; the active route must still show it.
+    await context.addInitScript(() =>
+      window.localStorage.setItem('lh-sidebar-collapsed-v2', JSON.stringify(['Explore'])),
+    )
+    await page.goto('/palace-3d')
+    await settle(page)
+    const nav = page.locator('nav[aria-label="Main"]')
+    await expect(nav.getByRole('button', { name: /^Explore/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+    await expect(nav.locator('a[aria-current="page"]')).toHaveAttribute('href', '/palace-3d')
+    // Leaving for a daily item: the persisted collapse applies again (no active item inside).
+    await nav.locator('a[href="/review"]').first().click()
+    await expect(page).toHaveURL(/\/review$/)
+    await expect(nav.getByRole('button', { name: /^Explore/ })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+
+    // A route that lives in the Learn fold opens the fold on a direct load.
+    await page.goto('/')
+    await settle(page)
+    const details = nav.locator('details').first()
+    await details.locator('summary').click()
+    const href = await details.locator('a').first().getAttribute('href')
+    expect(href).toBeTruthy()
+    await page.goto(href as string)
+    await settle(page)
+    await expect(nav.locator('details').first()).toHaveAttribute('open', /.*/)
+    await expect(nav.locator('a[aria-current="page"]')).toHaveAttribute('href', href as string)
+  })
+})
+
 test.describe('mixed-script review card', () => {
   test.use({ viewport: { width: 390, height: 844 } })
   test('Arabic-first and English-first cards resolve direction per block', async ({
