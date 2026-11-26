@@ -38,7 +38,8 @@ import {
   type StudyRoomState,
 } from '@learning-hub/core/online'
 import { apiGet, apiSend } from '@/lib/transport'
-import { OnlineSocket } from '@/lib/online-socket'
+import { OnlineSocket, joinRefusalMessage } from '@/lib/online-socket'
+import { OnlineIdentityLabel } from '@/components/OnlineIdentityLabel'
 import {
   Badge,
   Button,
@@ -144,6 +145,7 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
   const [roomTitle, setRoomTitle] = useState('Deep Work Session')
   const [workMinutes, setWorkMinutes] = useState(25)
   const [activeRoom, setActiveRoom] = useState<StudyRoomState | null>(null)
+  const [joinRefused, setJoinRefused] = useState<string | null>(null)
   const [chatMessages, setChatMessages] = useState<RoomMessage[]>([])
   const [chatInput, setChatInput] = useState('')
   const [copied, setCopied] = useState(false)
@@ -151,42 +153,53 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
 
   const createRoomMutation = useMutation({
     mutationFn: (data: { title: string; pomodoroWorkMinutes: number }) =>
-      apiSend<{ ok: boolean; code: string; room: StudyRoomState; wsUrl: string }>(
-        '/api/online/rooms',
-        'POST',
-        data,
-      ),
+      apiSend<{
+        ok: boolean
+        code: string
+        room: StudyRoomState
+        wsUrl: string
+        joinAssertion?: unknown
+      }>('/api/online/rooms', 'POST', data),
     onSuccess: (data) => {
       setActiveRoom(data.room)
-      connectRoomSocket(data.wsUrl, data.room)
+      connectRoomSocket(data.wsUrl, data.room, data.joinAssertion)
     },
   })
 
   const joinRoomMutation = useMutation({
     mutationFn: (code: string) =>
-      apiGet<{ ok: boolean; room: StudyRoomState; server: string }>(
-        `/api/online/rooms?code=${code}`,
-      ),
+      apiGet<{
+        ok: boolean
+        room: StudyRoomState
+        server: string
+        joinAssertion?: unknown
+      }>(`/api/online/rooms?code=${code}`),
     onSuccess: (data) => {
       if (data.room) {
         setActiveRoom(data.room)
         const wsUrl = `${data.server.replace(/^http/, 'ws')}/api/v1/rooms/${data.room.code}/ws`
-        connectRoomSocket(wsUrl, data.room)
+        connectRoomSocket(wsUrl, data.room, data.joinAssertion)
       }
     },
   })
 
-  const connectRoomSocket = (wsUrl: string, _room: StudyRoomState) => {
+  const connectRoomSocket = (wsUrl: string, _room: StudyRoomState, assertion?: unknown) => {
     socketRef.current?.disconnect()
 
+    let assertionPending = true
     const socket = new OnlineSocket<StudyRoomState, RoomMessage>({
       url: wsUrl,
       onState: (state) => setActiveRoom(state),
       onChat: (msg) => setChatMessages((prev) => [...prev.slice(-40), msg]),
-      // Fresh join on every open (first connect and reconnects), no timer race.
-      onOpen: (sock) =>
+      // Fresh join on every open, no timer race. The signed assertion is single-use, so it
+      // rides only the first open; a later reconnect sends no assertion and the server's
+      // verified-join policy decides (it refuses, surfaced through onRefused).
+      onOpen: (sock) => {
+        const withAssertion = assertionPending && assertion ? { assertion } : {}
+        assertionPending = false
         sock.send({
           type: 'join',
+          ...withAssertion,
           participant: {
             id: identity?.userId ?? `usr_${Date.now()}`,
             alias: identity?.alias ?? 'Learner',
@@ -194,8 +207,14 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
             streak: 1,
             cardsReviewed: 0,
           },
-        }),
+        })
+      },
+      onRefused: (code) => {
+        setJoinRefused(joinRefusalMessage(code))
+        setActiveRoom(null)
+      },
     })
+    setJoinRefused(null)
 
     socket.connect()
     socketRef.current = socket
@@ -305,6 +324,11 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
               >
                 <Users className="h-4 w-4" /> Join Room
               </Button>
+              {joinRefused && (
+                <p role="alert" className="text-xs text-danger-text">
+                  {joinRefused}
+                </p>
+              )}
             </div>
           </Panel>
         </div>
@@ -358,7 +382,7 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
                     className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-100 px-3 py-1.5 text-xs dark:border-(--hub-border) dark:bg-(--hub-panel)"
                   >
                     <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                    <span className="font-medium">{p.alias}</span>
+                    <OnlineIdentityLabel alias={p.alias} verified={p.verified} />
                     <span className="text-tertiary">({p.cardsReviewed} cards)</span>
                   </div>
                 ))}
@@ -381,7 +405,11 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
                 chatMessages.map((msg) => (
                   <div key={msg.id} className="flex flex-col">
                     <div className="flex items-center gap-1 text-xs text-tertiary">
-                      <span className="font-semibold text-secondary">{msg.senderAlias}</span>
+                      <OnlineIdentityLabel
+                        alias={msg.senderAlias}
+                        verified={msg.senderVerified}
+                        className="font-semibold text-secondary"
+                      />
                       <span>·</span>
                       <span>{new Date(msg.sentAt).toLocaleTimeString()}</span>
                     </div>
@@ -656,7 +684,7 @@ function PartyRaidsSection({ identity }: { identity?: IdentityResponse['identity
                   key={m.id}
                   className="flex items-center justify-between rounded-lg bg-neutral-100 p-2.5 text-xs dark:bg-(--hub-panel)"
                 >
-                  <span className="font-medium">{m.alias}</span>
+                  <OnlineIdentityLabel alias={m.alias} />
                   <span className="text-status-warning-text font-mono">+{m.damageDealt} dmg</span>
                 </div>
               ))}
@@ -773,7 +801,14 @@ function CommunityLibrarySection() {
                   <Badge tone={item.type === 'deck' ? 'accent' : 'success'}>
                     {item.type === 'deck' ? 'Deck' : 'Course'}
                   </Badge>
-                  <span className="text-xs text-tertiary">By {item.author}</span>
+                  <span className="flex items-center gap-1 text-xs text-tertiary">
+                    By{' '}
+                    <OnlineIdentityLabel
+                      alias={item.author}
+                      verified={item.authorVerified}
+                      className="text-xs text-tertiary"
+                    />
+                  </span>
                 </div>
                 <h4 className="mt-2 text-base font-bold">{item.title}</h4>
                 <p className="mt-1 text-xs text-faint line-clamp-2">

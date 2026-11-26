@@ -6,32 +6,84 @@
  * enforces rate limits per IP, and creates or comments on GitHub issues.
  */
 import { z } from 'zod'
+import { readBytesCapped } from './body'
 
 // ─── Crash Report Schema ────────────────────────────────────────────────────
 
 export const crashPlatformSchema = z.enum(['android', 'windows', 'web', 'other'])
 export type CrashPlatform = z.infer<typeof crashPlatformSchema>
 
-export const breadcrumbSchema = z.union([z.string(), z.record(z.string(), z.unknown())])
+/** Field bounds (characters). Assumed sane limits for a crash report, not measured from clients. */
+export const CRASH_LIMITS = {
+  errorName: 120,
+  errorMessage: 2000,
+  stack: 16000,
+  component: 200,
+  appVersion: 64,
+  deviceAbi: 64,
+  timestamp: 64,
+  breadcrumbs: 50,
+  breadcrumbText: 500,
+  /** Hard cap on the request body, counted in streamed bytes before decoding. */
+  bodyBytes: 64 * 1024,
+} as const
+
+export const breadcrumbSchema = z.union([
+  z.string().max(CRASH_LIMITS.breadcrumbText),
+  z
+    .record(z.string().max(64), z.unknown())
+    .refine(
+      (o) => JSON.stringify(o).length <= CRASH_LIMITS.breadcrumbText * 2,
+      'breadcrumb too large',
+    ),
+])
 export type Breadcrumb = z.infer<typeof breadcrumbSchema>
 
 export const crashReportSchema = z.object({
-  errorName: z.string().min(1, 'errorName is required'),
-  errorMessage: z.string().default(''),
-  stack: z.string().optional().default(''),
-  component: z.string().optional(),
-  appVersion: z.string().min(1, 'appVersion is required'),
+  errorName: z.string().min(1, 'errorName is required').max(CRASH_LIMITS.errorName),
+  errorMessage: z.string().max(CRASH_LIMITS.errorMessage).default(''),
+  stack: z.string().max(CRASH_LIMITS.stack).optional().default(''),
+  component: z.string().max(CRASH_LIMITS.component).optional(),
+  appVersion: z.string().min(1, 'appVersion is required').max(CRASH_LIMITS.appVersion),
   platform: crashPlatformSchema,
-  deviceAbi: z.string().optional(),
-  breadcrumbs: z.array(breadcrumbSchema).optional().default([]),
+  deviceAbi: z.string().max(CRASH_LIMITS.deviceAbi).optional(),
+  breadcrumbs: z.array(breadcrumbSchema).max(CRASH_LIMITS.breadcrumbs).optional().default([]),
   timestamp: z
-    .union([z.string(), z.number()])
+    .union([z.string().max(CRASH_LIMITS.timestamp), z.number()])
     .optional()
     .default(() => new Date().toISOString()),
 })
 export type CrashReport = z.infer<typeof crashReportSchema>
 
 // ─── Sanitization Helper ────────────────────────────────────────────────────
+
+/**
+ * Redacts the password in `scheme://user:password@host` in a single linear pass.
+ * (The previous regex backtracked quadratically on long inputs.) The userinfo ends at the
+ * last `@` inside the authority, which stops at the first `/`, `?`, `#` or whitespace.
+ */
+export function redactUrlCredentials(text: string): string {
+  let out = ''
+  let pos = 0
+  for (;;) {
+    const i = text.indexOf('://', pos)
+    if (i < 0) break
+    const start = i + 3
+    let end = start
+    while (end < text.length && !/[\/?#\s]/.test(text[end] as string)) end++
+    const authority = text.slice(start, end)
+    const at = authority.lastIndexOf('@')
+    const colon = authority.indexOf(':')
+    if (at > 0 && colon > 0 && colon < at) {
+      out += text.slice(pos, start + colon + 1) + '[REDACTED]'
+      pos = start + at
+    } else {
+      out += text.slice(pos, start)
+      pos = start
+    }
+  }
+  return out + text.slice(pos)
+}
 
 /**
  * Strips auth tokens, credentials, passwords and normalizes platform file paths.
@@ -50,7 +102,7 @@ export function sanitizeText(raw: string): string {
   text = text.replace(/(bearer\s+)[A-Za-z0-9\-._~+/]+=*/gi, '$1[REDACTED]')
 
   // 3. Strip passwords and credentials in URLs (e.g. https://user:pass@host)
-  text = text.replace(/([a-zA-Z]+:\/\/[^/:]+:)[^@]+(@)/g, '$1[REDACTED]$2')
+  text = redactUrlCredentials(text)
 
   // 4. Strip key-value credentials (password=..., secret: ..., api_key=...)
   text = text.replace(
@@ -114,6 +166,9 @@ export function sanitizeCrashReport(report: CrashReport): CrashReport {
 
   return {
     ...report,
+    errorName: sanitizeText(report.errorName),
+    appVersion: sanitizeText(report.appVersion),
+    deviceAbi: report.deviceAbi ? sanitizeText(report.deviceAbi) : undefined,
     errorMessage: sanitizeText(report.errorMessage),
     stack: sanitizeText(report.stack || ''),
     component: report.component ? sanitizeText(report.component) : undefined,
@@ -247,6 +302,29 @@ export interface CrashTelemetryResult {
 }
 
 /**
+ * Makes untrusted text inert in GitHub markdown: no code-span or fence breakout, no @mention
+ * or #ref notifications, no raw HTML or comments, and no line breaks that start new blocks.
+ */
+export function neutralizeMarkdown(text: string): string {
+  return String(text)
+    .replace(/`/g, "'")
+    .replace(/</g, '&lt;')
+    .replace(/@(?=\w)/g, '@\u200b')
+    .replace(/#(?=\d)/g, '#\u200b')
+    .replace(/[\r\n]+/g, ' ')
+}
+
+/** Inline-safe text: neutralized and shortened. */
+function inline(text: string | undefined, max: number): string {
+  return neutralizeMarkdown(text ?? '').slice(0, max)
+}
+
+/** Stack text for a fenced block: a run of backticks cannot close the fence. */
+function fenced(text: string | undefined): string {
+  return (text || '(No stack trace provided)').replace(/`/g, "'")
+}
+
+/**
  * Formats breadcrumbs array into Markdown list items.
  */
 export function formatBreadcrumbsMarkdown(breadcrumbs: Breadcrumb[]): string {
@@ -256,12 +334,12 @@ export function formatBreadcrumbsMarkdown(breadcrumbs: Breadcrumb[]): string {
 
   const lines = breadcrumbs.map((b, idx) => {
     if (typeof b === 'string') {
-      return `${idx + 1}. ${b}`
+      return `${idx + 1}. ${inline(b, CRASH_LIMITS.breadcrumbText)}`
     }
-    const cat = b.category ? `\`${String(b.category)}\`` : ''
-    const lvl = b.level ? `[${String(b.level).toUpperCase()}]` : ''
-    const time = b.timestamp ? `*(${String(b.timestamp)})*` : ''
-    const msg = String(b.message ?? JSON.stringify(b))
+    const cat = b.category ? `\`${inline(String(b.category), 64)}\`` : ''
+    const lvl = b.level ? `[${inline(String(b.level), 16).toUpperCase()}]` : ''
+    const time = b.timestamp ? `*(${inline(String(b.timestamp), 64)})*` : ''
+    const msg = inline(String(b.message ?? JSON.stringify(b)), CRASH_LIMITS.breadcrumbText)
     const prefix = [lvl, cat, time].filter(Boolean).join(' ')
     return `${idx + 1}. ${prefix ? prefix + ' ' : ''}${msg}`
   })
@@ -273,11 +351,8 @@ export function formatBreadcrumbsMarkdown(breadcrumbs: Breadcrumb[]): string {
  * Generates issue title: [Crash] <errorName>: <shortMessage>
  */
 export function makeIssueTitle(errorName: string, errorMessage: string): string {
-  const shortMessage = sanitizeText(errorMessage)
-    .replace(/[\r\n]+/g, ' ')
-    .trim()
-    .slice(0, 80)
-  return `[Crash] ${errorName}: ${shortMessage || '(no message)'}`
+  const shortMessage = inline(sanitizeText(errorMessage), 80).trim()
+  return `[Crash] ${inline(sanitizeText(errorName), 120)}: ${shortMessage || '(no message)'}`
 }
 
 /**
@@ -289,18 +364,18 @@ export function makeIssueBody(report: CrashReport, fingerprint: string): string 
 <!-- fingerprint: ${fingerprint} -->
 
 - **Fingerprint:** \`${fingerprint}\`
-- **Error:** \`${report.errorName}\`
-- **Message:** \`${report.errorMessage || '(no message)'}\`
-- **App Version:** \`${report.appVersion}\`
+- **Error:** \`${inline(report.errorName, CRASH_LIMITS.errorName)}\`
+- **Message:** \`${inline(report.errorMessage, CRASH_LIMITS.errorMessage) || '(no message)'}\`
+- **App Version:** \`${inline(report.appVersion, CRASH_LIMITS.appVersion)}\`
 - **Platform:** \`${report.platform}\`
-- **Device ABI:** \`${report.deviceAbi || 'n/a'}\`
-- **Component:** \`${report.component || 'n/a'}\`
-- **Timestamp:** \`${report.timestamp}\`
+- **Device ABI:** \`${inline(report.deviceAbi, CRASH_LIMITS.deviceAbi) || 'n/a'}\`
+- **Component:** \`${inline(report.component, CRASH_LIMITS.component) || 'n/a'}\`
+- **Timestamp:** \`${inline(String(report.timestamp), CRASH_LIMITS.timestamp)}\`
 
 ### Stack Trace
 
 \`\`\`
-${report.stack || '(No stack trace provided)'}
+${fenced(report.stack)}
 \`\`\`
 
 ### Breadcrumbs
@@ -318,17 +393,17 @@ export function makeCommentBody(report: CrashReport, fingerprint: string): strin
   return `### ⚠️ Crash Reoccurrence
 
 - **Fingerprint:** \`${fingerprint}\`
-- **App Version:** \`${report.appVersion}\`
+- **App Version:** \`${inline(report.appVersion, CRASH_LIMITS.appVersion)}\`
 - **Platform:** \`${report.platform}\`
-- **Device ABI:** \`${report.deviceAbi || 'n/a'}\`
-- **Component:** \`${report.component || 'n/a'}\`
-- **Timestamp:** \`${report.timestamp}\`
+- **Device ABI:** \`${inline(report.deviceAbi, CRASH_LIMITS.deviceAbi) || 'n/a'}\`
+- **Component:** \`${inline(report.component, CRASH_LIMITS.component) || 'n/a'}\`
+- **Timestamp:** \`${inline(String(report.timestamp), CRASH_LIMITS.timestamp)}\`
 
 <details>
 <summary>Stack Trace</summary>
 
 \`\`\`
-${report.stack || '(No stack trace provided)'}
+${fenced(report.stack)}
 \`\`\`
 </details>
 
@@ -377,10 +452,9 @@ export async function reportCrashToGitHub(
   })
 
   if (!searchRes.ok) {
-    const errorText = await searchRes.text().catch(() => '')
     return {
       ok: false,
-      error: `GitHub API error fetching open issues (${searchRes.status}): ${errorText}`,
+      error: `GitHub API error fetching open issues (${searchRes.status})`,
       fingerprint,
     }
   }
@@ -411,10 +485,9 @@ export async function reportCrashToGitHub(
     })
 
     if (!commentRes.ok) {
-      const errText = await commentRes.text().catch(() => '')
       return {
         ok: false,
-        error: `GitHub API error posting comment (${commentRes.status}): ${errText}`,
+        error: `GitHub API error posting comment (${commentRes.status})`,
         fingerprint,
         issueNumber: matchingIssue.number,
       }
@@ -445,10 +518,9 @@ export async function reportCrashToGitHub(
   })
 
   if (!createRes.ok) {
-    const errText = await createRes.text().catch(() => '')
     return {
       ok: false,
-      error: `GitHub API error creating issue (${createRes.status}): ${errText}`,
+      error: `GitHub API error creating issue (${createRes.status})`,
       fingerprint,
     }
   }
@@ -483,6 +555,15 @@ function telemetryJsonResponse(
 }
 
 /**
+ * Reads a request body as UTF-8 text, counting bytes as they stream in. Returns null as soon as
+ * the running total exceeds `maxBytes` (the rest of the stream is cancelled, never buffered).
+ */
+export async function readBodyCapped(request: Request, maxBytes: number): Promise<string | null> {
+  const bytes = await readBytesCapped(request, maxBytes)
+  return bytes === null ? null : new TextDecoder().decode(bytes)
+}
+
+/**
  * Handles POST /api/v1/telemetry/crash requests.
  */
 export async function handleCrashTelemetry(request: Request, env: TelemetryEnv): Promise<Response> {
@@ -500,10 +581,16 @@ export async function handleCrashTelemetry(request: Request, env: TelemetryEnv):
     )
   }
 
-  // 2. Parse JSON body
+  // 2. Read the body with a hard byte cap (counted while streaming, before it is buffered whole)
+  const declared = Number(request.headers.get('content-length'))
+  if (Number.isFinite(declared) && declared > CRASH_LIMITS.bodyBytes) {
+    return telemetryJsonResponse({ error: 'Payload too large' }, 413)
+  }
+  const text = await readBodyCapped(request, CRASH_LIMITS.bodyBytes)
+  if (text === null) return telemetryJsonResponse({ error: 'Payload too large' }, 413)
   let body: unknown
   try {
-    body = await request.json()
+    body = JSON.parse(text)
   } catch {
     return telemetryJsonResponse({ error: 'Invalid JSON body' }, 400)
   }

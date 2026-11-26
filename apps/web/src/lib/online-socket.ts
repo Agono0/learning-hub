@@ -17,6 +17,8 @@ export interface OnlineSocketOptions<TState, TChat> {
    * join payload here so it is fresh each time; nothing is cached or queued.
    */
   onOpen?: (socket: OnlineSocket<TState, TChat>) => void
+  /** The server refused this client (for example an unverified or replayed join). */
+  onRefused?: (code: string) => void
 }
 
 /**
@@ -30,6 +32,7 @@ export class OnlineSocket<TState = unknown, TChat = unknown> {
   private onChat?: (message: TChat) => void
   private onStatusChange?: (status: ConnectionStatus) => void
   private onOpen?: (socket: OnlineSocket<TState, TChat>) => void
+  private onRefused?: (code: string) => void
   private reconnectAttempts = 0
   private maxReconnectAttempts = 5
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
@@ -42,6 +45,7 @@ export class OnlineSocket<TState = unknown, TChat = unknown> {
     this.onChat = options.onChat
     this.onStatusChange = options.onStatusChange
     this.onOpen = options.onOpen
+    this.onRefused = options.onRefused
   }
 
   /** Detach handlers so a stale socket cannot call back after close/reconnect. */
@@ -76,6 +80,10 @@ export class OnlineSocket<TState = unknown, TChat = unknown> {
           const data = JSON.parse(event.data)
           if (data.type === 'state' && (data.room || data.raid)) {
             this.onState(data.room || data.raid)
+          } else if (data.type === 'error' && typeof data.code === 'string') {
+            // A refusal is final: do not reconnect and retry the same join.
+            this.closedExplicitly = true
+            this.onRefused?.(data.code)
           } else if (data.type === 'chat' && data.message && this.onChat) {
             this.onChat(data.message)
           }
@@ -165,5 +173,22 @@ export class OnlineSocket<TState = unknown, TChat = unknown> {
     this.reconnectTimer = setTimeout(() => {
       this.connect()
     }, delay)
+  }
+}
+
+/** What the user sees when the server refuses a join. */
+export function joinRefusalMessage(code: string): string {
+  switch (code) {
+    case 'register_required':
+      return 'This device is not registered with the online server yet. Register it in Identity, then join again.'
+    case 'audience_unconfigured':
+    case 'identity_unavailable':
+      return 'The online server is not set up for verified joins yet.'
+    case 'already_joined':
+      return 'You are already in this room on another connection.'
+    case 'room_full':
+      return 'This room is full.'
+    default:
+      return 'The server could not verify this join. Try again.'
   }
 }
