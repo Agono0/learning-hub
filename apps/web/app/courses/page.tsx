@@ -383,12 +383,7 @@ export default function CoursesPage() {
             <CourseStatTile
               label="In progress"
               value={(courses ?? []).filter((c) => c.progress.completed > 0 && c.nextLesson).length}
-              detail={`of ${(courses ?? []).length} courses`}
-            />
-            <CourseStatTile
-              label="Certified"
-              value={(courses ?? []).filter((c) => c.certified).length}
-              detail="certificates earned"
+              detail={`of ${(courses ?? []).length} courses · ${(courses ?? []).filter((c) => c.certified).length} certified`}
             />
           </div>
         </ClayIn>
