@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createServer, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { dispatch } from '../../../apps/server/src/routes'
+import { MAX_IF_THEN_CHARS } from '@learning-hub/core'
 import * as goalsRoute from '../../../apps/web/app/api/goals/route'
 
 /** Headless WOOP goals routes against the web handler on the same database. */
@@ -90,5 +91,32 @@ describe('goals routes', () => {
   it('rejects a non-object or wrongly typed body with 400', async () => {
     expect((await srvPost({ wish: 5 })).status).toBe(400)
     expect((await srvPost([])).status).toBe(400)
+  })
+
+  it('applies the same length limits as the web route (differential, counts only)', async () => {
+    const max = MAX_IF_THEN_CHARS
+    const cases: Record<string, unknown>[] = [
+      { wish: 'w'.repeat(100_000) },
+      { wish: 'Learn the nerves', outcome: 'o'.repeat(100_000), obstacle: 'b'.repeat(100_000) },
+      { wish: 'Learn the nerves', ifCondition: 'c'.repeat(max), thenAction: 'a'.repeat(max) },
+      { wish: 'Learn the nerves', ifCondition: 'c'.repeat(max + 1), thenAction: 'do it' },
+      { wish: 'Learn the nerves', ifCondition: 'when', thenAction: 'a'.repeat(max + 1) },
+    ]
+    const outcomes: number[] = []
+    for (const input of cases) {
+      const s = await srvPost(input)
+      const w = await webPost(input)
+      // the web route answers 201 on create and the server 200 (server convention); errors match
+      const sOk = s.status === 200
+      const wOk = w.status === 201
+      expect(sOk, JSON.stringify(Object.keys(input))).toBe(wOk)
+      if (!sOk) {
+        expect(s.status).toBe(w.status)
+        expect(s.body).toEqual(w.body)
+      }
+      outcomes.push(s.status)
+    }
+    // at the limit passes, one over fails: the cases above really exercise both sides
+    expect(outcomes).toEqual([200, 200, 200, 400, 400])
   })
 })
