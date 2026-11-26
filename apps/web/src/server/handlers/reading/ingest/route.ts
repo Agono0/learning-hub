@@ -16,6 +16,12 @@ import {
 } from '@learning-hub/core'
 import { createSource } from '@learning-hub/db'
 import { ApiError, readJson, withRoute } from '@/lib/api'
+import { boundedFetchText, BoundedFetchError } from '@/server/bounded-fetch'
+
+/** Article HTML cap: real pages are well under 5 MB; larger bodies are refused, not truncated. */
+const MAX_ARTICLE_BYTES = 5 * 1024 * 1024
+/** EPUB base64 payload cap, matching the 50 MB apkg import contract. */
+const MAX_EPUB_BASE64 = 50 * 1024 * 1024
 
 const ingestSchema = z.discriminatedUnion('mode', [
   z.object({
@@ -36,7 +42,7 @@ const ingestSchema = z.discriminatedUnion('mode', [
   }),
   z.object({
     mode: z.literal('epub'),
-    base64: z.string().min(16),
+    base64: z.string().min(16).max(MAX_EPUB_BASE64, 'EPUB payload exceeds the 50MB base64 limit'),
     title: z.string().trim().max(300).optional(),
     priority: z.number().int().min(0).max(100).optional(),
   }),
@@ -71,7 +77,10 @@ export const POST = withRoute(async (req: Request) => {
   if (body.mode === 'url') {
     let html: string
     try {
-      const res = await networkFetch(body.url, {
+      const res = await boundedFetchText(body.url, {
+        allowHttp: true,
+        maxBytes: MAX_ARTICLE_BYTES,
+        timeoutMs: 20_000,
         headers: {
           Accept: 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8',
           'User-Agent': 'Mozilla/5.0 (compatible; LearningHUB/1.0)',
@@ -83,8 +92,14 @@ export const POST = withRoute(async (req: Request) => {
           { status: 502 },
         )
       }
-      html = await res.text()
+      html = res.text
     } catch (err) {
+      if (err instanceof BoundedFetchError && err.code === 'blocked') {
+        throw new ApiError(400, err.message)
+      }
+      if (err instanceof BoundedFetchError && err.code === 'too-large') {
+        throw new ApiError(413, 'The page is too large to import (5MB limit)')
+      }
       return Response.json(
         {
           ok: false,

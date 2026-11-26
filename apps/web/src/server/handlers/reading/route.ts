@@ -8,6 +8,9 @@ import { extractEpubBytes } from '@learning-hub/core'
 import { createSource, deleteSource, listSources } from '@learning-hub/db'
 import { ApiError, readJson, withRoute } from '@/lib/api'
 
+/** Upload cap per file, matching the 50 MB apkg import contract. */
+const MAX_UPLOAD_BYTES = 50 * 1024 * 1024
+
 const pasteSourceSchema = z.object({
   title: z.string().trim().min(1, 'title and content required'),
   kind: z.enum(['pdf', 'epub', 'article', 'paste', 'youtube', 'markdown']).optional(),
@@ -25,6 +28,11 @@ export const POST = withRoute(async (req: Request) => {
   const contentType = req.headers.get('content-type') ?? ''
 
   if (contentType.includes('multipart/form-data')) {
+    // Refuse before buffering the multipart body when the client declares an oversized one.
+    const declared = Number(req.headers.get('content-length'))
+    if (Number.isFinite(declared) && declared > MAX_UPLOAD_BYTES + 1024 * 1024) {
+      throw new ApiError(413, 'file exceeds the 50MB upload limit')
+    }
     let form: FormData
     try {
       form = await req.formData()
@@ -33,6 +41,9 @@ export const POST = withRoute(async (req: Request) => {
     }
     const file = form.get('file')
     if (!(file instanceof File)) return Response.json({ error: 'file required' }, { status: 400 })
+    if (file.size > MAX_UPLOAD_BYTES) {
+      throw new ApiError(413, 'file exceeds the 50MB upload limit')
+    }
     const rawName = file.name.toLowerCase()
     const customTitle = String(form.get('title') ?? '').trim()
     const priority = Math.min(100, Math.max(0, Number(form.get('priority') ?? 50) || 50))
