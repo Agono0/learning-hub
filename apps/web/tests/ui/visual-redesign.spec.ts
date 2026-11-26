@@ -63,6 +63,13 @@ async function settle(page: import('@playwright/test').Page, theme: 'dark' | 'li
   }
 }
 
+/**
+ * Narrow, explicit allowlist of EXPECTED runtime errors (regex on the recorded line). Empty on
+ * purpose: every route currently renders with zero errors, so any HTTP >= 400, pageerror or
+ * console.error fails the test. Add an entry only with the reason next to it.
+ */
+const EXPECTED_ERRORS: RegExp[] = []
+
 async function noHorizontalOverflow(page: import('@playwright/test').Page) {
   const over = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -104,6 +111,8 @@ for (const mode of [
             path: path.join(OUT, `redesign-${r.slug}-${mode.name}-maxscroll.png`),
           })
         }
+        // Artifacts are already saved above, so a failure still leaves the evidence to read.
+        expect(errors.filter((e) => !EXPECTED_ERRORS.some((re) => re.test(e)))).toEqual([])
       })
     }
   })
