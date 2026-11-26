@@ -2103,7 +2103,9 @@ function CardFront(props: {
           />
         )}
         <div className="flex items-start justify-between gap-2">
-          <div className="text-xl font-medium">{front}</div>
+          <div dir="auto" className="text-xl font-medium">
+            {front}
+          </div>
           {isSpeechAvailable() && (
             <Button
               variant="ghost"
@@ -2122,7 +2124,7 @@ function CardFront(props: {
           // on the server; gated by `motionOK`). Replaces the old CSS
           // `animate-fade-in-up` so the entrance has exactly one owner.
           <ClayPop className="border-t border-neutral-200 pt-4 text-lg text-ac-text dark:border-(--hub-border)">
-            {content.basic.back}
+            <div dir="auto">{content.basic.back}</div>
           </ClayPop>
         )}
       </div>
@@ -2135,7 +2137,7 @@ function CardFront(props: {
     const clozeCorrect = isCardAnswerCorrect(content, props.clozeInput)
     return (
       <div className="space-y-3">
-        <div className="text-xl leading-loose">
+        <div dir="auto" className="text-xl leading-loose">
           {/* segments are a pure function of the card's immutable content —
               they never reorder or grow, so index keys are stable per card */}
           {segments.map((seg, i) => {
@@ -2194,7 +2196,9 @@ function CardFront(props: {
             </span>
           </div>
         )}
-        <div className="text-xl font-medium">{question}</div>
+        <div dir="auto" className="text-xl font-medium">
+          {question}
+        </div>
         <input
           ref={props.inputRef}
           value={props.typeinValue}
@@ -2230,7 +2234,9 @@ function CardFront(props: {
             </span>
           </div>
         )}
-        <div className="text-xl font-medium">{question}</div>
+        <div dir="auto" className="text-xl font-medium">
+          {question}
+        </div>
         {!revealed && (
           <div className="text-sm text-tertiary">
             options appear after you commit — recall first (stepwise MCQ)
