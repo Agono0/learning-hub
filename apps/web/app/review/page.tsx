@@ -1075,7 +1075,7 @@ function ReviewPageInner() {
                       setSelectedDeckIds([deckId])
                     }
                   }}
-                  className="inline-flex items-center text-xs font-medium text-indigo-400 hover:text-indigo-300 focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none rounded [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-2"
+                  className="inline-flex min-h-6 items-center text-xs font-medium text-ac-text hover:underline focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none rounded [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-2"
                 >
                   {multiDeckMode ? '← Back to single deck' : '⇄ Interleave multiple decks'}
                 </button>
