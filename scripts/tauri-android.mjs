@@ -63,45 +63,17 @@ if (!env.KEYSTORE_FILE || !existsSync(env.KEYSTORE_FILE)) {
       console.warn('[tauri-android] failed to decode ANDROID_KEYSTORE_BASE64:', err)
     }
   } else if (!existsSync(defaultKeystore)) {
-    const keytoolBin = env.JAVA_HOME
-      ? join(env.JAVA_HOME, 'bin', process.platform === 'win32' ? 'keytool.exe' : 'keytool')
-      : 'keytool'
-    try {
-      execFileSync(
-        keytoolBin,
-        [
-          '-genkeypair',
-          '-v',
-          '-keystore',
-          defaultKeystore,
-          '-alias',
-          'learninghub',
-          '-keyalg',
-          'RSA',
-          '-keysize',
-          '2048',
-          '-validity',
-          '10000',
-          '-storepass',
-          'learninghub123',
-          '-keypass',
-          'learninghub123',
-          '-dname',
-          'CN=LearningHUB, OU=Mobile, O=LearningHUB, C=US',
-        ],
-        { stdio: 'inherit' },
-      )
-      console.log(`[tauri-android] generated release keystore at ${defaultKeystore}`)
-    } catch (err) {
-      console.warn('[tauri-android] could not generate release.keystore via keytool:', err?.message)
-    }
+    // Never auto-generate a keystore or default its password: a release APK signed
+    // with a throwaway or publicly known key cannot update an installed app. Debug
+    // builds do not need it; a release build fails in gradle with a clear message.
+    console.warn(
+      '[tauri-android] no release keystore (set ANDROID_KEYSTORE_BASE64 or KEYSTORE_FILE); release builds will fail',
+    )
   }
 
   if (existsSync(defaultKeystore)) {
     env.KEYSTORE_FILE = defaultKeystore
-    env.KEYSTORE_PASSWORD = env.KEYSTORE_PASSWORD || 'learninghub123'
     env.KEY_ALIAS = env.KEY_ALIAS || 'learninghub'
-    env.KEY_PASSWORD = env.KEY_PASSWORD || 'learninghub123'
   }
 }
 

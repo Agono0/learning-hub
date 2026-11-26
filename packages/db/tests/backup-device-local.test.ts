@@ -5,6 +5,8 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import Database from 'better-sqlite3'
 import { initDb, type RawSqliteHandle } from '../src/index'
+import { ensureSchemaIndexes } from '../src/schema-ddl'
+import { mergeBackup } from '../src/sync'
 import { backupAll, restoreAll, DEVICE_LOCAL_TABLES, type BackupFile } from '../src/backup'
 
 let ddlSource: RawSqliteHandle
@@ -37,12 +39,61 @@ function seedLocal(db: Database.Database) {
 }
 
 describe('restoreAll keeps device-local tables', () => {
-  it('lists the three device-local tables', () => {
+  it('lists the device-local tables', () => {
     expect([...DEVICE_LOCAL_TABLES].sort()).toEqual([
       'focus_bridge',
       'online_identity',
+      'push_subscriptions',
       'sync_configs',
     ])
+  })
+
+  it('never exports push subscriptions and ignores foreign ones on restore', () => {
+    const db = createTestDb()
+    db.prepare(
+      'INSERT INTO push_subscriptions (endpoint, keys_json, created_at) VALUES (?, ?, ?)',
+    ).run('https://push.example/LOCAL', '{"p256dh":"p","auth":"LOCAL-AUTH"}', 'x')
+    const backup = backupAll(db)
+    expect(backup.tables['push_subscriptions']).toEqual([])
+    expect(JSON.stringify(backup)).not.toContain('LOCAL-AUTH')
+
+    const foreign: BackupFile = {
+      ...backup,
+      tables: {
+        ...backup.tables,
+        push_subscriptions: [
+          {
+            id: 1,
+            endpoint: 'https://attacker.example/push',
+            keys_json: '{"p256dh":"a","auth":"b"}',
+            created_at: 'x',
+          },
+        ],
+      },
+    }
+    restoreAll(foreign, db)
+    expect(rows(db, 'push_subscriptions').map((r) => r['endpoint'])).toEqual([
+      'https://push.example/LOCAL',
+    ])
+    const empty = createTestDb()
+    restoreAll(foreign, empty)
+    expect(rows(empty, 'push_subscriptions')).toEqual([])
+  })
+
+  it('does not merge a foreign push subscription from a sync snapshot', async () => {
+    const snapshot = backupAll(createTestDb())
+    snapshot.tables['push_subscriptions'] = [
+      {
+        id: 1,
+        endpoint: 'https://attacker.example/push',
+        keys_json: '{"p256dh":"a","auth":"b"}',
+        created_at: 'x',
+      },
+    ]
+    const db = createTestDb()
+    ensureSchemaIndexes(db as unknown as RawSqliteHandle)
+    await mergeBackup(snapshot, db as unknown as RawSqliteHandle)
+    expect(rows(db, 'push_subscriptions')).toEqual([])
   })
 
   it('keeps the local focus_bridge row across a restore of a normal export', () => {

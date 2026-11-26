@@ -67,6 +67,36 @@ describe('native command argument trust', () => {
   })
 })
 
+describe('signing and dependencies', () => {
+  it('release signing has no built-in password or auto-generated keystore', () => {
+    for (const f of [
+      'scripts/tauri-android.mjs',
+      'apps/native/src-tauri/gen/android/app/build.gradle.kts',
+    ]) {
+      const src = read(f)
+      expect(src, f).not.toContain('learninghub123')
+      expect(src, f).not.toMatch(/-genkeypair/)
+    }
+    expect(read('apps/native/src-tauri/gen/android/app/build.gradle.kts')).toContain(
+      'Release signing is not configured',
+    )
+  })
+
+  it('Cargo.lock carries the patched url and cookie releases', () => {
+    const lock = read('apps/native/src-tauri/Cargo.lock')
+    const ver = (name: string) =>
+      lock.match(new RegExp(`name = "${name}"\\nversion = "([^"]+)"`))?.[1] ?? '0'
+    const gte = (v: string, min: string) => {
+      const a = v.split('.').map(Number)
+      const b = min.split('.').map(Number)
+      for (let i = 0; i < 3; i++) if ((a[i] ?? 0) !== (b[i] ?? 0)) return (a[i] ?? 0) > (b[i] ?? 0)
+      return true
+    }
+    expect(gte(ver('url'), '2.5.9')).toBe(true)
+    expect(gte(ver('cookie'), '0.18.3')).toBe(true)
+  })
+})
+
 describe('MCP registry', () => {
   it('plugin tools get the same argument size cap as built-ins', () => {
     expect(read('apps/mcp/src/index.ts')).toContain('checkArgsSize(args)')

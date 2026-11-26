@@ -68,10 +68,9 @@ lib crate-type `staticlib/cdylib/rlib` for Android):
   `latest` when the ref is `main` (branch pushes release to `latest`).
 - **Signing risk (flagged):** the script decodes
   `ANDROID_KEYSTORE_BASE64` into `release.keystore` when the secret exists,
-  otherwise it AUTO-GENERATES a keystore via `keytool` (default store password
-  `learninghub123`). CI runs without the secret therefore produce a different
-  signing key each run → sideload updates over an existing install will fail
-  signature checks. Epic 1 task O1-22 addresses this.
+  otherwise a release build now fails (the old keytool auto-generation with a
+  built-in password is removed), so no APK is ever signed with a throwaway or
+  publicly known key. Epic 1 task O1-22.
 
 ## 3. CI pipelines
 

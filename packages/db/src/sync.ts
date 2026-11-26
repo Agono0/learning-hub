@@ -62,6 +62,8 @@ const SKIP_TABLES = new Set([
   'focus_bridge',
   // Device-local key pair: never merged in from another device's snapshot.
   'online_identity',
+  // This browser's Web Push endpoint and keys: never exported, never merged in.
+  'push_subscriptions',
 ])
 
 function str(val: unknown): string {

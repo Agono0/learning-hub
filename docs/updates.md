@@ -183,10 +183,11 @@ lhslot.localhost` (slot) are different origins, which relocates the
 `KEYSTORE_FILE`/`KEYSTORE_PASSWORD`:
 
 - if `ANDROID_KEYSTORE_BASE64` is set, it decodes it to `release.keystore`;
-- **otherwise it AUTO-GENERATES a keystore via `keytool`** (default store
-  password `learninghub123`).
+- otherwise it used to auto-generate a keystore with a built-in password. That
+  fallback is removed: a release build without the keystore and its passwords
+  now fails.
 
-A CI run without the secret therefore produces a different signing key every
+A CI run that silently generated a key would produce a different signing key every
 time. Android refuses to install an update whose signature does not match the
 installed app — sideload deltas would be impossible and users would have to
 uninstall/reinstall each release.
