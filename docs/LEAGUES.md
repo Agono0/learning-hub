@@ -298,3 +298,80 @@ Surfaces: `GET /leagues/duel-stats?slug=` (server), `GET
 /api/leagues?view=duel-stats&slug=` (web, rendered as the stats table above
 the duel list on the Duels tab), `learning-hub leagues duel-stats <slug>`,
 and the `league_duel_stats` MCP tool.
+
+## Remote leagues (inactive groundwork)
+
+Remote leagues let a few friends share one league room over a Cloudflare
+Worker. They are local and friendly practice only. Points are local activity
+scoring, Elo is frozen, and nothing here verifies skill or ranks anyone. The
+whole feature is off unless the server runs with `LH_REMOTE_LEAGUES=1`. With
+the flag unset, `GET /api/leagues/remote` answers `enabled: false` with no
+links, every write answers 503, and the web panel does not render.
+
+Threat model and limits: `docs/leagues-remote-threat-model.md`.
+
+### How a change travels
+
+1. You queue a mutation (`join`, `rename`, `leave`, `invite-create`,
+   `invite-revoke`, `invite-policy`, `remove-member`, `unblock-member`, plus
+   duel and round mutations).
+2. The app signs it with the device key (ECDSA P-256) with a sequence number,
+   timestamp and nonce, and stores it in a local queue.
+3. A sync sends queued envelopes in order. The room verifies the signature,
+   the sequence, the nonce and the clock window, then applies the reducer.
+4. Permanent refusals (bad signature, not a member, not the founder) are
+   dropped from the queue and shown. Transient ones (network, 5xx) are kept
+   and retried.
+
+Because the queue is a local file, a mutation made offline is delivered on the
+next sync. A rejected join blocks later membership items in the same lane, so
+a rename or leave cannot run ahead of a join that failed.
+
+### Membership and invites
+
+| Action           | Who may do it                          | Effect                                                                                                                 |
+| ---------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `join`           | Anyone with a device key               | Adds a member. Needs a valid invite when the room is invite-only.                                                      |
+| `rename`         | A member                               | Changes their alias.                                                                                                   |
+| `leave`          | A member                               | Removes them, cancels their open duels, revokes their invites. If the founder leaves, the next member becomes founder. |
+| `invite-create`  | A member                               | Stores a digest of a code you made in the browser, with a use count and an expiry.                                     |
+| `invite-revoke`  | The member who made it, or the founder | Stops the invite working.                                                                                              |
+| `invite-policy`  | The founder                            | Turns invite-only on or off.                                                                                           |
+| `remove-member`  | The founder                            | Removes a member like `leave`, and blocks their handle.                                                                |
+| `unblock-member` | The founder                            | Lets a blocked handle join again.                                                                                      |
+
+Invite codes are made in your browser and shown once. The room stores only a
+digest, so a database leak or a spectator view cannot reveal a usable code. A
+code is spent only by a join that is otherwise valid, and a blocked handle is
+refused before any code is spent. The block list holds at most 200 handles and
+is cleared when the league empties. A block is room-local: a new device key is
+a new handle.
+
+### CLI
+
+```
+learning-hub leagues-remote list
+learning-hub leagues-remote link <serverUrl> <leagueId>
+learning-hub leagues-remote enqueue <serverUrl> <leagueId> <mutation...>
+learning-hub leagues-remote queue <serverUrl> <leagueId>
+learning-hub leagues-remote invite-new <serverUrl> <leagueId> [--uses N] [--hours H]
+```
+
+`enqueue` takes the same words as the local mutation parser, for example
+`join Bo --invite <code>`, `rename Bo`, `leave`, `invite-policy on`,
+`remove-member <handle>` and `unblock-member <handle>`. Remote league ids are
+6 to 40 lowercase letters, digits or hyphens.
+
+### MCP
+
+Read tools: `remote_league_links`, `remote_league_queue`. Enqueue tools:
+`remote_league_rename`, `remote_league_leave`, `remote_league_invite_revoke`,
+`remote_league_invite_policy`, `remote_league_remove_member`,
+`remote_league_unblock_member`, `remote_league_transfer_founder`. There is deliberately no MCP tool that makes an
+invite code, so an agent never holds one.
+
+### Spectating
+
+The room serves a read-only `/spectate` view with the roster, aliases,
+whether the room is invite-only and how many invites are live. It never
+includes digests, codes or the block list.

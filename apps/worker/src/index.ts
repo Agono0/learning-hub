@@ -6,14 +6,16 @@ import { deriveUserId } from './identity-id'
 import { communityItemSchema, filterContentSafety, makeRoomCode } from '@learning-hub/core/online'
 import { BOSS_ROSTER } from '@learning-hub/core/boss'
 import { isOwnBossKey } from './raid-validation'
+import { createLeague } from '@learning-hub/core/leagues'
 import { BossRaid } from './boss-raid'
+import { LeagueRoom } from './league-room'
 import { StudyRoom } from './study-room'
 import { readBytesCapped } from './body'
 import { authenticateRequest } from './signed-request'
 import { handleCrashTelemetry } from './telemetry'
 import { parseStatsSync } from './validation'
 
-export { StudyRoom, BossRaid }
+export { StudyRoom, BossRaid, LeagueRoom }
 
 /** Largest accepted publish body (a share string plus metadata). Assumed limit. */
 const PUBLISH_MAX_BYTES = 512 * 1024
@@ -31,6 +33,9 @@ export interface Env {
   DB?: D1Database
   STUDY_ROOM?: DurableObjectNamespace
   BOSS_RAID?: DurableObjectNamespace
+  LEAGUE_ROOM?: DurableObjectNamespace
+  /** Authenticated leagues route only when this is exactly "true". Ships unset. */
+  LEAGUES_ENABLED?: string
   GITHUB_ISSUE_TOKEN?: string
   GITHUB_REPO?: string
   /** Trusted public host of this worker; signed requests are refused when it is unset. */
@@ -175,9 +180,71 @@ export default {
           )
             .bind(userId, body.pubkey, cleanAlias, nowIso)
             .run()
+          // Existing accounts keep the id they were first registered under
+          // (public_stats and other rows reference it). The upsert never
+          // rewrites id, so report the stored one instead of the new
+          // fingerprint: no silent reassignment of existing account data.
+          const stored = await env.DB.prepare('SELECT id FROM users WHERE pubkey = ?')
+            .bind(body.pubkey)
+            .first<{ id: string }>()
+          if (stored?.id) userId = stored.id
         }
 
         return jsonResponse({ ok: true, userId, alias: cleanAlias })
+      }
+
+      // ── Authenticated Leagues (inactive groundwork, off unless enabled) ───
+      const leagueRoute = path.match(
+        /^\/api\/v1\/leagues\/(create|([a-z0-9][a-z0-9-]{5,39})\/(mutate|state))$/,
+      )
+      if (leagueRoute) {
+        if (env.LEAGUES_ENABLED !== 'true' || !env.LEAGUE_ROOM) {
+          return jsonResponse(
+            { error: 'Authenticated leagues are not enabled', enabled: false },
+            503,
+          )
+        }
+        if (leagueRoute[1] === 'create') {
+          if (request.method !== 'POST') return jsonResponse({ error: 'method not allowed' }, 405)
+          const body = ((await request.json().catch(() => null)) ?? {}) as {
+            id?: unknown
+            title?: unknown
+            seasonStart?: unknown
+          }
+          if (
+            typeof body.id !== 'string' ||
+            !/^[a-z0-9][a-z0-9-]{5,39}$/.test(body.id) ||
+            typeof body.title !== 'string' ||
+            typeof body.seasonStart !== 'string' ||
+            !/^\d{4}-\d{2}-\d{2}$/.test(body.seasonStart)
+          ) {
+            return jsonResponse(
+              { error: 'id, title and seasonStart (YYYY-MM-DD) are required' },
+              400,
+            )
+          }
+          const { clean: title } = filterContentSafety(body.title.slice(0, 80))
+          const league = createLeague({ id: body.id, title, seasonStart: body.seasonStart })
+          const stub = env.LEAGUE_ROOM.get(env.LEAGUE_ROOM.idFromName(body.id))
+          return stub.fetch('http://do/init', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ league }),
+          })
+        }
+        const leagueId = leagueRoute[2]!
+        const action = leagueRoute[3]!
+        const stub = env.LEAGUE_ROOM.get(env.LEAGUE_ROOM.idFromName(leagueId))
+        if (action === 'state') {
+          if (request.method !== 'GET') return jsonResponse({ error: 'method not allowed' }, 405)
+          return stub.fetch('http://do/state')
+        }
+        if (request.method !== 'POST') return jsonResponse({ error: 'method not allowed' }, 405)
+        return stub.fetch('http://do/mutate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: await request.text(),
+        })
       }
 
       // ── Live Study Rooms ─────────────────────────────────────────────────

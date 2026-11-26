@@ -47,8 +47,8 @@ import { shareChannelTools } from './tools/share-channels'
 import { prototypeExemplarTools } from './tools/prototype-exemplar'
 import { cognitiveLoadTools } from './tools/cognitive-load'
 import { dualcodingTools } from './tools/dualcoding'
-import { leagueTools } from './tools/leagues'
 import { taskTools } from './tools/tasks'
+import { leagueTools, remoteLeagueMembershipTools } from './tools/leagues'
 import type { RegisteredTool } from './tool-kit'
 
 // ─── Server ─────────────────────────────────────────────────────────────────
@@ -93,6 +93,7 @@ async function main() {
     ...dualcodingTools,
     ...leagueTools,
     ...taskTools,
+    ...remoteLeagueMembershipTools,
   ] as RegisteredTool[]) {
     server.registerTool(
       registered.name,

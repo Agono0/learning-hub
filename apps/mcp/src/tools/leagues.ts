@@ -38,8 +38,20 @@ import {
   recordTournamentMatchResult,
   rematchLeagueDuel,
   submitDuelAnswers,
+  LeagueRemoteInputError,
+  enqueueLeagueMutation,
+  getRemoteLink,
+  linkRemoteLeague,
+  listRemoteLinks,
+  loadLeagueQueue,
 } from '@learning-hub/db'
-import { DIVISION_ORDER } from '@learning-hub/core'
+import {
+  DIVISION_ORDER,
+  LeagueMutationSchema,
+  SyncQueueFullError,
+  summarizeQueue,
+  type LeagueMutation,
+} from '@learning-hub/core'
 import { json, tool, type RegisteredTool } from '../tool-kit'
 
 const tierEnum = z.enum(['bronze', 'silver', 'gold', 'platinum', 'diamond'])
@@ -373,5 +385,122 @@ export const leagueTools: RegisteredTool[] = [
       status: z.enum(['open', 'complete']).optional(),
     },
     (opts) => json({ ok: true, tournaments: listLeagueTournaments(opts) }),
+  ),
+  tool(
+    'remote_league_links',
+    'List linked remote leagues (optional local/friendly practice groundwork). Read-only: shows link status and queue counts, never scores or ranks, and never signing keys.',
+    {},
+    () =>
+      json({
+        ok: true,
+        links: listRemoteLinks().map((l) => ({
+          remoteLeagueId: l.remoteLeagueId,
+          serverUrl: l.serverUrl,
+          nextSeq: l.nextSeq,
+          lastStatus: l.lastStatus ?? null,
+          queue: summarizeQueue(loadLeagueQueue(l.id).queue),
+        })),
+      }),
+  ),
+  tool(
+    'remote_league_queue',
+    'Inspect the offline mutation queue for one linked remote league. Read-only; payloads are not echoed.',
+    {
+      serverUrl: z.string().min(1),
+      remoteLeagueId: z.string().min(1),
+    },
+    ({ serverUrl, remoteLeagueId }) => {
+      let link
+      try {
+        link = getRemoteLink(serverUrl, remoteLeagueId)
+      } catch (err) {
+        return json({ ok: false, error: err instanceof Error ? err.message : 'invalid server url' })
+      }
+      if (!link) return json({ ok: false, error: 'no such link' })
+      const { queue, recovered } = loadLeagueQueue(link.id)
+      return json({
+        ok: true,
+        recovered,
+        summary: summarizeQueue(queue),
+        items: queue.items.length,
+      })
+    },
+  ),
+]
+
+const remoteTarget = {
+  serverUrl: z.string().min(1),
+  remoteLeagueId: z.string().min(1),
+}
+
+/**
+ * Queue one membership mutation for a remote league. Offline only: nothing is
+ * signed or sent here, and nothing is ever returned that could act as a
+ * secret. Invite codes are deliberately not handled by MCP, so a code never
+ * lands in an agent transcript; the CLI and the app create them.
+ */
+function queueRemoteMutation(
+  target: { serverUrl: string; remoteLeagueId: string },
+  mutation: LeagueMutation,
+) {
+  const parsed = LeagueMutationSchema.safeParse(mutation)
+  if (!parsed.success) return json({ ok: false, error: 'invalid mutation' })
+  try {
+    const link = linkRemoteLeague(target)
+    const { itemId, queue } = enqueueLeagueMutation(link.id, parsed.data)
+    return json({ ok: true, itemId, sent: false, queue: summarizeQueue(queue) })
+  } catch (err) {
+    if (err instanceof LeagueRemoteInputError || err instanceof SyncQueueFullError) {
+      return json({ ok: false, error: err.message })
+    }
+    throw err
+  }
+}
+
+export const remoteLeagueMembershipTools: RegisteredTool[] = [
+  tool(
+    'remote_league_rename',
+    'Queue a display-name change for a linked remote league (practice league). Offline queue only; sync sends it.',
+    { ...remoteTarget, alias: z.string().min(1).max(40) },
+    ({ alias, ...target }) => queueRemoteMutation(target, { type: 'rename', alias: alias.trim() }),
+  ),
+  tool(
+    'remote_league_leave',
+    'Queue leaving a linked remote league. Your open duels there are cancelled; history stays. Offline queue only.',
+    { ...remoteTarget },
+    (target) => queueRemoteMutation(target, { type: 'leave' }),
+  ),
+  tool(
+    'remote_league_invite_revoke',
+    'Queue revoking an invite you created, by its digest. Offline queue only.',
+    { ...remoteTarget, digest: z.string().regex(/^[0-9a-f]{64}$/) },
+    ({ digest, ...target }) => queueRemoteMutation(target, { type: 'invite-revoke', digest }),
+  ),
+  tool(
+    'remote_league_invite_policy',
+    'Queue turning the invite-only rule on or off (founder only; the league decides). Offline queue only.',
+    { ...remoteTarget, required: z.boolean() },
+    ({ required, ...target }) => queueRemoteMutation(target, { type: 'invite-policy', required }),
+  ),
+  tool(
+    'remote_league_remove_member',
+    'Queue removing a member and blocking their handle (founder only; the league decides). Offline queue only.',
+    { ...remoteTarget, handle: z.string().min(1).max(80) },
+    ({ handle, ...target }) =>
+      queueRemoteMutation(target, { type: 'remove-member', target: handle }),
+  ),
+  tool(
+    'remote_league_transfer_founder',
+    'Queue handing the founder role to another member (founder only; the league decides). Offline queue only.',
+    { ...remoteTarget, handle: z.string().min(1).max(80) },
+    ({ handle, ...target }) =>
+      queueRemoteMutation(target, { type: 'transfer-founder', target: handle }),
+  ),
+  tool(
+    'remote_league_unblock_member',
+    'Queue lifting a block on a handle (founder only; the league decides). Offline queue only.',
+    { ...remoteTarget, handle: z.string().min(1).max(80) },
+    ({ handle, ...target }) =>
+      queueRemoteMutation(target, { type: 'unblock-member', target: handle }),
   ),
 ]
