@@ -5,6 +5,8 @@ import { beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import {
   cards,
   decks,
+  RIF_MAX_AUDITS,
+  RifLimitError,
   dismissRifCard,
   initDb,
   listRifAudits,
@@ -136,6 +138,28 @@ describe('retrieval forgetting repo', () => {
     expect(restoreRifCard(3)).toBe(true)
     expect(restoreRifCard(3)).toBe(false)
     expect(runRifAudit({ now: NOW }).rescue.some((r) => r.cardId === 3)).toBe(true)
+  })
+  it('saving the same audit twice stores one row, and history is capped', () => {
+    seedFruit()
+    const audit = runRifAudit({ now: NOW }).audit
+    expect(saveRifAudit(audit, null)).toBe(saveRifAudit(audit, null))
+    expect(listRifAudits(10)).toHaveLength(1)
+    const base = NOW.getTime()
+    for (let i = 1; i < RIF_MAX_AUDITS; i++)
+      saveRifAudit({ ...audit, asOf: new Date(base + i * 1000).toISOString() }, null)
+    expect(() =>
+      saveRifAudit({ ...audit, asOf: new Date(base + 9e6).toISOString() }, null),
+    ).toThrow(RifLimitError)
+    // an exact repeat is still accepted at the cap
+    expect(() => saveRifAudit(audit, null)).not.toThrow()
+  })
+  it('dismissing twice keeps one row and keeps the first reason', () => {
+    seedFruit()
+    dismissRifCard(3, 'first')
+    dismissRifCard(3, 'second')
+    const rows = db.select().from(rifDismissals).all()
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.reason).toBe('first')
   })
   it('removes dismissals when the card is deleted', () => {
     seedFruit()

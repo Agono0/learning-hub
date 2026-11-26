@@ -7,6 +7,7 @@
 import { z } from 'zod'
 import { ApiError, readJson, readQuery, withRoute } from '@/lib/api'
 import {
+  RifLimitError,
   dismissRifCard,
   listRifAudits,
   listRifDismissed,
@@ -56,17 +57,28 @@ const bodySchema = z.discriminatedUnion('action', [
   }),
 ])
 
+/** Map a cap error to 409. */
+function guardLimit<T>(fn: () => T): T {
+  try {
+    return fn()
+  } catch (e) {
+    if (e instanceof RifLimitError) throw new ApiError(409, e.message)
+    throw e
+  }
+}
+
 /** POST /api/retrieval-forgetting { action: save | dismiss | restore | plan }. */
 export const POST = withRoute(async (req: Request) => {
   const body = await readJson(req, bodySchema)
   switch (body.action) {
     case 'save': {
       const { audit } = runRifAudit({ deckId: body.deckId, windowDays: body.windowDays })
-      const id = saveRifAudit(audit, body.deckId ?? null)
+      const id = guardLimit(() => saveRifAudit(audit, body.deckId ?? null))
       return Response.json({ id, atRisk: audit.atRisk, watch: audit.watch }, { status: 201 })
     }
     case 'dismiss':
-      if (!dismissRifCard(body.cardId, body.reason)) throw new ApiError(404, 'Card not found')
+      if (!guardLimit(() => dismissRifCard(body.cardId, body.reason)))
+        throw new ApiError(404, 'Card not found')
       return Response.json({ ok: true })
     case 'restore':
       return Response.json({ ok: restoreRifCard(body.cardId) })

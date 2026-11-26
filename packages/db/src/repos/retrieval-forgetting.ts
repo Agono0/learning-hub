@@ -3,7 +3,7 @@
  * pure audit in core, and stores audit summaries and dismissals. Cards,
  * schedules and reviews are never written.
  */
-import { and, desc, eq, gte, notInArray } from 'drizzle-orm'
+import { and, count, desc, eq, gte, isNull, notInArray } from 'drizzle-orm'
 import {
   RIF_DEFAULTS,
   cardCueTarget,
@@ -102,8 +102,34 @@ export function runRifAudit(q: RifQuery = {}, database?: Db): RifRun {
 }
 
 /** Store a summary of an audit (history for trend lines). Returns the stored row id. */
+/** Most audit summaries kept. Rows sync between devices and are append-only, so the cap refuses new rows instead of pruning. */
+export const RIF_MAX_AUDITS = 500
+/** Most cards that can be dismissed. */
+export const RIF_MAX_DISMISSED = 2000
+
+/** Thrown when a history or dismissal cap is reached. */
+export class RifLimitError extends Error {
+  constructor(what: string, max: number) {
+    super(`Too many ${what} (limit ${max}).`)
+    this.name = 'RifLimitError'
+  }
+}
+
 export function saveRifAudit(audit: RifAudit, deckId: number | null, database?: Db): number {
   const db = database ?? getDb()
+  const same = db
+    .select({ id: rifAudits.id })
+    .from(rifAudits)
+    .where(
+      and(
+        eq(rifAudits.createdAt, audit.asOf),
+        deckId === null ? isNull(rifAudits.deckId) : eq(rifAudits.deckId, deckId),
+      ),
+    )
+    .get()
+  if (same) return same.id
+  const total = db.select({ n: count() }).from(rifAudits).get()?.n ?? 0
+  if (total >= RIF_MAX_AUDITS) throw new RifLimitError('saved audits', RIF_MAX_AUDITS)
   const top = audit.clusters
     .flatMap((c) => c.members)
     .filter((m) => !m.dismissed && m.band !== 'low')
@@ -143,6 +169,14 @@ export function dismissRifCard(cardId: number, reason?: string, database?: Db): 
   const db = database ?? getDb()
   const exists = db.select({ id: cards.id }).from(cards).where(eq(cards.id, cardId)).get()
   if (!exists) return false
+  const already = db
+    .select({ id: rifDismissals.id })
+    .from(rifDismissals)
+    .where(eq(rifDismissals.cardId, cardId))
+    .get()
+  if (already) return true
+  const total = db.select({ n: count() }).from(rifDismissals).get()?.n ?? 0
+  if (total >= RIF_MAX_DISMISSED) throw new RifLimitError('dismissed cards', RIF_MAX_DISMISSED)
   db.insert(rifDismissals)
     .values({ cardId, reason: reason?.slice(0, 200) ?? null })
     .onConflictDoNothing()

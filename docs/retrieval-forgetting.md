@@ -39,4 +39,5 @@ DB (`packages/db`): `rif_audits` keeps one summary row per saved audit (append-o
 
 - Text similarity cannot see meaning. Two cards about the same category in different words may not be linked, and unrelated cards with shared words may be.
 - Reviews only show retrievals the app saw. Practice elsewhere is invisible.
+- History keeps at most 500 saved audits (the same audit saved twice is one row) and 2000 dismissed cards; past that the API answers 409.
 - Dismiss a card when the imbalance is deliberate.
