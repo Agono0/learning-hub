@@ -20,6 +20,7 @@
  * with an adapter over any SQLite implementation (sql.js, wa-sqlite, …).
  */
 import { APKG_LIMITS, ArchiveLimitError, openBoundedZip } from './archive-limits'
+import { mapUnmatchedModel, type MappedNote } from './anki-import'
 import { parseCloze } from './cards'
 import type { CardContent } from './types'
 
@@ -658,6 +659,18 @@ export interface ParseApkgOptions {
    * should implement `readOnly` and answer sqlite_master instead.
    */
   trustCustomOpener?: boolean
+  /**
+   * Called once per model the notetype-driven path refused, with a stable reason code.
+   * Diagnostics only: the public result still lists the plain model name in `skippedModels`.
+   */
+  onDiagnostic?: (d: ApkgModelDiagnostic) => void
+}
+
+/** Why a notetype was left in `skippedModels` (diagnostic, not part of the result shape). */
+export interface ApkgModelDiagnostic {
+  model: string
+  code: string
+  detail: string
 }
 
 /**
@@ -682,8 +695,11 @@ interface AnkiModel {
  * collection (`collection.anki2` / `collection.anki21`). Maps the standard
  * models — `Basic`, `Basic (and reversed card)` (→ two reciprocal basic cards)
  * and `Cloze` (type-1 models, `{{cN::…}}` syntax is identical to ours) — onto
- * basic/cloze ParsedCards. Notes on any other model are skipped and their model
- * names reported in `skippedModels`. Media and scheduling state are ignored.
+ * basic/cloze ParsedCards. Other normal (type 0) models go through
+ * `anki-import/mapUnmatchedModel`, which maps plain-text templates onto basic cards
+ * from the existing cards(nid, ord) rows, all-or-nothing per model. Every model it
+ * refuses is reported by plain name in `skippedModels` (typed reasons only through
+ * `options.onDiagnostic`). Media and scheduling state are ignored.
  *
  * The database is opened through `options.openDatabase` when given (portable
  * runtimes); otherwise the Node default lazily imports better-sqlite3 — the
@@ -777,6 +793,8 @@ export async function parseApkg(
 
     const cards: ParsedCard[] = []
     const skipped = new Set<string>()
+    // Notes of notetypes the name-matched mapper does not handle, grouped by model id.
+    const unmatched = new Map<string, NoteRow[]>()
     for (const note of notes) {
       const model = models[String(note.mid)]
       const fields = (note.flds ?? '').split(ANKI_FIELD_SEPARATOR)
@@ -787,10 +805,37 @@ export async function parseApkg(
       }
       const mapped = mapAnkiModel(model, fields, tags)
       if (mapped === null) {
-        skipped.add(model.name || `model ${note.mid}`)
+        const key = String(note.mid)
+        const group = unmatched.get(key)
+        if (group) group.push(note)
+        else unmatched.set(key, [note])
         continue
       }
       cards.push(...mapped)
+    }
+
+    if (unmatched.size > 0) {
+      const wanted = new Set<number>()
+      for (const group of unmatched.values()) {
+        for (const n of group) if (typeof n.id === 'number') wanted.add(n.id)
+      }
+      const ordsByNid = readCardOrdsBounded(db, wanted)
+      for (const [mid, group] of unmatched) {
+        const model = models[mid]!
+        const name = model.name || `model ${mid}`
+        const input: MappedNote[] = group.map((n) => ({
+          id: n.id,
+          tags: parseTags(n.tags),
+          flds: n.flds ?? '',
+        }))
+        const result = mapUnmatchedModel(model, name, input, ordsByNid)
+        if (result.ok) {
+          cards.push(...result.cards)
+        } else {
+          skipped.add(name)
+          options?.onDiagnostic?.({ model: name, code: result.code, detail: result.detail })
+        }
+      }
     }
 
     return {
@@ -823,6 +868,8 @@ export const APKG_SQLITE_BUDGETS = {
   maxTagsChars: 64 * 1024,
   /** Max chars of `flds` + `tags` summed over all notes. */
   maxTotalChars: 64 * 1024 * 1024,
+  /** Max `cards` rows scanned when mapping unmatched notetypes. */
+  maxCardRows: 1_000_000,
 } as const
 
 /** A collection exceeded an {@link APKG_SQLITE_BUDGETS} limit or is structurally unacceptable. */
@@ -851,7 +898,7 @@ function parseBoundedJson<T extends object>(text: unknown, what: string): T {
   return value as T
 }
 
-type NoteRow = { mid: number | string; tags: string; flds: string }
+type NoteRow = { id?: number; mid: number | string; tags: string; flds: string }
 
 /**
  * Reads `notes` in rowid-keyset pages (`WHERE rowid > last ORDER BY rowid LIMIT n`): bounded
@@ -889,12 +936,46 @@ function readNotesBounded(db: SqliteHandle): NoteRow[] {
       if (total > b.maxTotalChars) {
         throw new ApkgBudgetError(`notes exceed ${b.maxTotalChars} chars in total`)
       }
-      out.push({ mid: row.mid, tags, flds })
+      out.push({ id: typeof row.id === 'number' ? row.id : undefined, mid: row.mid, tags, flds })
     }
     if (page.length < b.pageSize) return out
     const last = page[page.length - 1]!.id
     if (typeof last !== 'number' || !(last > after)) {
       throw new ApkgBudgetError('notes paging cursor did not advance')
+    }
+    after = last
+  }
+}
+
+/**
+ * Reads `cards(id, nid, ord)` in id-keyset pages and keeps the ordinals of the wanted notes
+ * only. Bounded by `maxCardRows` scanned rows (named refusal, never truncation). Same paging
+ * contract as the notes read: a short page ends it; a full page with no advancing numeric id
+ * is refused.
+ */
+function readCardOrdsBounded(db: SqliteHandle, wanted: ReadonlySet<number>): Map<number, number[]> {
+  const b = APKG_SQLITE_BUDGETS
+  const out = new Map<number, number[]>()
+  let scanned = 0
+  let after = 0
+  for (;;) {
+    const page = db
+      .prepare(`SELECT id, nid, ord FROM cards WHERE id > ${after} ORDER BY id LIMIT ${b.pageSize}`)
+      .all() as { id?: unknown; nid?: unknown; ord?: unknown }[]
+    for (const row of page) {
+      if (++scanned > b.maxCardRows) {
+        throw new ApkgBudgetError(`more than ${b.maxCardRows} cards rows`)
+      }
+      if (typeof row.nid !== 'number' || typeof row.ord !== 'number') continue
+      if (!wanted.has(row.nid)) continue
+      const list = out.get(row.nid)
+      if (list) list.push(row.ord)
+      else out.set(row.nid, [row.ord])
+    }
+    if (page.length < b.pageSize) return out
+    const last = page[page.length - 1]!.id
+    if (typeof last !== 'number' || !(last > after)) {
+      throw new ApkgBudgetError('cards paging cursor did not advance')
     }
     after = last
   }
