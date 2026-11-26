@@ -10,7 +10,7 @@ import { expect, test } from '@playwright/test'
  * uploaded as the "visual-screenshots" CI artifact. Pass/fail only asserts the page rendered a
  * level-1 heading with no horizontal overflow; the pixels are inspected by eye.
  */
-const OUT = path.resolve(process.cwd(), 'visual-out')
+const OUT = path.resolve(process.cwd(), process.env.VISUAL_OUT ?? 'visual-out')
 mkdirSync(OUT, { recursive: true })
 
 const ROUTES: Array<{ slug: string; url: string }> = [
@@ -54,13 +54,13 @@ async function settle(page: import('@playwright/test').Page, theme: 'dark' | 'li
   // The persisted settings row (default dark) wins over localStorage after load, so the light
   // capture flips the root class directly. CSS variables are mode-scoped, so this is the real
   // light stylesheet, not a filter.
-  if (theme === 'light') {
-    await page.evaluate(() => {
-      document.documentElement.classList.remove('dark')
-      document.documentElement.style.colorScheme = 'light'
-    })
-    await page.waitForTimeout(300)
-  }
+  // Set the intended mode explicitly in BOTH directions: an earlier test may have persisted a
+  // different theme in the shared test DB, and a capture must never carry a stale mode.
+  await page.evaluate((t) => {
+    document.documentElement.classList.toggle('dark', t === 'dark')
+    document.documentElement.style.colorScheme = t
+  }, theme)
+  await page.waitForTimeout(300)
 }
 
 /**

@@ -121,6 +121,26 @@ jobs:
         if: github.event_name != 'pull_request'
         run: npm run build
 
+      # Production render pass: serve the bundle built above with `next start` and rerun the
+      # actual-route visual spec (same strict zero-error assertions) into a separate artifact.
+      - name: Production-build UI pass
+        if: github.event_name != 'pull_request'
+        run: npx playwright test visual-redesign.spec.ts
+        working-directory: apps/web
+        env:
+          UI_SMOKE_PORT: 3101
+          LH_PROD: '1'
+          VISUAL_OUT: visual-out-prod
+
+      - name: Upload production-build screenshots
+        if: always() && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-screenshots-prod
+          path: apps/web/visual-out-prod/
+          if-no-files-found: ignore
+          retention-days: 14
+
       # The bundle the Windows/Android apps ship (static export + hub worker).
       # Fast, and catches anything that only breaks the native build.
       - name: Build native web bundle
