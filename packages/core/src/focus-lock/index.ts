@@ -346,3 +346,4 @@ export * from './tiers'
 
 // PIN vault (M2-02) — PBKDF2 hashing + verification for the exit gate (M2-04).
 export * from './pin'
+export * from './fallback-proof'

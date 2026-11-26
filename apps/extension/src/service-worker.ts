@@ -14,6 +14,7 @@ import {
 } from './capture'
 import { buildFrictionReport, decideFriction } from './friction'
 import { DEFAULT_PORT, STATE_KEYS, parseStoredState, type ExtensionState } from './state'
+import { runSync } from './sync'
 
 const ALARM_NAME = 'lh-focus-poll'
 
@@ -55,86 +56,24 @@ async function clearRules(): Promise<void> {
   }
 }
 
-/**
- * Queries loopback server or local web app for current lock status.
- */
+let syncSeq = 0
+
+/** Queries the loopback bridge, then the verified web fallback, then the cached lock. */
 async function syncLockStatus(): Promise<void> {
-  const state = await getState()
-  const now = Date.now()
-
-  let fetchedLock: { active: boolean; endsAt: string | null; domains: string[] } | null = null
-
-  // 1. Try loopback bridge first if token available
-  if (state.pairingToken) {
-    try {
-      const resp = await fetch(`http://127.0.0.1:${state.loopbackPort}/v1/lock`, {
-        headers: {
-          Authorization: `Bearer ${state.pairingToken}`,
-        },
-      })
-      if (resp.ok) {
-        const json = await resp.json()
-        fetchedLock = {
-          active: Boolean(json.active),
-          endsAt: json.endsAt ?? null,
-          domains: Array.isArray(json.domains) ? json.domains : [],
-        }
-
-        // Send periodic heartbeat
-        void fetch(`http://127.0.0.1:${state.loopbackPort}/v1/heartbeat`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${state.pairingToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ extensionId: chrome.runtime.id }),
-        }).catch(() => {})
-      }
-    } catch {
-      // Loopback offline or native app closed
-    }
-  }
-
-  // 2. Try web endpoint fallback if loopback gave no response
-  if (!fetchedLock) {
-    try {
-      const webResp = await fetch('http://localhost:3000/api/focus/max', {
-        headers: { Accept: 'application/json' },
-      })
-      if (webResp.ok) {
-        const json = await webResp.json()
-        if (json.lock) {
-          fetchedLock = {
-            active: Boolean(json.lock.active),
-            endsAt: json.lock.endsAt ?? null,
-            domains: json.lock.allowlist?.domains ?? [],
-          }
-        }
-      }
-    } catch {
-      // Local web app not running
-    }
-  }
-
-  // 3. Fail-closed logic: evaluate cached lock if fetch failed
-  if (fetchedLock) {
-    await saveState({ lastKnownLock: fetchedLock })
-    if (fetchedLock.active && fetchedLock.endsAt && new Date(fetchedLock.endsAt).getTime() > now) {
-      await applyRules(fetchedLock.domains)
-    } else {
-      await clearRules()
-    }
-  } else if (state.lastKnownLock) {
-    const cached = state.lastKnownLock
-    if (cached.active && cached.endsAt && new Date(cached.endsAt).getTime() > now) {
-      // Still within committed focus window: preserve lockdown!
-      await applyRules(cached.domains)
-    } else {
-      await clearRules()
-    }
-  } else {
-    await clearRules()
-  }
+  const mine = ++syncSeq
+  await runSync(
+    {
+      getState,
+      saveLock: (lock) => saveState({ lastKnownLock: lock }),
+      applyRules,
+      clearRules,
+      fetchImpl: (input, init) => fetch(input, init),
+      now: () => Date.now(),
+      extensionId: chrome.runtime.id,
+      randomBytes: (n) => crypto.getRandomValues(new Uint8Array(n)),
+    },
+    () => mine === syncSeq,
+  )
 }
 
 // ─── Event Listeners ────────────────────────────────────────────────────────

@@ -20,7 +20,12 @@ describe('extension stored state', () => {
     ).toEqual({
       pairingToken: 'tok',
       loopbackPort: 1234,
-      lastKnownLock: { active: true, endsAt: '2030-01-01T00:00:00Z', domains: ['a.com'] },
+      lastKnownLock: {
+        active: true,
+        endsAt: '2030-01-01T00:00:00Z',
+        domains: ['a.com'],
+        source: 'legacy',
+      },
     })
     expect(parseStoredState({ pairingToken: 5, loopbackPort: 'x', lastKnownLock: 'yes' })).toEqual({
       loopbackPort: DEFAULT_PORT,
