@@ -231,6 +231,11 @@ LEARNING_HUB_WEBHOOKS="review.completed=http://127.0.0.1:8787/hook,streak.broken
   `review.completed`, `review.batch.completed`, `streak.updated`,
   `streak.broken`, `card.created`, `focus.completed`, `quest.completed`,
   `goal.completed`, `habit.checked`, `achievement.unlocked`.
+- Redirects are not followed (intentional compatibility change). A `3xx` answer, from a webhook or
+  from the weekly digest, counts as NOT delivered and is logged with the status and the `Location`
+  host only. Put the final URL in `LEARNING_HUB_WEBHOOKS` (for example the `https` address, with the
+  exact path). Before this change a `307` or `308` was re-sent and a `301`, `302` or `303` was
+  turned into a body-less `GET`.
 - Delivery: `POST` with `Content-Type: application/json`, body = the event
   payload as-is (e.g. `{"cardId":42,"grade":3,"xpEarned":12}` for
   `review.completed`).

@@ -5,7 +5,8 @@
  * event on the core event bus (packages/core events.ts `eventBus` singleton)
  * and POSTs the event JSON to its URL. Delivery is best-effort: global fetch
  * with a 3 s AbortSignal timeout, failures logged to console and never fatal
- * (the learning engine never waits on a webhook).
+ * (the learning engine never waits on a webhook). Redirects are not followed: a 3xx is logged as
+ * non-delivery (status and Location host only), so configure the final URL.
  *
  * Event names are validated against the `HubEventMap` catalog (the platform's
  * extension contract): unknown names are warned about and skipped, since they
@@ -77,23 +78,97 @@ export function parseWebhookSpec(spec: string | undefined): WebhookTarget[] {
   return targets
 }
 
+type FetchFn = (url: string, init?: RequestInit) => Promise<Response>
+
+/** What one POST to a configured URL came to. A redirect is never followed or counted as delivery. */
+export type PostOutcome =
+  | { kind: 'response'; status: number; ok: boolean }
+  | { kind: 'redirect'; status: number; locationHost: string }
+
+/** Host of a redirect's Location, for the log line: never the full URL, path, query or userinfo. */
+function locationHostOf(res: Response, from: string): string {
+  const location = res.headers.get('location')
+  if (!location) return 'none'
+  try {
+    return new URL(location, from).host || 'unknown'
+  } catch {
+    return 'unparseable'
+  }
+}
+
 /**
- * POST one event payload to one webhook URL (global fetch, 3 s timeout).
+ * POST a JSON payload to an operator-configured URL. Redirects are NOT followed: a 3xx would
+ * re-send the event to (or silently drop it at) a host the operator never wrote down, so every 3xx
+ * is reported as a redirect and the caller treats it as non-delivery. The response body is always
+ * cancelled so the socket is released. Throws on network error or timeout.
+ */
+export async function postJson(
+  url: string,
+  payload: unknown,
+  opts: { timeoutMs: number; fetchFn?: FetchFn },
+): Promise<PostOutcome> {
+  const fetchFn = opts.fetchFn ?? ((u, i) => fetch(u, i))
+  const res = await fetchFn(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    redirect: 'manual',
+    signal: AbortSignal.timeout(opts.timeoutMs),
+  })
+  await res.body?.cancel().catch(() => undefined)
+  if (res.type === 'opaqueredirect' || (res.status >= 300 && res.status < 400)) {
+    return { kind: 'redirect', status: res.status, locationHost: locationHostOf(res, url) }
+  }
+  return { kind: 'response', status: res.status, ok: res.ok }
+}
+
+/**
+ * POST one event payload to one webhook URL (3 s timeout, no redirects).
  * Resolves even on failure — delivery failures are logged, never fatal.
  */
-export async function dispatchWebhook(target: WebhookTarget, payload: unknown): Promise<void> {
+export async function dispatchWebhook(
+  target: WebhookTarget,
+  payload: unknown,
+  fetchFn?: FetchFn,
+): Promise<void> {
   try {
-    const res = await fetch(target.url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(WEBHOOK_TIMEOUT_MS),
-    })
-    if (!res.ok) {
-      console.error(`[webhooks] ${target.event} → ${target.url} responded ${res.status}`)
+    const out = await postJson(target.url, payload, { timeoutMs: WEBHOOK_TIMEOUT_MS, fetchFn })
+    if (out.kind === 'redirect') {
+      console.error(
+        `[webhooks] ${target.event} not delivered: responded ${out.status} redirect to ` +
+          `${out.locationHost}; redirects are not followed, set the final URL in LEARNING_HUB_WEBHOOKS`,
+      )
+    } else if (!out.ok) {
+      console.error(`[webhooks] ${target.event} → ${target.url} responded ${out.status}`)
     }
   } catch (err) {
     console.error(`[webhooks] ${target.event} → ${target.url} delivery failed:`, err)
+  }
+}
+
+/**
+ * Weekly-digest delivery: POST the summary to every target (5 s timeout each, no redirects) and log
+ * one line per target. Kept here, not in digest.ts, because digest.ts runs its job on import.
+ */
+export async function postDigestSummary(
+  targets: WebhookTarget[],
+  summary: unknown,
+  fetchFn?: FetchFn,
+): Promise<void> {
+  for (const target of targets) {
+    try {
+      const out = await postJson(target.url, summary, { timeoutMs: 5000, fetchFn })
+      if (out.kind === 'redirect') {
+        console.warn(
+          `[digest] not delivered: ${out.status} redirect to ${out.locationHost}; ` +
+            'redirects are not followed, set the final URL in LEARNING_HUB_WEBHOOKS',
+        )
+      } else {
+        console.log(`[digest] ${target.url} → ${out.status}`)
+      }
+    } catch (err) {
+      console.warn(`[digest] ${target.url} failed:`, (err as Error).message)
+    }
   }
 }
 
