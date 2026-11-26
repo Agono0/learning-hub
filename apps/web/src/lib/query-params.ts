@@ -5,6 +5,7 @@
  * `1.5` and `Infinity` pass a bare `!id` check, and an empty string becomes `0`. These
  * helpers never throw and never return a non-finite or out-of-range number.
  */
+import { z } from 'zod'
 
 export interface IntOptions {
   /** Returned when the parameter is missing, empty, non-numeric or not an integer. */
@@ -57,3 +58,20 @@ export function queryIdList(sp: URLSearchParams, name: string, max = 100): numbe
   }
   return [...out]
 }
+
+/** True for a real calendar day `YYYY-MM-DD` (rejects 2026-02-30, 2026-13-01, 0000-00-00). */
+export function isCalendarDay(s: string): boolean {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+  if (!m) return false
+  const y = Number(m[1])
+  const mo = Number(m[2])
+  const d = Number(m[3])
+  if (y < 1 || mo < 1 || mo > 12 || d < 1) return false
+  return d <= new Date(Date.UTC(y, mo, 0)).getUTCDate()
+}
+
+/** zod schema for a real calendar day string; a bare regex lets 2026-99-99 through to `new Date().toISOString()` which throws. */
+export const calendarDay = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine(isCalendarDay, 'not a real calendar day')

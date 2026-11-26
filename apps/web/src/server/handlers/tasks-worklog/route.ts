@@ -6,19 +6,14 @@
  * from the append-only session log (S3-28's history view reads this; the
  * leaf-only/week-depth math upgrades in S3-88 without changing this shape).
  */
+import { calendarDay } from '@/lib/query-params'
 import { getTaskItem, listTimeLogs } from '@learning-hub/db'
-import { readQuery } from '@/lib/api'
+import { readQuery, withRoute } from '@/lib/api'
 import { z } from 'zod'
 
 const querySchema = z.object({
-  from: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
-  to: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
+  from: calendarDay.optional(),
+  to: calendarDay.optional(),
 })
 
 /** YYYY-MM-DD of `n` days before `now` (UTC calendar). */
@@ -26,7 +21,7 @@ function daysAgo(n: number): string {
   return new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10)
 }
 
-export async function GET(req: Request) {
+export const GET = withRoute(async (req: Request) => {
   const q = readQuery(req, querySchema)
   const from = q.from ?? daysAgo(6)
   const to = q.to ?? daysAgo(0)
@@ -54,4 +49,4 @@ export async function GET(req: Request) {
     perTask: tasks,
     logCount: logs.length,
   })
-}
+})

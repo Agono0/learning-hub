@@ -1,3 +1,4 @@
+import { isCalendarDay } from '@/lib/query-params'
 import { and, gte, lte, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { focusSessions, habitLogs, journalEntries } from '@learning-hub/db'
@@ -17,9 +18,7 @@ export const GET = withRoute(async (req: Request) => {
   const tz = tzOffsetFromQuery(req)
   const weekStartParam = url.searchParams.get('weekStart')
   const weekStart =
-    weekStartParam && /^\d{4}-\d{2}-\d{2}$/.test(weekStartParam)
-      ? weekStartParam
-      : mondayOf(new Date(), tz)
+    weekStartParam && isCalendarDay(weekStartParam) ? weekStartParam : mondayOf(new Date(), tz)
   const weekEnd = dayKey(new Date(Date.parse(weekStart + 'T00:00:00Z') + 6 * 86_400_000))
 
   const dailyReviews = db.all<DailyReviewsRow>(

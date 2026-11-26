@@ -1,3 +1,4 @@
+import { calendarDay } from '@/lib/query-params'
 import { z } from 'zod'
 import { listJournalEntries, upsertJournalEntry } from '@learning-hub/db'
 import { dayKey, validateJournalEntry } from '@learning-hub/core'
@@ -14,10 +15,7 @@ export async function GET(req: Request) {
 }
 
 const postJournalSchema = z.object({
-  date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD')
-    .optional(),
+  date: calendarDay.optional(),
   mood: z.number().int().min(1).max(5).nullable().optional(),
   smallWins: z.string().nullable().optional(),
   gratitude: z.string().nullable().optional(),

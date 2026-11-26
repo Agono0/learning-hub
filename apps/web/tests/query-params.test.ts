@@ -67,3 +67,25 @@ describe('queryIdList', () => {
   it('caps', () => expect(queryIdList(sp('ids=1,2,3,4'), 'ids', 2)).toEqual([1, 2]))
   it('empty', () => expect(queryIdList(sp(''), 'ids')).toEqual([]))
 })
+
+describe('isCalendarDay / calendarDay', () => {
+  it.each(['2026-11-26', '2024-02-29', '2000-12-31', '0001-01-01'])('accepts %s', (d) => {
+    expect(isCalendarDay(d)).toBe(true)
+    expect(calendarDay.safeParse(d).success).toBe(true)
+  })
+  it.each([
+    '2026-02-30',
+    '2025-02-29',
+    '2026-13-01',
+    '2026-00-10',
+    '2026-01-00',
+    '0000-01-01',
+    '26-1-1',
+    '2026-1-01',
+    '',
+    'abc',
+  ])('rejects %s', (d) => {
+    expect(isCalendarDay(d)).toBe(false)
+    expect(calendarDay.safeParse(d).success).toBe(false)
+  })
+})

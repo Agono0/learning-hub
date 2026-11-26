@@ -1,3 +1,4 @@
+import { calendarDay } from '@/lib/query-params'
 import { z } from 'zod'
 import { getPhysioInsights, upsertPhysioLog } from '@learning-hub/db'
 import { readJson, tzOffsetSchema, withRoute } from '@/lib/api'
@@ -11,10 +12,7 @@ export async function GET(req: Request) {
 }
 
 const physioPostSchema = z.object({
-  date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD')
-    .optional(),
+  date: calendarDay.optional(),
   sleepHours: z.number().nullable().optional(),
   sleepQuality: z.number().nullable().optional(),
   exerciseMinutes: z.number().nullable().optional(),
