@@ -14,6 +14,29 @@ export function json(value: unknown): McpToolResult {
 }
 
 /**
+ * Upper bound on the serialized size of one tool call's arguments. Most zod
+ * string fields have no `.max()`, so a runaway or prompt-injected client could
+ * otherwise push megabytes of text into the database through a single call.
+ */
+export const MAX_TOOL_ARGS_BYTES = 1_000_000
+
+/** Error result for a call whose arguments exceed {@link MAX_TOOL_ARGS_BYTES}. */
+export function oversizedArgsResult(bytes: number): McpToolResult {
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify({
+          ok: false,
+          error: `tool arguments too large (${bytes} bytes, limit ${MAX_TOOL_ARGS_BYTES})`,
+        }),
+      },
+    ],
+    isError: true,
+  }
+}
+
+/**
  * Declare a tool: ties the zod raw shape to the handler's parsed-args type so
  * built-ins keep full typing while conforming to the registry shape (where the
  * handler receives the already-validated args object).
@@ -28,6 +51,10 @@ export function tool<S extends z.ZodRawShape>(
     name,
     description,
     inputSchema,
-    handler: (args) => handler(args as z.output<z.ZodObject<S>>),
+    handler: (args) => {
+      const bytes = Buffer.byteLength(JSON.stringify(args ?? {}), 'utf8')
+      if (bytes > MAX_TOOL_ARGS_BYTES) return oversizedArgsResult(bytes)
+      return handler(args as z.output<z.ZodObject<S>>)
+    },
   }
 }

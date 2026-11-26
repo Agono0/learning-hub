@@ -1287,6 +1287,31 @@ pub fn lookup_in_active_slot(base_dir: &Path, rel_path: &str) -> Option<Vec<u8>>
 
 // ─── App integration (commands + the lhslot serving seam) ────────────────────
 
+/// True when `p` is an absolute path lexically inside `base` with no `.`/`..`
+/// components. `Path::starts_with` alone is not enough: `<base>/../x` keeps its
+/// `..` component and still "starts with" `<base>`, so a webview-supplied path
+/// could climb out of the updates dir.
+fn path_within(base: &Path, p: &Path) -> bool {
+    use std::path::Component;
+    p.is_absolute()
+        && p.starts_with(base)
+        && !p
+            .components()
+            .any(|c| matches!(c, Component::ParentDir | Component::CurDir))
+}
+
+/// True when `p` is exactly a file the APK downloader writes:
+/// `<base>/android-update-<sha prefix>.apk`, directly inside the updates dir.
+#[cfg(any(target_os = "android", test))]
+fn is_update_apk_path(base: &Path, p: &Path) -> bool {
+    let name_ok = p
+        .file_name()
+        .and_then(|n| n.to_str())
+        .map(|n| n.starts_with("android-update-") && n.ends_with(".apk"))
+        .unwrap_or(false);
+    name_ok && path_within(base, p) && p.parent() == Some(base)
+}
+
 /// Updates base dir under app data: `<app_data_dir>/updates` (A/B slots plus
 /// the atomic pointer file). Lives here (not lib.rs) so the slot commands and
 /// the lhslot protocol share one definition.
@@ -1338,6 +1363,11 @@ pub async fn update_android_device_info(app: tauri::AppHandle) -> Result<serde_j
     #[cfg(target_os = "android")]
     {
         use tauri::Manager;
+        // Only the APK the downloader wrote (sha256-verified, inside the
+        // updates dir) may reach the installer, never an arbitrary path.
+        if !is_update_apk_path(&slot_updates_dir(&app), Path::new(&apk_path)) {
+            return Err("apk_path must be a downloaded update APK".to_string());
+        }
         let state = app.state::<MaxUpdateAndroid>();
         state
             .0
@@ -1411,7 +1441,7 @@ pub fn update_download_file(
 
     let base = slot_updates_dir(&app);
     let dest_path = std::path::PathBuf::from(&dest);
-    if !dest_path.starts_with(&base) {
+    if !path_within(&base, &dest_path) {
         return Err(format!(
             "update download destination must live under {base:?}"
         ));
@@ -2605,5 +2635,41 @@ mod patch_tests {
             Err(UpdateError::Parse(_))
         ));
         fs::remove_dir_all(&base).ok();
+    }
+}
+
+#[cfg(test)]
+mod path_confinement_tests {
+    use super::*;
+
+    fn base() -> PathBuf {
+        std::env::temp_dir().join("lh-confine-test").join("updates")
+    }
+
+    #[test]
+    fn path_within_rejects_parent_dir_escape() {
+        let b = base();
+        assert!(path_within(&b, &b.join("slots").join("a.bin")));
+        assert!(!path_within(&b, &b.join("..").join("x")));
+        assert!(!path_within(&b, &b.join("slots").join("..").join("..").join("x")));
+        assert!(!path_within(&b, &b.parent().unwrap().join("other").join("a.bin")));
+        assert!(!path_within(&b, Path::new("updates/a.bin")));
+    }
+
+    #[test]
+    fn apk_path_must_be_the_downloaded_file() {
+        let b = base();
+        let good = b.join("android-update-0123456789ab.apk");
+        assert!(is_update_apk_path(&b, &good));
+        assert!(!is_update_apk_path(&b, &std::env::temp_dir().join("evil.apk")));
+        assert!(!is_update_apk_path(&b, &b.join("evil.apk")));
+        assert!(!is_update_apk_path(
+            &b,
+            &b.join("..").join("android-update-0123456789ab.apk")
+        ));
+        assert!(!is_update_apk_path(
+            &b,
+            &b.join("sub").join("android-update-0123456789ab.apk")
+        ));
     }
 }
