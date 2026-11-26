@@ -29,6 +29,9 @@ import { shareChannelRoutes } from '../../../apps/server/src/routes/share-channe
 import { reviewRoutes } from '../../../apps/server/src/routes/review'
 import { studiosRoutes } from '../../../apps/server/src/routes/studios'
 import { systemRoutes } from '../../../apps/server/src/routes/system'
+import { tasksRoutes } from '../../../apps/server/src/routes/tasks'
+import { planningRoutes } from '../../../apps/server/src/routes/planning'
+import { goalsRoutes } from '../../../apps/server/src/routes/goals'
 
 const AREA_TABLES = [
   ['system', systemRoutes],
@@ -47,6 +50,9 @@ const AREA_TABLES = [
   ['implementation-intentions', implementationIntentionRoutes],
   ['feedback', feedbackRoutes],
   ['share-channels', shareChannelRoutes],
+  ['tasks', tasksRoutes],
+  ['planning', planningRoutes],
+  ['goals', goalsRoutes],
 ] as const
 
 describe('headless server route composition (TD-11 guard)', () => {
@@ -85,7 +91,7 @@ describe('headless server route composition (TD-11 guard)', () => {
     }
   })
 
-  it('the TD-11 parity domains are reachable (curriculum/ideas/focus/habits/notes)', () => {
+  it('the parity domains are reachable (curriculum/ideas/focus/habits/notes/tasks/planning/goals)', () => {
     const paths = new Set(routes.map((r) => r.path))
     for (const p of [
       '/curriculum/courses',
@@ -99,6 +105,12 @@ describe('headless server route composition (TD-11 guard)', () => {
       '/habits/check-in',
       '/notes',
       '/notes/detail',
+      '/tasks',
+      '/tasks/time',
+      '/readiness',
+      '/exam-prep',
+      '/study-session/preview',
+      '/goals',
     ]) {
       expect(paths.has(p), `parity route missing: ${p}`).toBe(true)
     }
