@@ -682,6 +682,8 @@ export async function mergeBackup(
       >[]
       // One-time repair of duplicates left by earlier merges: leaf tables (nothing points at
       // them) lose rows that equal another row in every column except id. The lowest id stays.
+      // No tombstone is written: a device that still holds the duplicates can re-add extras until
+      // it has merged once itself. Rows identical down to the millisecond are one record here.
       if (singleIntPk && EXACT_DEDUPE_TABLES.has(table)) {
         const seenSig = new Set<string>()
         const dropIds: number[] = []
