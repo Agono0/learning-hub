@@ -677,6 +677,40 @@ pub async fn focus_android_provision_status(app: tauri::AppHandle) -> Result<ser
     }
 }
 
+/// Most packages one Max Focus session may allowlist.
+const MAX_ALLOWLIST_PACKAGES: usize = 64;
+
+/// Validates the package allowlist the webview hands to the Android bridge
+/// (Lock Task packages and the accessibility watcher set): bounded count,
+/// bounded length, and the `segment.segment` Android package-name shape. Blank
+/// entries are dropped (the Kotlin side ignores them too) and duplicates removed.
+pub fn sanitize_packages(packages: Vec<String>) -> Result<Vec<String>, String> {
+    let mut out: Vec<String> = Vec::new();
+    for raw in packages {
+        let p = raw.trim();
+        if p.is_empty() {
+            continue;
+        }
+        let valid = p.len() <= 255
+            && p.contains('.')
+            && p.split('.').all(|seg| {
+                let mut chars = seg.chars();
+                matches!(chars.next(), Some(c) if c.is_ascii_alphabetic())
+                    && chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
+            });
+        if !valid {
+            return Err("invalid Android package name in allowlist".to_string());
+        }
+        if !out.iter().any(|e| e == p) {
+            out.push(p.to_string());
+        }
+        if out.len() > MAX_ALLOWLIST_PACKAGES {
+            return Err(format!("allowlist is limited to {MAX_ALLOWLIST_PACKAGES} packages"));
+        }
+    }
+    Ok(out)
+}
+
 /// Pins the foreground to the session's allowlisted packages (M2-11, Tier 1:
 /// Device Owner only — the Kotlin side rejects otherwise). The emergency
 /// dialer package MUST be part of `packages` (M2-15).
@@ -685,6 +719,7 @@ pub async fn focus_android_start_lock_task(
     app: tauri::AppHandle,
     packages: Vec<String>,
 ) -> Result<serde_json::Value, String> {
+    let packages = sanitize_packages(packages)?;
     #[cfg(target_os = "android")]
     {
         use tauri::Manager;
@@ -733,6 +768,7 @@ pub async fn focus_android_set_watch_state(
     active: bool,
     packages: Vec<String>,
 ) -> Result<serde_json::Value, String> {
+    let packages = sanitize_packages(packages)?;
     #[cfg(target_os = "android")]
     {
         use tauri::Manager;
@@ -1008,5 +1044,37 @@ mod loopback_tests {
         let _idle = TcpStream::connect(addr).unwrap();
         let took = h.join().unwrap();
         assert!(took >= Duration::from_secs(4) && took < Duration::from_secs(8), "{took:?}");
+    }
+}
+
+#[cfg(test)]
+mod package_allowlist_tests {
+    use super::*;
+
+    fn v(items: &[&str]) -> Vec<String> {
+        items.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn accepts_real_package_names_and_dedupes() {
+        let got = sanitize_packages(v(&["com.android.dialer", " ", "com.android.dialer", "dev.learninghub.app"]))
+            .unwrap();
+        assert_eq!(got, v(&["com.android.dialer", "dev.learninghub.app"]));
+    }
+
+    #[test]
+    fn rejects_malformed_names() {
+        for bad in ["nodots", "a..b", "com.1abc.x", "com.a b.c", "com/evil.x", "com.x;rm"] {
+            assert!(sanitize_packages(v(&[bad])).is_err(), "{bad}");
+        }
+        assert!(sanitize_packages(v(&[&format!("a.{}", "b".repeat(300))])).is_err());
+    }
+
+    #[test]
+    fn caps_the_list_length() {
+        let many: Vec<String> = (0..100).map(|i| format!("com.example.app{i}")).collect();
+        assert!(sanitize_packages(many).is_err());
+        let ok: Vec<String> = (0..64).map(|i| format!("com.example.app{i}")).collect();
+        assert_eq!(sanitize_packages(ok).unwrap().len(), 64);
     }
 }

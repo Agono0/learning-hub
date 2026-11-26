@@ -41,6 +41,23 @@ describe('Android shell hardening', () => {
   })
 })
 
+describe('native command argument trust', () => {
+  const update = read('apps/native/src-tauri/src/update.rs')
+  const focus = read('apps/native/src-tauri/src/focus.rs')
+
+  it('delta apply and APK download only trust signature-verified manifests', () => {
+    expect(update).toContain('struct VerifiedRegistry')
+    expect(update).toMatch(/update_fetch_verified_manifest[\s\S]*?reg\.remember\(&manifest\)/)
+    expect(update).toContain('manifest_is_verified(&target)')
+    expect(update).toContain('apk_sha_is_verified(&expected_sha256)')
+  })
+
+  it('Android package allowlists are validated before reaching the Kotlin bridge', () => {
+    expect(focus).toContain('pub fn sanitize_packages')
+    expect(focus.match(/sanitize_packages\(packages\)\?/g)).toHaveLength(2)
+  })
+})
+
 describe('release workflow hardening', () => {
   const dir = path.join(root, '.github/workflows')
   // ci.yml is owned by another change; every other workflow must comply.

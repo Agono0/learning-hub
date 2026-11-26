@@ -1285,6 +1285,60 @@ pub fn lookup_in_active_slot(base_dir: &Path, rel_path: &str) -> Option<Vec<u8>>
     None
 }
 
+// ─── Signature-verified manifest registry ───────────────────────────────────
+
+/// Manifests whose minisign signature this process has verified, plus the APK
+/// hashes they list. The webview hands manifests and hashes back to later
+/// commands (`update_apply_delta_patch`, `update_download_android_apk`); without
+/// this check a compromised webview could skip `update_fetch_verified_manifest`
+/// and have the native layer promote an unsigned payload into the served slot.
+#[derive(Default)]
+struct VerifiedRegistry {
+    manifests: Vec<serde_json::Value>,
+    apk_shas: Vec<String>,
+}
+
+impl VerifiedRegistry {
+    const MAX_ENTRIES: usize = 8;
+
+    fn remember(&mut self, manifest: &UpdateManifest) {
+        let Ok(value) = serde_json::to_value(manifest) else {
+            return;
+        };
+        if !self.manifests.contains(&value) {
+            if self.manifests.len() >= Self::MAX_ENTRIES {
+                self.manifests.remove(0);
+            }
+            self.manifests.push(value);
+        }
+        if let Some(pkgs) = &manifest.android_packages {
+            for pkg in pkgs.values() {
+                let sha = pkg.sha256.to_ascii_lowercase();
+                if !self.apk_shas.contains(&sha) {
+                    if self.apk_shas.len() >= Self::MAX_ENTRIES * 4 {
+                        self.apk_shas.remove(0);
+                    }
+                    self.apk_shas.push(sha);
+                }
+            }
+        }
+    }
+
+    fn manifest_is_verified(&self, manifest: &UpdateManifest) -> bool {
+        serde_json::to_value(manifest)
+            .map(|v| self.manifests.contains(&v))
+            .unwrap_or(false)
+    }
+
+    #[cfg(any(target_os = "android", test))]
+    fn apk_sha_is_verified(&self, sha256: &str) -> bool {
+        self.apk_shas.contains(&sha256.to_ascii_lowercase())
+    }
+}
+
+static VERIFIED: LazyLock<std::sync::Mutex<VerifiedRegistry>> =
+    LazyLock::new(|| std::sync::Mutex::new(VerifiedRegistry::default()));
+
 // ─── App integration (commands + the lhslot serving seam) ────────────────────
 
 /// True when `p` is an absolute path lexically inside `base` with no `.`/`..`
@@ -1486,6 +1540,9 @@ pub fn update_fetch_verified_manifest(manifest_url: String) -> Result<serde_json
     verify_manifest_signature(json.as_bytes(), signature.trim(), UPDATE_PUB_KEY.trim())
         .map_err(|e| e.to_string())?;
     let manifest = parse_manifest(&json).map_err(|e| e.to_string())?;
+    if let Ok(mut reg) = VERIFIED.lock() {
+        reg.remember(&manifest);
+    }
     serde_json::to_value(&manifest).map_err(|e| e.to_string())
 }
 
@@ -1525,6 +1582,13 @@ pub fn update_download_android_apk(
     #[cfg(target_os = "android")]
     {
         use tauri::Emitter;
+        if !VERIFIED
+            .lock()
+            .map(|reg| reg.apk_sha_is_verified(&expected_sha256))
+            .unwrap_or(false)
+        {
+            return Err("APK hash is not in a signature-verified manifest".to_string());
+        }
         let base = slot_updates_dir(&app);
         let _ = fs::create_dir_all(&base);
         let suffix = if expected_sha256.len() >= 12 {
@@ -1572,6 +1636,13 @@ pub fn update_apply_delta_patch(
 
     let target: UpdateManifest =
         serde_json::from_value(target_manifest).map_err(|e| format!("parse target manifest: {e}"))?;
+    if !VERIFIED
+        .lock()
+        .map(|reg| reg.manifest_is_verified(&target))
+        .unwrap_or(false)
+    {
+        return Err("target manifest was not signature-verified by this app".to_string());
+    }
     let manifest_bytes = serde_json::to_vec_pretty(&target)
         .map_err(|e| format!("serialize target manifest: {e}"))?;
 
@@ -2671,5 +2742,56 @@ mod path_confinement_tests {
             &b,
             &b.join("sub").join("android-update-0123456789ab.apk")
         ));
+    }
+}
+
+#[cfg(test)]
+mod verified_registry_tests {
+    use super::*;
+
+    fn manifest(version: &str, apk_sha: Option<&str>) -> UpdateManifest {
+        let android = apk_sha.map(|sha| {
+            format!(
+                r#","androidPackages":{{"android-arm64":{{"url":"https://example.com/a.apk","sha256":"{sha}","size":10}}}}"#
+            )
+        });
+        let json = format!(
+            r#"{{"manifestVersion":1,"channel":"nightly","version":"{version}","buildSha":"abc1234","createdAt":"2026-11-22T10:00:00.000Z","minNativeVersion":"0.1.0","requiresNative":false,"files":[],"patches":[],"fullPackageUrl":"https://example.com/app.zip"{}}}"#,
+            android.unwrap_or_default()
+        );
+        parse_manifest(&json).unwrap()
+    }
+
+    #[test]
+    fn only_remembered_manifests_are_verified() {
+        let mut reg = VerifiedRegistry::default();
+        let good = manifest("nightly-1", None);
+        assert!(!reg.manifest_is_verified(&good));
+        reg.remember(&good);
+        assert!(reg.manifest_is_verified(&good));
+        // A webview-supplied manifest that differs in any field is rejected.
+        assert!(!reg.manifest_is_verified(&manifest("nightly-2", None)));
+    }
+
+    #[test]
+    fn apk_hashes_come_only_from_verified_manifests() {
+        let sha = "ab".repeat(32);
+        let mut reg = VerifiedRegistry::default();
+        assert!(!reg.apk_sha_is_verified(&sha));
+        reg.remember(&manifest("nightly-1", Some(&sha)));
+        assert!(reg.apk_sha_is_verified(&sha));
+        assert!(reg.apk_sha_is_verified(&sha.to_uppercase()));
+        assert!(!reg.apk_sha_is_verified(&"cd".repeat(32)));
+    }
+
+    #[test]
+    fn registry_is_bounded() {
+        let mut reg = VerifiedRegistry::default();
+        for i in 0..20 {
+            reg.remember(&manifest(&format!("nightly-{i}"), None));
+        }
+        assert!(reg.manifests.len() <= VerifiedRegistry::MAX_ENTRIES);
+        assert!(!reg.manifest_is_verified(&manifest("nightly-0", None)));
+        assert!(reg.manifest_is_verified(&manifest("nightly-19", None)));
     }
 }
