@@ -255,6 +255,7 @@ import * as deliberate from '../server/handlers/deliberate/route'
 import * as scaffolding from '../server/handlers/scaffolding/route'
 import * as updateNotes from '../server/handlers/update/notes/route'
 import * as calendarImport from '../server/handlers/calendar/import/route'
+import * as implementationIntentionsRoute from '../server/handlers/implementation-intentions/route'
 import * as feedbackStudioRoute from '../server/handlers/feedback-studio/route'
 
 /** Request→Response function as produced by `withRoute` (context optional). */
@@ -532,6 +533,7 @@ add('scaffolding', scaffolding)
 add('share-channels', shareChannels)
 add('update/notes', updateNotes)
 add('calendar/import', calendarImport)
+add('implementation-intentions', implementationIntentionsRoute)
 add('feedback-studio', feedbackStudioRoute)
 
 /** A registry match: the handler plus the resolved `[id]` params. */

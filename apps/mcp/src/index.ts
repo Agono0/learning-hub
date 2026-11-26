@@ -42,6 +42,7 @@ import { studySessionTools } from './tools/study-session'
 import { communityTools } from './tools/community'
 import { telemetryAudioTools } from './tools/telemetry-audio'
 import { advancedLearningTools } from './tools/advanced-learning'
+import { implementationIntentionTools } from './tools/implementation-intentions'
 import { feedbackTools } from './tools/feedback'
 import { shareChannelTools } from './tools/share-channels'
 import { prototypeExemplarTools } from './tools/prototype-exemplar'
@@ -86,6 +87,7 @@ async function main() {
     ...communityTools,
     ...telemetryAudioTools,
     ...advancedLearningTools,
+    ...implementationIntentionTools,
     ...feedbackTools,
     ...shareChannelTools,
     ...prototypeExemplarTools,
