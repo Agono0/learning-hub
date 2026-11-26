@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { parseIntStrict, queryId, queryIdList, queryInt, queryLimit } from '../src/lib/query-params'
+import {
+  calendarDay,
+  isCalendarDay,
+  parseIntStrict,
+  queryId,
+  queryIdList,
+  queryInt,
+  queryLimit,
+} from '../src/lib/query-params'
 
 const sp = (q: string) => new URLSearchParams(q)
 
