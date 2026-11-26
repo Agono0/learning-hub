@@ -1,12 +1,11 @@
 /**
  * /api/reading/ingest — runtime-neutral remote & structured source ingestion:
- * - `mode: 'url'`     → fetches web article via `networkFetch` & extracts clean Markdown
- * - `mode: 'youtube'` → fetches YouTube watch page & timedtext captions via `networkFetch`
+ * - `mode: 'url'`     → fetches web article via `boundedFetchText` & extracts clean Markdown
+ * - `mode: 'youtube'` → fetches YouTube watch page & timedtext captions via `boundedFetchText`
  * - `mode: 'epub'`    → extracts base64-encoded `.epub` archive via `extractEpubBytes`
  * - `mode: 'markdown'`→ saves Markdown/plain text with optional priority & URL
  */
 import { z } from 'zod'
-import { networkFetch } from '@learning-hub/ai-adapters'
 import {
   extractArticleFromHtml,
   extractEpubBytes,
@@ -68,6 +67,24 @@ function base64ToBytes(b64: string): Uint8Array {
   }
   if (G.Buffer) return new Uint8Array(G.Buffer.from(clean, 'base64'))
   throw new Error('Base64 decoder unavailable')
+}
+
+const MAX_YOUTUBE_PAGE_BYTES = 5 * 1024 * 1024
+const MAX_YOUTUBE_CAPTION_BYTES = 2 * 1024 * 1024
+
+/** Fixed, generic failure for a refused or failed YouTube fetch: never echoes a URL or message. */
+function youtubeFetchFailure(err: unknown, what: 'page' | 'captions'): Response {
+  const subject = what === 'page' ? 'the YouTube page' : 'the caption track'
+  if (err instanceof BoundedFetchError && err.code === 'too-large') {
+    return Response.json({ ok: false, error: `${subject} is too large to import` }, { status: 413 })
+  }
+  if (err instanceof BoundedFetchError && err.code === 'blocked') {
+    return Response.json(
+      { ok: false, error: `Fetching ${subject} was refused for safety` },
+      { status: 502 },
+    )
+  }
+  return Response.json({ ok: false, error: `Could not fetch ${subject}` }, { status: 502 })
 }
 
 export const POST = withRoute(async (req: Request) => {
@@ -137,9 +154,15 @@ export const POST = withRoute(async (req: Request) => {
     }
     const canonicalUrl = `https://www.youtube.com/watch?v=${videoId}`
 
+    // Both requests are bounded (https, public destination, pinned on Node, manual redirects,
+    // byte cap). The caption URL comes from the fetched page, so it gets no extra trust. No
+    // host allowlist: caption URL hosts are undocumented and vary, so one would risk breaking
+    // valid captions without a source to check it against.
     let watchHtml: string
     try {
-      const watchRes = await networkFetch(`${canonicalUrl}&hl=en`, {
+      const watchRes = await boundedFetchText(`${canonicalUrl}&hl=en`, {
+        maxBytes: MAX_YOUTUBE_PAGE_BYTES,
+        timeoutMs: 20_000,
         headers: {
           'Accept-Language': 'en-US,en;q=0.9',
           'User-Agent': 'Mozilla/5.0 (compatible; LearningHUB/1.0)',
@@ -151,15 +174,9 @@ export const POST = withRoute(async (req: Request) => {
           { status: 502 },
         )
       }
-      watchHtml = await watchRes.text()
+      watchHtml = watchRes.text
     } catch (err) {
-      return Response.json(
-        {
-          ok: false,
-          error: `Could not reach YouTube: ${err instanceof Error ? err.message : 'failed'}`,
-        },
-        { status: 502 },
-      )
+      return youtubeFetchFailure(err, 'page')
     }
 
     const { title: pageTitle, captionUrl } = extractYoutubeCaptionTrackFromHtml(watchHtml)
@@ -174,14 +191,23 @@ export const POST = withRoute(async (req: Request) => {
       )
     }
 
-    const capRes = await networkFetch(captionUrl)
-    if (!capRes.ok) {
-      return Response.json(
-        { ok: false, error: `Caption track download failed (HTTP ${capRes.status})` },
-        { status: 502 },
-      )
+    let captionText: string
+    try {
+      const capRes = await boundedFetchText(captionUrl, {
+        maxBytes: MAX_YOUTUBE_CAPTION_BYTES,
+        timeoutMs: 20_000,
+      })
+      if (!capRes.ok) {
+        return Response.json(
+          { ok: false, error: `Caption track download failed (HTTP ${capRes.status})` },
+          { status: 502 },
+        )
+      }
+      captionText = capRes.text
+    } catch (err) {
+      return youtubeFetchFailure(err, 'captions')
     }
-    const transcript = parseYoutubeCaptionPayload(await capRes.text())
+    const transcript = parseYoutubeCaptionPayload(captionText)
     if (!transcript) {
       return Response.json(
         {
