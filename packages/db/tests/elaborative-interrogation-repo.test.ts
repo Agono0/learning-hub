@@ -4,6 +4,9 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import {
   addEiFact,
+  addEiFactIfNew,
+  EI_MAX_ACTIVE_FACTS,
+  EiBankFullError,
   archiveEiFact,
   eiAttempts,
   eiFactStates,
@@ -94,5 +97,34 @@ describe('elaborative interrogation repo', () => {
     expect(parseEngineId('db12')).toBe(12)
     expect(parseEngineId('f12')).toBeNull()
     expect(parseEngineId('db1x')).toBeNull()
+  })
+
+  it('does not duplicate a fact with the same normalized statement', () => {
+    const a = addEiFactIfNew({ statement: STATEMENT })
+    const b = addEiFactIfNew({ statement: `  ${STATEMENT.toUpperCase()}  ` })
+    expect(a.created).toBe(true)
+    expect(b.created).toBe(false)
+    expect(b.fact.id).toBe(a.fact.id)
+    expect(listEiFacts()).toHaveLength(1)
+  })
+
+  it('allows re-adding a statement after the old one is archived', () => {
+    const a = addEiFact({ statement: STATEMENT })
+    archiveEiFact(parseEngineId(a.id)!)
+    expect(addEiFactIfNew({ statement: STATEMENT }).created).toBe(true)
+  })
+
+  it('refuses to grow past the active fact cap but still returns duplicates', () => {
+    for (let i = 0; i < EI_MAX_ACTIVE_FACTS; i++) {
+      addEiFact({ statement: `Distinct statement number ${i} about retrieval practice.` })
+    }
+    expect(() => addEiFact({ statement: 'One more statement beyond the cap.' })).toThrow(
+      EiBankFullError,
+    )
+    expect(
+      addEiFactIfNew({ statement: 'Distinct statement number 3 about retrieval practice.' })
+        .created,
+    ).toBe(false)
+    expect(listEiFacts()).toHaveLength(EI_MAX_ACTIVE_FACTS)
   })
 })

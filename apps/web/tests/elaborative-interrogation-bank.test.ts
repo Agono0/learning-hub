@@ -85,4 +85,27 @@ describe('EI bank route', () => {
     expect((await post({ action: 'add', statement: 'short' })).status).toBe(400)
     expect((await get('?limit=500')).status).toBe(400)
   })
+
+  it('does not double facts when the same text is imported twice or added again', async () => {
+    const text =
+      'Mitochondria produce most of the ATP a cell needs through oxidative phosphorylation.'
+    const first = await (await post({ action: 'import', text })).json()
+    const second = await post({ action: 'import', text })
+    const body = await second.json()
+    expect(first.added).toHaveLength(1)
+    expect(body.added).toHaveLength(0)
+    expect(body.skippedDuplicates).toBe(1)
+    const dup = await post({ action: 'add', statement: first.added[0].statement.toUpperCase() })
+    expect(dup.status).toBe(200)
+    expect((await dup.json()).duplicate).toBe(true)
+  })
+
+  it('answers 409 once the bank is full', async () => {
+    const { addEiFact, listEiFacts, EI_MAX_ACTIVE_FACTS } = await import('@learning-hub/db')
+    for (let i = listEiFacts().length; i < EI_MAX_ACTIVE_FACTS; i++) {
+      addEiFact({ statement: `Filler statement ${i} for the capacity check.` })
+    }
+    const res = await post({ action: 'add', statement: 'A brand new statement over the cap.' })
+    expect(res.status).toBe(409)
+  })
 })

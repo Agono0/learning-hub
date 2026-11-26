@@ -60,11 +60,35 @@ function rowToState(r: typeof eiFactStates.$inferSelect): EiFactState {
   }
 }
 
-/** Add a fact to the bank. Statement is validated by the core schema (8 to 600 chars). */
-export function addEiFact(
+/** Most active facts a bank may hold. */
+export const EI_MAX_ACTIVE_FACTS = 500
+
+/** Thrown when the bank is full. */
+export class EiBankFullError extends Error {
+  constructor() {
+    super(`The fact bank is full (${EI_MAX_ACTIVE_FACTS} active facts). Archive some first.`)
+    this.name = 'EiBankFullError'
+  }
+}
+
+/** Case, spacing and trailing punctuation do not make a fact new. */
+export function normalizeStatement(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/[\s.!?;:]+$/, '')
+    .trim()
+}
+
+/**
+ * Add a fact unless an active fact with the same normalized statement exists.
+ * Returns the stored fact and whether it was newly created.
+ * Statement is validated by the core schema (8 to 600 chars).
+ */
+export function addEiFactIfNew(
   input: { statement: string; keyTerms?: string[]; priorKnowledge?: number },
   database?: Db,
-): EiFact {
+): { fact: EiFact; created: boolean } {
   const db = database ?? getDb()
   const parsed = eiFactSchema.parse({
     id: 'new',
@@ -72,6 +96,11 @@ export function addEiFact(
     keyTerms: input.keyTerms ?? [],
     priorKnowledge: input.priorKnowledge ?? 0.5,
   })
+  const active = db.select().from(eiFacts).where(isNull(eiFacts.archivedAt)).all()
+  const key = normalizeStatement(parsed.statement)
+  const existing = active.find((r) => normalizeStatement(r.statement) === key)
+  if (existing) return { fact: rowToFact(existing), created: false }
+  if (active.length >= EI_MAX_ACTIVE_FACTS) throw new EiBankFullError()
   const now = new Date().toISOString()
   const [row] = db
     .insert(eiFacts)
@@ -84,7 +113,15 @@ export function addEiFact(
     })
     .returning()
     .all()
-  return rowToFact(row!)
+  return { fact: rowToFact(row!), created: true }
+}
+
+/** Add a fact to the bank (deduplicated, capped). Returns the stored fact. */
+export function addEiFact(
+  input: { statement: string; keyTerms?: string[]; priorKnowledge?: number },
+  database?: Db,
+): EiFact {
+  return addEiFactIfNew(input, database).fact
 }
 
 /** List active (not archived) facts, oldest first. */

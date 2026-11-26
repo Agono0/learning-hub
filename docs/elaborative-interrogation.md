@@ -50,3 +50,9 @@ The learner studies a passage, hides it and writes what they remember (Roediger 
 
 - Answers are capped at 4000 characters, banks at 200 facts, pasted text at 60,000 characters.
 - Grading uses English wording cues. Other languages will score low on the causal-marker item.
+
+## Bank integrity and sync
+
+- Adding or importing a fact is deduplicated on its normalized statement (case, spacing and trailing punctuation ignored). `add` returns the existing fact with `duplicate: true` (200); `import` reports `skippedDuplicates`.
+- The bank holds at most 500 active facts. Beyond that, `add` and `import` answer 409. Archive facts to make room.
+- Device sync: `ei_facts` merge by statement, `ei_attempts` by fact, time and style (append-only union), and `ei_fact_states` by fact with the more recently updated state winning. Merging the same snapshot twice changes nothing.

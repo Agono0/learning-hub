@@ -7,7 +7,8 @@
 import { z } from 'zod'
 import { ApiError, readJson, readQuery, withRoute } from '@/lib/api'
 import {
-  addEiFact,
+  addEiFactIfNew,
+  EiBankFullError,
   archiveEiFact,
   getEiQueue,
   listEiAttempts,
@@ -86,32 +87,50 @@ function rowId(id: string): number {
   return n
 }
 
+/** Map the bank-full error to a 409. */
+function guardCap<T>(fn: () => T): T {
+  try {
+    return fn()
+  } catch (e) {
+    if (e instanceof EiBankFullError) throw new ApiError(409, e.message)
+    throw e
+  }
+}
+
 /** POST /api/elaborative-interrogation/bank { action: add | import | attempt | archive }. */
 export const POST = withRoute(async (req: Request) => {
   const body = await readJson(req, bodySchema)
   switch (body.action) {
-    case 'add':
-      return Response.json(
-        {
-          fact: addEiFact({
-            statement: body.statement,
-            keyTerms: body.keyTerms,
-            priorKnowledge: body.priorKnowledge,
-          }),
-        },
-        { status: 201 },
+    case 'add': {
+      const r = guardCap(() =>
+        addEiFactIfNew({
+          statement: body.statement,
+          keyTerms: body.keyTerms,
+          priorKnowledge: body.priorKnowledge,
+        }),
       )
+      return Response.json(
+        { fact: r.fact, duplicate: !r.created },
+        { status: r.created ? 201 : 200 },
+      )
+    }
     case 'import': {
       const candidates = extractFacts(body.text, body.max)
-      const added = withTransaction((tx) =>
-        candidates.map((c) =>
-          addEiFact(
-            { statement: c.statement, keyTerms: c.keyTerms, priorKnowledge: c.priorKnowledge },
-            tx,
+      const results = guardCap(() =>
+        withTransaction((tx) =>
+          candidates.map((c) =>
+            addEiFactIfNew(
+              { statement: c.statement, keyTerms: c.keyTerms, priorKnowledge: c.priorKnowledge },
+              tx,
+            ),
           ),
         ),
       )
-      return Response.json({ added }, { status: 201 })
+      const added = results.filter((r) => r.created).map((r) => r.fact)
+      return Response.json(
+        { added, skippedDuplicates: results.length - added.length },
+        { status: 201 },
+      )
     }
     case 'attempt': {
       try {
