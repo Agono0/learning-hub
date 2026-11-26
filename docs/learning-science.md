@@ -300,6 +300,14 @@ counting something learned — worth roughly a letter grade.
   bookkeeping in `apps/web/app/review/page.tsx` (criterion picker on setup).
 - **Status:** ✅
 
+### Retrieval-induced forgetting — Anderson, Bjork & Bjork, 1994
+
+Retrieving some items under a shared cue suppresses related, unpractised items.
+
+- **Evidence:** a robust laboratory effect that saturates after a few retrievals, depends on the cue, and is reduced by integration or independent-cue testing.
+- **In Learning HUB:** competitor clusters, suppression risk, rescue queue with reverse probes and balanced sessions: `packages/core/src/retrieval-forgetting/`, page `apps/web/app/retrieval-forgetting/`, [docs/retrieval-forgetting.md](retrieval-forgetting.md).
+- **Status:** ✅
+
 ### Interleaving — Rohrer & Taylor 2007; Rohrer 2020
 
 Mixing problem types beats blocking them, even though it feels worse.

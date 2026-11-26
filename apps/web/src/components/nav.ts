@@ -379,6 +379,7 @@ export const NAV: NavGroup[] = [
         shortLabel: 'CPS',
       },
       { href: '/embodied-learning', label: 'Embodied Learning & Gesture Studio', icon: Sparkles },
+      { href: '/retrieval-forgetting', label: 'Retrieval Forgetting Guard', icon: Sparkles },
     ],
   },
   {

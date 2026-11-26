@@ -53,6 +53,7 @@ const APPEND_ONLY_TABLES = new Set([
   'dialectic_arena_debates',
   'exposure_events',
   'ei_attempts',
+  'rif_audits',
 ])
 
 const SKIP_TABLES = new Set([
@@ -226,6 +227,10 @@ export function computeRecordNaturalKey(
       return `fact:${str(row['fact_id'])}`
     case 'ei_attempts':
       return `fact:${str(row['fact_id'])}:at:${str(row['created_at'])}:style:${str(row['style'])}`
+    case 'rif_audits':
+      return `deck:${str(row['deck_id'])}:at:${str(row['created_at'])}`
+    case 'rif_dismissals':
+      return `card:${str(row['card_id'])}`
     default:
       return null
   }
@@ -276,6 +281,7 @@ const LOGICAL_FOREIGN_KEYS: Record<string, ForeignKeySpec[]> = {
     { fromCol: 'skill_id', toTable: 'skills', strictParent: false },
   ],
   revlog: [{ fromCol: 'card_id', toTable: 'cards', strictParent: false }],
+  rif_audits: [{ fromCol: 'deck_id', toTable: 'decks', strictParent: false }],
   revlog_undos: [
     { fromCol: 'revlog_id', toTable: 'revlog', strictParent: false },
     { fromCol: 'card_id', toTable: 'cards', strictParent: false },
