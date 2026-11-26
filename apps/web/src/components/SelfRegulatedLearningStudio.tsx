@@ -323,7 +323,7 @@ export function SelfRegulatedLearningStudio() {
       />
 
       {/* Navigation Tabs */}
-      <div className="flex border-b border-neutral-200/80 dark:border-(--hub-border)/80 text-sm font-medium">
+      <div className="flex border-b border-neutral-200/80 dark:border-(--hub-border)/80 text-sm font-medium overflow-x-auto [&>button]:shrink-0 [&>button]:whitespace-nowrap">
         <button
           type="button"
           onClick={() => setActiveTab('forethought')}

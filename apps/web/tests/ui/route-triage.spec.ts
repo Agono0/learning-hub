@@ -37,7 +37,7 @@ test('route survey at 390px records status, errors, h1 and overflow', async ({ p
   for (const url of routes) {
     const errors: string[] = []
     const onErr = (m: import('@playwright/test').ConsoleMessage) => {
-      if (m.type() === 'error') errors.push(`console: ${m.text().slice(0, 160)}`)
+      if (m.type() === 'error') errors.push(`console: ${m.text().slice(0, 700)}`)
     }
     const onPage = (e: Error) => errors.push(`pageerror: ${e.message.slice(0, 160)}`)
     page.on('console', onErr)
@@ -65,18 +65,26 @@ test('route survey at 390px records status, errors, h1 and overflow', async ({ p
         culprits = await page.evaluate(() => {
           const w = document.documentElement.clientWidth
           const out: Array<{ right: number; d: string }> = []
+          const clipped = (el: Element) => {
+            for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+              const ox = getComputedStyle(p).overflowX
+              if (ox === 'auto' || ox === 'scroll' || ox === 'hidden' || ox === 'clip') return true
+            }
+            return false
+          }
           for (const el of Array.from(document.body.querySelectorAll('*'))) {
             const r = el.getBoundingClientRect()
-            if (r.width > 0 && r.right > w + 1) {
+            if (r.width > 0 && r.right > w + 1 && !clipped(el)) {
               const cls = (el.getAttribute('class') ?? '').slice(0, 70)
+              const par = el.parentElement
               out.push({
                 right: Math.round(r.right),
-                d: `${el.tagName.toLowerCase()}.${cls} w=${Math.round(r.width)}`,
+                d: `${el.tagName.toLowerCase()}.${cls} w=${Math.round(r.width)} < ${par?.tagName.toLowerCase()}.${(par?.getAttribute('class') ?? '').slice(0, 60)}`,
               })
             }
           }
           out.sort((a, b) => b.right - a.right)
-          return out.slice(0, 3).map((o) => `right=${o.right} ${o.d}`)
+          return out.slice(0, 4).map((o) => `right=${o.right} ${o.d}`)
         })
       }
       if (!h1) {

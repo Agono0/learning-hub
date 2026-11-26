@@ -743,6 +743,11 @@ h6 {
   svg {
     max-width: 100%;
   }
+  /* A select sizes to its longest option; without a cap it widens its flex row past a phone. */
+  select {
+    max-width: 100%;
+    min-width: 0;
+  }
 }
 
 /* Bottom sheet motion (MoreSheet). */

@@ -263,7 +263,7 @@ export function CollaborativeScriptsStudio() {
       )}
 
       {/* 4-Phase Navigation Tabs */}
-      <div className="flex border-b border-neutral-200 dark:border-(--hub-border) text-xs font-medium">
+      <div className="flex border-b border-neutral-200 dark:border-(--hub-border) text-xs font-medium overflow-x-auto [&>button]:shrink-0 [&>button]:whitespace-nowrap">
         <button
           onClick={() => setActiveTab('framing')}
           className={`px-4 py-2.5 border-b-2 flex items-center gap-1.5 transition-colors ${
