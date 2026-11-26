@@ -131,8 +131,24 @@ test.describe('theme persistence (real control)', () => {
     await expect(page.locator('h1').first()).toBeVisible({ timeout: 60_000 })
     const result: Record<string, unknown> = {}
     const group = page.getByRole('group', { name: 'Theme preference' })
+    const puts: string[] = []
+    page.on('response', (r) => {
+      if (r.url().includes('/api/settings') && r.request().method() !== 'GET') {
+        puts.push(`${r.request().method()} ${r.status()}`)
+      }
+    })
     await group.getByRole('button', { name: 'Light' }).click()
+    result.darkClassImmediately = await page.evaluate(() =>
+      document.documentElement.classList.contains('dark'),
+    )
+    result.lightPressedImmediately = await group
+      .getByRole('button', { name: 'Light' })
+      .getAttribute('aria-pressed')
     await page.waitForTimeout(800)
+    result.settingsWrites = puts
+    result.lightPressedAfter = await group
+      .getByRole('button', { name: 'Light' })
+      .getAttribute('aria-pressed')
     result.darkClassAfterClick = await page.evaluate(() =>
       document.documentElement.classList.contains('dark'),
     )
