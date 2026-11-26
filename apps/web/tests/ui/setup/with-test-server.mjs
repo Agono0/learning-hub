@@ -3,7 +3,8 @@
  *
  * Never touches the developer database: it checkpoints `data/learning-hub.db`,
  * copies it to an isolated `data/test-dbs/ui-smoke-<ts>.db` clone (same
- * isolation strategy as tests/e2e/helpers/test-db.ts), seeds a tiny UI fixture
+ * isolation strategy as tests/e2e/helpers/test-db.ts; the name carries port and pid so parallel
+ * shards on one machine never collide), seeds a tiny UI fixture
  * deck directly into the clone, then boots `next dev` on port 3100 with
  * `LEARNING_HUB_DB` pointed at the clone. The clone is deleted on exit.
  */
@@ -17,6 +18,15 @@ const here = path.dirname(fileURLToPath(import.meta.url))
 const webDir = path.resolve(here, '../../..') // apps/web
 const rootDir = path.resolve(webDir, '../..') // repo root
 const PORT = process.env.UI_SMOKE_PORT ?? 3100
+
+// Production mode serves an existing build. Fail loudly instead of letting `next start` exit
+// into a green-looking skip when the bundle is missing.
+if (process.env.LH_PROD === '1' && !existsSync(path.join(webDir, '.next', 'BUILD_ID'))) {
+  console.error(
+    '[ui-smoke] LH_PROD=1 but apps/web/.next/BUILD_ID is missing — run `npm run build` first.',
+  )
+  process.exit(1)
+}
 
 const baseDb = path.join(rootDir, 'data', 'learning-hub.db')
 if (!existsSync(baseDb)) {
@@ -38,7 +48,7 @@ try {
   // A dev server may hold the DB — the copy proceeds anyway.
 }
 
-const clone = path.join(testDir, `ui-smoke-${Date.now()}.db`)
+const clone = path.join(testDir, `ui-smoke-${PORT}-${process.pid}-${Date.now()}.db`)
 copyFileSync(baseDb, clone)
 
 // ── UI fixture: one deck with five due basic cards ──────────────────────────
