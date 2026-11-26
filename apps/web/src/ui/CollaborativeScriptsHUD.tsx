@@ -60,8 +60,8 @@ export function CollaborativeScriptsHUD({
       {/* Top Banner: Composite Index & Maturity Tier */}
       <Panel className="space-y-4 border-l-4 border-l-indigo-500">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs uppercase tracking-wider font-semibold text-tertiary flex items-center gap-1">
                 <Brain className="h-3.5 w-3.5 text-ac-text" />
                 Collaborative Epistemic Index (CEI)

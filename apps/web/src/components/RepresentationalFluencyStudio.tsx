@@ -327,7 +327,7 @@ export function RepresentationalFluencyStudio() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 max-w-full">
               <Button
                 variant="secondary"
                 onClick={() => setIsDualCompareActive(!isDualCompareActive)}
@@ -349,9 +349,9 @@ export function RepresentationalFluencyStudio() {
 
           {/* Primary & Secondary Modality Switchers */}
           <div className="flex flex-wrap items-center justify-between gap-4 p-3 rounded-xl bg-neutral-50 dark:bg-(--hub-panel-2) border border-neutral-200 dark:border-(--hub-border)">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 max-w-full">
               <span className="text-xs font-semibold text-secondary">Primary Modality:</span>
-              <div className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center gap-1 max-w-full">
                 {(Object.keys(CANONICAL_MODALITY_CATALOG) as RepresentationModality[]).map((m) => (
                   <button
                     key={m}
@@ -370,9 +370,9 @@ export function RepresentationalFluencyStudio() {
             </div>
 
             {isDualCompareActive && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 max-w-full">
                 <span className="text-xs font-semibold text-secondary">Contrast With:</span>
-                <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center gap-1 max-w-full">
                   {(Object.keys(CANONICAL_MODALITY_CATALOG) as RepresentationModality[]).map(
                     (m) => (
                       <button
@@ -526,7 +526,7 @@ export function RepresentationalFluencyStudio() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 max-w-full">
               <Button variant="secondary" onClick={() => setView('multimodal_explorer')}>
                 Back to Explorer
               </Button>
@@ -661,7 +661,7 @@ export function RepresentationalFluencyStudio() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 max-w-full">
               <Button variant="secondary" onClick={handleCopyDeck}>
                 <Copy className="w-3.5 h-3.5 mr-1.5 inline" />
                 {isDeckCopied ? 'Deck Copied!' : 'Copy Cards'}

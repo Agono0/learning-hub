@@ -75,8 +75,8 @@ export function InquiryHUD({ metrics, activeLabTitle, className = '' }: InquiryH
           <div className="p-2 rounded-lg bg-teal-500/10 text-status-success-text dark:text-status-success-text">
             <Microscope className="w-5 h-5" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-semibold uppercase tracking-wider text-secondary">
                 Inquiry &amp; Discovery Telemetry
               </span>

@@ -262,7 +262,7 @@ export function AnalogicalTransferStudio({
         <div className="flex flex-col gap-6">
           {/* Base Analog Selector Sub-Bar */}
           <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/40 p-3">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 max-w-full">
               <span className="text-xs text-faint">Select Base Domain Analog:</span>
               <div className="flex gap-1.5">
                 {currentSuite.baseAnalogs.map((base, idx) => (
@@ -740,7 +740,7 @@ export function AnalogicalTransferStudio({
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 max-w-full">
               <Button
                 onClick={handleCopyCards}
                 disabled={fsrsCards.length === 0}

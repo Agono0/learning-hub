@@ -38,11 +38,13 @@ interface GradeResult {
   gaps: string[]
 }
 
-function useManualMode(feature: string, enabled: boolean) {
+function useManualMode(feature: string, enabled: boolean, sessionId?: number | null) {
   return useQuery<{ manual: ManualModeInfo | null }>({
-    queryKey: ['ai-transport-manual', feature],
+    queryKey: ['ai-transport-manual', feature, sessionId ?? null],
     queryFn: () =>
-      apiGet<{ manual: ManualModeInfo | null }>(`/api/ai/transport?feature=${feature}`),
+      apiGet<{ manual: ManualModeInfo | null }>(
+        `/api/ai/transport?feature=${feature}${sessionId ? `&sessionId=${sessionId}` : ''}`,
+      ),
     enabled,
     staleTime: 60_000,
   })
@@ -65,7 +67,6 @@ export default function FeynmanPage() {
   const { data: aiStatus } = useAiStatus()
   const manual = aiStatus?.configured === false
   const { data: studentManual } = useManualMode('feynman-student', manual)
-  const { data: graderManual } = useManualMode('feynman-grader', manual)
 
   const [viewMode, setViewMode] = useState<'studio' | 'dialogue'>('studio')
   const [concept, setConcept] = useState('')
@@ -75,6 +76,9 @@ export default function FeynmanPage() {
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
   const [sessionId, setSessionId] = useState<number | null>(null)
+  // The grader envelope is built from a chat session, so it is only requested once one exists
+  // (without a sessionId the server answers 400 on every page load).
+  const { data: graderManual } = useManualMode('feynman-grader', manual && !!sessionId, sessionId)
   const [grade, setGrade] = useState<GradeResult | null>(null)
   const [gapCards, setGapCards] = useState<{ front: string; back: string }[]>([])
   const [error, setError] = useState<string | null>(null)

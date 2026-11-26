@@ -95,8 +95,8 @@ export function RepresentationalFluencyHUD({
           <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-status-info-text dark:text-status-info-text flex items-center justify-center font-bold">
             <GitCompare className="w-5 h-5" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-semibold uppercase tracking-wider text-secondary">
                 Representational Fluency HUD
               </span>

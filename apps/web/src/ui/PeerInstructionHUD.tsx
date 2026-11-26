@@ -97,8 +97,8 @@ export function PeerInstructionHUD({
           <div className="p-2 rounded-lg bg-sky-500/10 text-status-info-text dark:text-status-info-text">
             <Users className="w-5 h-5" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-semibold uppercase tracking-wider text-secondary">
                 Peer Instruction Telemetry
               </span>

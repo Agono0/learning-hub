@@ -84,8 +84,8 @@ export function AnalogicalTransferHUD({
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/10 text-status-info-text ring-1 ring-sky-500/25">
             <GitCompare className="h-5 w-5" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-semibold tracking-wider text-faint uppercase">
                 Cross-Domain Isomorphism
               </span>

@@ -143,7 +143,7 @@ export function ComplexProblemSolvingStudio() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 max-w-full">
             <Button variant="secondary" onClick={handleReset} className="flex items-center gap-1.5">
               <RotateCcw className="h-4 w-4" />
               Reset Simulation
@@ -250,7 +250,7 @@ export function ComplexProblemSolvingStudio() {
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div>
+                      <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-xs font-bold text-strong">{variable.name}</span>
                           {variable.isCritical && (

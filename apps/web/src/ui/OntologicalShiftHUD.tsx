@@ -84,8 +84,8 @@ export function OntologicalShiftHUD({
           <div className="w-8 h-8 rounded-xl bg-violet-500/10 dark:bg-violet-500/20 text-ac-text dark:text-ac-text flex items-center justify-center shrink-0">
             <GitBranch className="w-4 h-4" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-sm font-bold text-strong tracking-tight">
                 Ontological Category Shift HUD
               </h3>

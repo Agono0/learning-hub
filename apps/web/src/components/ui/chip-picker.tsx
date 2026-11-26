@@ -116,7 +116,7 @@ export function ChipPicker<T extends string>({
                 {item.icon}
               </span>
             ) : null}
-            <span className="flex flex-col items-start">
+            <span className="flex min-w-0 flex-col items-start">
               <span className="truncate">{item.label}</span>
               {item.hint ? (
                 <span className="text-[11px] font-normal leading-tight text-tertiary">

@@ -226,7 +226,7 @@ export function CognitiveLoadStudio() {
                       Live Retrieval Telemetry & Cognitive Friction Sliders
                     </h3>
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5 max-w-full">
                     <span className="text-[11px] text-secondary">Profiles:</span>
                     <Button
                       variant="secondary"
@@ -736,7 +736,7 @@ export function CognitiveLoadStudio() {
               </div>
 
               {/* Phase Step Selector */}
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 max-w-full">
                 {scenario.defaultScaffoldStages.map((stg) => (
                   <Button
                     key={stg.phaseIndex}
@@ -816,7 +816,7 @@ export function CognitiveLoadStudio() {
                   {solutionRevealed ? 'Hide Solution' : 'Reveal Solution & Schema'}
                 </Button>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 max-w-full">
                   <Button
                     variant="primary"
                     className="text-xs px-2.5 py-1"
