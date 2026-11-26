@@ -3,13 +3,24 @@
  * destinations, redirect handling, byte cap with stream cancellation, timeout.
  * Plus the three handlers that use it.
  */
-import { describe, expect, it, vi, afterEach } from 'vitest'
-import { assertAllowedUrl, boundedFetchText, BoundedFetchError } from '../src/server/bounded-fetch'
+import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest'
+import {
+  assertAllowedUrl,
+  boundedFetchText,
+  BoundedFetchError,
+  setPinnedFetch,
+} from '../src/server/bounded-fetch'
 import * as importRoute from '../src/server/handlers/calendar/import/route'
 import * as ingestRoute from '../src/server/handlers/reading/ingest/route'
 import * as readingRoute from '../src/server/handlers/reading/route'
 
-afterEach(() => vi.unstubAllGlobals())
+// Handler-level tests stub the global fetch; route it through the pinned-fetch slot, which is
+// the only transport allowed on a Node runtime.
+beforeEach(() => setPinnedFetch((u, i) => fetch(u, i)))
+afterEach(() => {
+  vi.unstubAllGlobals()
+  setPinnedFetch(null)
+})
 
 const ok = (body: string, init: ResponseInit = {}) => new Response(body, { status: 200, ...init })
 const redirect = (to: string) => new Response(null, { status: 302, headers: { location: to } })
@@ -203,6 +214,16 @@ describe('handlers use the bound', () => {
     ).toBe(413)
   })
 
+  it('fails closed on Node when no pinned fetch is registered (never the global fetch)', async () => {
+    setPinnedFetch(null)
+    const f = vi.fn(async () => ok('leak'))
+    vi.stubGlobal('fetch', f)
+    await expect(boundedFetchText('https://example.com/a', base)).rejects.toMatchObject({
+      code: 'network',
+    })
+    expect(f).not.toHaveBeenCalled()
+  })
+
   it('network errors never echo the URL, path or query token', async () => {
     const secret = 'https://calendar.example.com/ical/SECRETTOKEN123/basic.ics?key=QUERYSECRET'
     const fetchFn = async () => {
@@ -213,6 +234,23 @@ describe('handlers use the bound', () => {
     const msg = (err as Error).message
     expect(msg).toBe('The request failed (ECONNRESET)')
     expect(msg).not.toMatch(/SECRETTOKEN|QUERYSECRET|calendar\.example/)
+  })
+
+  it('the pinned slot is shared by separate copies of the module (bundle split)', async () => {
+    vi.resetModules()
+    const a = await import('../src/server/bounded-fetch')
+    vi.resetModules()
+    const b = await import('../src/server/bounded-fetch')
+    expect(a.boundedFetchText).not.toBe(b.boundedFetchText) // really two module instances
+    const stub = vi.fn(async () => ok('via-slot'))
+    a.setPinnedFetch(stub) // what the instrumentation bundle does
+    const r = await b.boundedFetchText('https://example.com/a', base) // what a route bundle does
+    expect(r.text).toBe('via-slot')
+    expect(stub).toHaveBeenCalledTimes(1)
+    a.setPinnedFetch(null)
+    await expect(b.boundedFetchText('https://example.com/a', base)).rejects.toMatchObject({
+      code: 'network',
+    })
   })
 
   it('http is allowed for article ingest only (preserved), never for calendar import', async () => {

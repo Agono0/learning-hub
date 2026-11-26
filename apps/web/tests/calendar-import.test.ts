@@ -17,7 +17,8 @@
 import React from 'react'
 import { renderToString } from 'react-dom/server'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { setPinnedFetch } from '../src/server/bounded-fetch'
 import * as importRoute from '../src/server/handlers/calendar/import/route'
 import {
   addSubscription,
@@ -81,8 +82,11 @@ function stubWindowStorage() {
 }
 
 describe('POST /api/calendar/import (handler)', () => {
+  // The Node runtime only allows the pinned-fetch slot; route it through the stubbed global.
+  beforeEach(() => setPinnedFetch((u, i) => fetch(u, i)))
   afterEach(() => {
     vi.unstubAllGlobals()
+    setPinnedFetch(null)
   })
 
   it('fetches an https iCal feed and returns parsed events + todos', async () => {
