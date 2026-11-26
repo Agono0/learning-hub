@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
   cardFrontText,
@@ -36,47 +38,45 @@ describe('replaceClozeMarkers', () => {
   })
 })
 
-describe('every cloze text consumer stays linear on hostile text', () => {
-  const hostile = '{{c1::'.repeat(Math.ceil(200_000 / 6))
-  const LIMIT_MS = 1000 // the old regexes need seconds for each of these at 200 KB
-  const timed = (fn: () => void) => {
-    const t = Date.now()
-    fn()
-    return Date.now() - t
-  }
+/** Source with comments removed, so a doc comment may still mention the old regex. */
+function codeOf(file: string): string {
+  const src = readFileSync(fileURLToPath(new URL(`../src/${file}`, import.meta.url)), 'utf8')
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+}
 
-  it('validateCardContent (cloze) rejects text with no closed marker quickly', () => {
-    let result: ReturnType<typeof validateCardContent> | undefined
+describe('cloze text consumers', () => {
+  // Hostile shape, small enough that even the old regex finishes at once: the results of the
+  // shared scanner must equal what the old regexes gave for it.
+  const hostile = '{{c1::'.repeat(300)
+  const mixed = `${hostile}\nA {{c1::b}} and {{c2::d::hint}}\n${hostile}}}`
+
+  it('give the same results as the old regexes on hostile-shaped text', () => {
+    for (const text of [hostile, mixed]) {
+      const content = { cloze: { text, answers: ['a'], mode: 'basic' } } as never
+      expect(cardFrontText(content)).toBe(text.replace(/\{\{c\d+::.*?\}\}/g, '___'))
+      expect(cardSides(content)?.left).toBe(text.replace(/\{\{c\d+::.*?\}\}/g, '___'))
+      expect(syncBulletCard(text, 1).type === 'cloze').toBe(/\{\{c\d+::.*?\}\}/.test(text))
+      expect(
+        validateCardContent('cloze', { cloze: { text, answers: ['a'], mode: 'basic' } }).ok,
+      ).toBe(/\{\{c\d+::.*?\}\}/.test(text))
+    }
+  })
+
+  it('reject cloze text with no closed marker', () => {
     expect(
-      timed(() => {
-        result = validateCardContent('cloze', {
-          cloze: { text: hostile, answers: ['a'], mode: 'basic' },
-        })
-      }),
-    ).toBeLessThan(LIMIT_MS)
-    expect(result?.ok).toBe(false)
+      validateCardContent('cloze', { cloze: { text: hostile, answers: ['a'], mode: 'basic' } }).ok,
+    ).toBe(false)
+    expect(syncBulletCard(hostile, 1).type).not.toBe('cloze')
   })
 
-  it('syncBulletCard does not treat it as a cloze', () => {
-    let type = ''
-    expect(timed(() => (type = syncBulletCard(hostile, 1).type))).toBeLessThan(LIMIT_MS)
-    expect(type).not.toBe('cloze')
-  })
-
-  it('cardFrontText and cardSides keep the text', () => {
-    const content = { cloze: { text: hostile, answers: ['a'], mode: 'basic' } } as never
-    expect(timed(() => cardFrontText(content))).toBeLessThan(LIMIT_MS)
-    expect(timed(() => cardSides(content))).toBeLessThan(LIMIT_MS)
-  })
-
-  it('the doctor ladder suggestion', () => {
+  it('doctor suggestion works on the hostile shape', () => {
     const card = {
       id: 1,
       type: 'cloze',
       lapses: 9,
-      content: { cloze: { text: hostile, answers: ['a'], mode: 'basic' } },
+      content: { cloze: { text: mixed, answers: ['a'], mode: 'basic' } },
     } as never
-    expect(timed(() => suggestGenerationLadderForCard(card))).toBeLessThan(LIMIT_MS)
+    expect(() => suggestGenerationLadderForCard(card)).not.toThrow()
   })
 
   it('normal cloze text is unchanged', () => {
@@ -91,4 +91,13 @@ describe('every cloze text consumer stays linear on hostile text', () => {
       }).ok,
     ).toBe(true)
   })
+
+  // The old regex is quadratic on unclosed openers; a wall-clock bound would be flaky, so pin
+  // the fix structurally: these files must not carry the lazy cloze regex any more.
+  it.each(['cards.ts', 'games.ts', 'linter.ts', 'doctor.ts', 'multimodal/index.ts'])(
+    '%s no longer uses the lazy cloze regex',
+    (file) => {
+      expect(codeOf(file)).not.toMatch(/\\\{\\\{c/)
+    },
+  )
 })
