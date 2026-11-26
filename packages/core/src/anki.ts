@@ -691,9 +691,15 @@ interface AnkiModel {
 }
 
 /**
- * Local resource policy (not an Anki or ZIP rule): the `meta` entry is read only up to this
- * many inflated bytes. Real ones are 2 bytes; the cap is enforced from the declared size
- * BEFORE anything is inflated, by reading it through a second bounded view of the same bytes.
+ * Local resource policy (not an Anki or ZIP rule): `meta` is read only when it declares at
+ * most this many bytes. Two layers enforce it. (1) Before any inflating, `read()` refuses an
+ * entry whose DECLARED size is over `maxEntryBytes` (archive-limits.ts, the check ahead of the
+ * output allocation). (2) The output buffer is allocated at the declared size and the inflater
+ * aborts as soon as the real output would pass it, so a header that lies low cannot inflate
+ * past the cap either. The second `openBoundedZip` below is a separate view of the same bytes
+ * with only `maxEntryBytes` lowered: opening validates the central directory and local
+ * headers and inflates nothing, and the lowered cap applies only to entries passed to
+ * `read()`, so the collection (up to the normal APKG_LIMITS) is never read or refused by it.
  */
 export const APKG_META_MAX_BYTES = 4096
 

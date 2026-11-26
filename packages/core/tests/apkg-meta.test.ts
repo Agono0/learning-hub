@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 import Database from 'better-sqlite3'
 import { zipSync } from 'fflate'
 import { parseApkg } from '../src/anki'
+import { APKG_LIMITS, ArchiveLimitError, openBoundedZip } from '../src/archive-limits'
 
 const DDL = `
 CREATE TABLE col (id INTEGER PRIMARY KEY, crt INTEGER NOT NULL, mod INTEGER NOT NULL, scm INTEGER NOT NULL, ver INTEGER NOT NULL, dty INTEGER NOT NULL, usn INTEGER NOT NULL, ls INTEGER NOT NULL, conf TEXT NOT NULL, models TEXT NOT NULL, decks TEXT NOT NULL, dconf TEXT NOT NULL, tags TEXT NOT NULL);
@@ -217,5 +218,83 @@ describe('parseApkg meta protobuf decoding (byte-level)', () => {
       }
     dv.setUint32(cen + 16, 0xdeadbeef, true)
     await expect(parseApkg(z)).rejects.toThrow(/invalid \.apkg: .*meta.*CRC/)
+  })
+})
+
+describe('the meta cap does not touch other members', () => {
+  /** A valid collection padded with an unused table so the ZIP member is several MiB. */
+  function bigCollection(): Uint8Array {
+    const db = new Database(':memory:')
+    db.exec(DDL)
+    db.exec('CREATE TABLE pad (b BLOB)')
+    // pseudo-random, so it stays large after deflate
+    let x = 12345
+    const buf = Buffer.alloc(3 * 1024 * 1024)
+    for (let i = 0; i < buf.length; i++) {
+      x = (Math.imul(x, 1103515245) + 12345) >>> 0
+      buf[i] = x >>> 24
+    }
+    db.prepare('INSERT INTO pad VALUES (?)').run(buf)
+    db.prepare(
+      'INSERT INTO col (id, crt, mod, scm, ver, dty, usn, ls, conf, models, decks, dconf, tags) VALUES (1, 0, 0, 0, 11, 0, 0, 0, ?, ?, ?, ?, ?)',
+    ).run('{}', JSON.stringify(MODELS), JSON.stringify({ 1: { id: 1, name: 'Big' } }), '{}', '{}')
+    db.prepare(
+      "INSERT INTO notes (id, guid, mid, mod, usn, tags, dgus, flds, sfld, csum, flags, data) VALUES (1, 'g', 1, 0, 0, '', '', 'Big front\x1fBig back', '', 0, 0, '')",
+    ).run()
+    db.prepare(
+      "INSERT INTO cards (id, nid, did, ord, mod, usn, type, queue, due, ivl, factor, reps, lapses, left, odue, odid, flags, data) VALUES (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '')",
+    ).run()
+    const out = Buffer.from(db.serialize())
+    db.close()
+    return out
+  }
+
+  it('imports a multi-MiB collection next to a tiny meta', async () => {
+    const big = bigCollection()
+    expect(big.length).toBeGreaterThan(3 * 1024 * 1024)
+    const z = pkg(v(2), { 'collection.anki21': big, 'collection.anki2': STUB })
+    const d = await parseApkg(z)
+    expect(fronts(d)).toEqual(['Big front'])
+  })
+
+  it('reading meta through the lowered view inflates only meta; the large member stays refused and untouched', () => {
+    const big = new Uint8Array(1024 * 1024).map((_, i) => (i * 7919) & 0xff)
+    const z = pkg(v(2), { 'collection.anki21': big })
+    const seen: number[] = []
+    const view = openBoundedZip(z, { ...APKG_LIMITS, maxEntryBytes: 4096 }, (n) => seen.push(n))
+    expect(view.has('collection.anki21')).toBe(true) // opening did not refuse the big member
+    expect(seen).toEqual([]) // and inflated nothing
+    expect([...view.read('meta')]).toEqual([0x08, 0x02])
+    expect(Math.max(...seen, 0)).toBeLessThanOrEqual(2)
+    const before = seen.length
+    expect(() => view.read('collection.anki21')).toThrow(ArchiveLimitError)
+    expect(seen.length).toBe(before) // refused from the header, no inflating
+    // the normal view still reads it in full
+    const full = openBoundedZip(z, APKG_LIMITS)
+    expect(full.read('collection.anki21')).toHaveLength(big.length)
+  })
+
+  /** Patch the first central-directory entry's declared uncompressed size. */
+  function lieAboutSize(z: Uint8Array, usize: number): Uint8Array {
+    const out = z.slice()
+    const dv = new DataView(out.buffer)
+    for (let i = 0; i < out.length - 4; i++) {
+      if (dv.getUint32(i, true) === 0x02014b50) {
+        dv.setUint32(i + 24, usize, true)
+        return out
+      }
+    }
+    throw new Error('no central directory entry')
+  }
+
+  it('refuses a meta whose header declares <= 4096 bytes but whose stream inflates larger', async () => {
+    // 10000 compressible bytes, valid CRC for the real data, header claims 100 then 4096
+    const z = pkg(new Uint8Array(10000).fill(0x2a), { 'collection.anki21': REAL })
+    expect(zipSync({ meta: new Uint8Array(10000).fill(0x2a) }).length).toBeLessThan(200) // really deflated
+    for (const lie of [100, 4096]) {
+      await expect(parseApkg(lieAboutSize(z, lie))).rejects.toThrow(
+        new RegExp(`invalid \\.apkg: entry "meta" inflates past its declared ${lie} bytes`),
+      )
+    }
   })
 })
