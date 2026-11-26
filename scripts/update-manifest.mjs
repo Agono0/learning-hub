@@ -81,6 +81,14 @@ export async function hashTree(dir) {
       if (dirent.isDirectory()) {
         await walk(abs, rel)
       } else if (dirent.isFile()) {
+        // version.json is written per build (scripts/tauri-web.mjs stamps the
+        // nightly version into it), so it changes on EVERY build — even a
+        // zero-code-change one. Including it would defeat the unchanged-build
+        // skip (O1-08: a docs-only day must publish nothing) and force a
+        // non-empty hot patch every night. The shell reads version.json from
+        // the bundled assets (update.rs), never from an OTA slot, so it needs
+        // no manifest entry.
+        if (rel === 'version.json') continue
         const { sha256, size } = await hashFile(abs)
         entries.push({ path: rel, sha256, size })
       }

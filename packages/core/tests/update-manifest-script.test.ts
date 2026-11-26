@@ -88,6 +88,16 @@ describe('update-manifest script (O1-07)', () => {
       const dir = await tempDir()
       await expect(hashTree(dir)).rejects.toThrow(/empty manifest/i)
     })
+
+    it('excludes version.json (per-build stamp would defeat the unchanged-build skip)', async () => {
+      const dir = await tempDir()
+      await writeFiles(dir, {
+        'index.html': '<html></html>',
+        'version.json': '{"version":"20261125-cb0da8f"}',
+      })
+      const files = await hashTree(dir)
+      expect(files.map((f) => f.path)).toEqual(['index.html'])
+    })
   })
 
   describe('generateManifest', () => {

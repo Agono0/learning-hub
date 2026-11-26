@@ -122,6 +122,22 @@ fn serve_slot_protocol(
             .expect("valid slot response");
     }
 
+    // A complete active slot IS the current export (both fill paths write
+    // every manifest file, manifest last — update.rs). A miss here means the
+    // current build deleted this file, so the bundle fallback below must NOT
+    // resurrect the old copy: serve 404. The fallback stays for first run and
+    // pre-slot boots (no slot manifest yet).
+    if update::active_slot_is_complete(&base) {
+        return tauri::http::Response::builder()
+            .status(404)
+            .header("Content-Type", "text/plain; charset=utf-8")
+            .header("Access-Control-Allow-Origin", "*")
+            .body(Cow::Owned(
+                b"not found in the active update slot".to_vec(),
+            ))
+            .expect("valid slot 404");
+    }
+
     // Fallback: the payload the shell shipped with (bundled export).
     // `AssetResolver::get` takes an owned `String` path in tauri 2, and
     // `Asset::bytes()` returns `&[u8]` — copy it into the response `Cow`.
