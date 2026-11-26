@@ -163,3 +163,43 @@ for (const vp of [
     }
   })
 }
+
+test('decks header actions: disabled with All decks, enabled with a deck (computed probe)', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.addInitScript(() => window.localStorage.setItem('lh-theme', 'dark'))
+  await page.goto('/decks')
+  const newCard = page.getByRole('button', { name: /New card/ })
+  const ai = page.getByRole('button', { name: /AI generate/ })
+  await expect(newCard).toBeVisible({ timeout: 60_000 })
+  await forceTheme(page, 'dark')
+  const probe = (loc: import('@playwright/test').Locator) =>
+    loc.evaluate((el) => {
+      const cs = getComputedStyle(el)
+      return {
+        disabled: (el as HTMLButtonElement).disabled,
+        opacity: cs.opacity,
+        color: cs.color,
+        background: cs.backgroundColor,
+      }
+    })
+  const before = { newCard: await probe(newCard), ai: await probe(ai) }
+  // Browser-measured computed values; not a contrast ratio, and disabled controls are exempt from WCAG text contrast.
+  await page
+    .getByRole('button', { name: /Smoke Test Deck/ })
+    .first()
+    .click()
+  await expect(newCard).toBeEnabled()
+  await page.waitForTimeout(400)
+  const after = { newCard: await probe(newCard), ai: await probe(ai) }
+  fs.writeFileSync(
+    path.join(OUT, 'depth-decks-actions-probe.json'),
+    JSON.stringify({ before, after }, null, 2),
+  )
+  await page.screenshot({ path: path.join(OUT, 'depth-decks-actions-enabled.png') })
+  expect(before.newCard.disabled).toBe(true)
+  expect(after.newCard.disabled).toBe(false)
+  expect(after.ai.disabled).toBe(false)
+  expect(Number(after.newCard.opacity)).toBe(1)
+})
