@@ -152,10 +152,20 @@ for (const vp of [
     )
     expect(overflow).toBeLessThanOrEqual(0)
     if (vp.width < 640) {
-      // Browser-measured: the first card row must sit near the top once the Leitner boxes are a
-      // compact strip (before: five stacked tiles pushed it past ~1300px at 390 wide).
-      const y = await edit.evaluate((el) => el.getBoundingClientRect().top + window.scrollY)
-      expect(y).toBeLessThan(1000)
+      // Browser-measured: the Leitner boxes are a compact strip at 390 wide (before: five stacked
+      // tiles, ~90px each). Measured on the strip itself, not on the card row's page offset: that
+      // offset also depends on how many decks other specs left in the shared test database.
+      const strip = await page.evaluate(() => {
+        const boxes = Array.from(document.querySelectorAll('button')).filter((b) =>
+          /^Box \d,/.test(b.getAttribute('aria-label') ?? b.textContent ?? ''),
+        )
+        if (boxes.length < 2) return null
+        const tops = boxes.map((b) => b.getBoundingClientRect().top)
+        const bottoms = boxes.map((b) => b.getBoundingClientRect().bottom)
+        return { count: boxes.length, height: Math.max(...bottoms) - Math.min(...tops) }
+      })
+      expect(strip).not.toBeNull()
+      expect(strip!.height).toBeLessThan(200)
       await page.getByRole('button', { name: /^Box 1,/ }).click()
       await expect(page.getByRole('button', { name: /^Box 1,/ })).toHaveAttribute(
         'aria-pressed',

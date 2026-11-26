@@ -14,7 +14,12 @@ test.beforeEach(async ({ context }) => {
 test('Today quick-review widget grades the shown card through /api/review', async ({ page }) => {
   await page.goto('/')
   const widget = page.getByTestId('quick-review-widget')
-  await expect(widget.getByText(/Smoke card \d+/).first()).toBeVisible({ timeout: 60_000 })
+  // Which card is shown first depends on what other specs left due in the shared database, so
+  // assert a real front text (not the "Card #" fallback) instead of a specific fixture name.
+  await expect(widget.getByRole('button', { name: /Try recall, then reveal/ })).toBeVisible({
+    timeout: 60_000,
+  })
+  await expect(widget).not.toContainText(/Card #/)
   // The label must be the real front text, never the "Card #undefined" fallback.
   await expect(widget).not.toContainText('undefined')
 
