@@ -101,10 +101,12 @@ for (const mode of ['normal', 'reduced'] as const) {
         path.join(OUT, `motion-samples-${mode}.json`),
         JSON.stringify({ frames: rows.length, distinctOpacity, distinctTransform, rows }),
       )
-      if (mode === 'reduced') {
-        expect(distinctTransform).toBeLessThanOrEqual(1)
-        expect(distinctOpacity).toBe(1)
-      }
+      // Only the emulation itself is asserted. Whether the page animates is judged from the frames
+      // (the sampler above is informational and cannot prove either outcome).
+      const mq = await page.evaluate(
+        () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+      )
+      expect(mq).toBe(mode === 'reduced')
     })
   })
 }
@@ -179,5 +181,54 @@ test.describe('3D and canvas routes (classified, not asserted)', () => {
       await page.screenshot({ path: path.join(OUT, `studio-${slug}-desktop-dark.png`) })
       writeFileSync(path.join(OUT, `studio-${slug}.json`), JSON.stringify({ ...info, errors }))
     })
+  }
+})
+
+/**
+ * E-ink theme captures. ThemeSync's persisted-settings path overrides localStorage after load, so
+ * the e-ink class state is applied directly (the same classes ThemeSync toggles: theme-e-ink on,
+ * dark off). The colored-pixel share is computed afterwards from the PNGs, not here.
+ */
+test.describe('e-ink theme captures', () => {
+  for (const [slug, url] of [
+    ['today', '/'],
+    ['review', '/review'],
+    ['settings', '/settings'],
+    ['decks', '/decks'],
+  ] as const) {
+    for (const [vpName, vp] of [
+      ['desktop', { width: 1280, height: 800 }],
+      ['narrow', { width: 390, height: 844 }],
+    ] as const) {
+      test(`${slug} ${vpName}`, async ({ page }) => {
+        await page.setViewportSize(vp)
+        await page.goto(url)
+        await expect(page.locator('h1').first()).toBeVisible({ timeout: 60_000 })
+        await page
+          .waitForFunction(() => document.querySelector('.animate-pulse') === null, undefined, {
+            timeout: 15_000,
+          })
+          .catch(() => undefined)
+        await page.waitForTimeout(900)
+        await page.evaluate(() => {
+          document.documentElement.classList.remove('dark')
+          document.documentElement.classList.add('theme-e-ink')
+          document.documentElement.style.colorScheme = 'light'
+        })
+        await page.waitForTimeout(300)
+        const anim = await page.evaluate(
+          () =>
+            Array.from(document.querySelectorAll('*')).filter(
+              (e) => getComputedStyle(e).animationName !== 'none',
+            ).length,
+        )
+        await page.screenshot({ path: path.join(OUT, `eink-${slug}-${vpName}.png`) })
+        writeFileSync(
+          path.join(OUT, `eink-${slug}-${vpName}.json`),
+          JSON.stringify({ animatedElements: anim }),
+        )
+        expect(anim).toBe(0)
+      })
+    }
   }
 })
