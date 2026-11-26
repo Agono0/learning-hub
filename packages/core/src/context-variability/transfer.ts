@@ -73,9 +73,9 @@ export function cardProfiles(
   return out.sort((a, b) => b.topShare - a.topShare || b.reviews - a.reviews || a.cardId - b.cardId)
 }
 
-/** Smallest gap worth acting on. The interval must clear it for "context-bound" and sit under it for "transfers". */
 /** Cards seen both at home and away needed before the card-level resampling means anything. */
 export const MIN_CARDS = 6
+/** Smallest gap worth acting on. The interval must clear it for "context-bound" and sit under it for "transfers". */
 export const GAP_THRESHOLD = 0.03
 const BOOTSTRAP_RESAMPLES = 500
 
