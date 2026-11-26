@@ -14,7 +14,7 @@ export function EmptyState({
   action?: ReactNode
 }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-[20px] border border-dashed border-neutral-300 px-4 py-10 text-center dark:border-(--hub-border)">
+    <div className="flex flex-col items-center gap-2 rounded-[20px] border border-dashed border-neutral-300 bg-neutral-50/60 px-4 py-12 text-center dark:border-(--hub-border) dark:bg-(--hub-panel)/40">
       {icon && <div className="text-faint">{icon}</div>}
       <div className="font-medium">{title}</div>
       {children && <div className="max-w-sm text-sm text-tertiary">{children}</div>}
