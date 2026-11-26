@@ -164,6 +164,14 @@ export function ProductiveFailureHUD({
         </div>
       </div>
 
+      {metrics.productiveFailureIndex === 0 &&
+        metrics.impasseSensitivityScore === 0 &&
+        metrics.adaptiveTransferScore === 0 && (
+          <p className="text-[11px] text-secondary" data-testid="pf-zero-state">
+            No attempts recorded yet. Scores read 0 until you generate solutions and run the probes.
+          </p>
+        )}
+
       {/* Progress & Consolidation Bar */}
       <div className="space-y-2 pt-1 border-t border-neutral-200 dark:border-(--hub-border)">
         <div className="flex items-center justify-between text-xs">
