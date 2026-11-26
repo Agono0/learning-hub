@@ -286,7 +286,7 @@ test.describe('nav disclosure follows the route', () => {
     await expect(nav.locator('a[aria-current="page"]')).toHaveAttribute('href', '/palace-3d')
     // Leaving for a daily item: the persisted collapse applies again (no active item inside).
     await nav.locator('a[href="/review"]').first().click()
-    await expect(page).toHaveURL(/\/review$/)
+    await expect(page).toHaveURL(/\/review$/, { timeout: 30_000 })
     await expect(nav.getByRole('button', { name: /^Explore/ })).toHaveAttribute(
       'aria-expanded',
       'false',

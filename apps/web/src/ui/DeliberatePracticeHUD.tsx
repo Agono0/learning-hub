@@ -82,7 +82,7 @@ export function DeliberatePracticeHUD({
         </div>
 
         {/* Difficulty Tier Navigation */}
-        <div className="flex items-center gap-1 rounded-lg bg-neutral-100 dark:bg-(--hub-panel-2) p-1 text-xs">
+        <div className="flex max-w-full flex-wrap items-center gap-1 rounded-lg bg-neutral-100 dark:bg-(--hub-panel-2) p-1 text-xs">
           {(['foundational', 'intermediate', 'advanced', 'frontier_stretch'] as const).map(
             (tier) => (
               <button

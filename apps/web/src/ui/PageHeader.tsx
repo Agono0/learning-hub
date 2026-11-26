@@ -21,7 +21,9 @@ export function PageHeader({ title, subtitle, actions, icon }: PageHeaderProps) 
         </h1>
         {subtitle && <p className="mt-1.5 max-w-prose text-sm text-secondary">{subtitle}</p>}
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {actions && (
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{actions}</div>
+      )}
     </header>
   )
 }

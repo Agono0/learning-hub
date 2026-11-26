@@ -193,7 +193,7 @@ export function AnalogicalTransferStudio({
         </div>
 
         {/* Workspace Navigation Tabs */}
-        <div className="flex items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-900/60 p-1.5 backdrop-blur-md">
+        <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-900/60 p-1.5 backdrop-blur-md">
           <button
             type="button"
             onClick={() => {
