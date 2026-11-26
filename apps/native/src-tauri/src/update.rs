@@ -1270,6 +1270,18 @@ pub fn apply_patch_bundle_internal(
 /// the path is unsafe, or the file does not exist — every one of those cases
 /// means "fall back to the bundled assets", not "error out the webview".
 pub fn lookup_in_active_slot(base_dir: &Path, rel_path: &str) -> Option<Vec<u8>> {
+    // The export sets trailingSlash: true (apps/web/next.config.ts), so the
+    // webview asks for directory routes WITH the slash ("courses/"). Strip it
+    // BEFORE the unsafe-path check: its empty-segment rule would reject every
+    // slash route, and the serving seam's hard 404 for complete slots would
+    // then break in-app navigation after an OTA update. The root resolves to
+    // index.html here too (lib.rs already maps it, this is defense in depth).
+    let rel_path = rel_path.trim_end_matches('/');
+    let rel_path = if rel_path.is_empty() {
+        "index.html"
+    } else {
+        rel_path
+    };
     if is_unsafe_rel_path(rel_path) {
         return None;
     }
@@ -2205,6 +2217,40 @@ mod slot_tests {
         );
         assert_eq!(lookup_in_active_slot(&base, "missing.html"), None);
         assert_eq!(lookup_in_active_slot(&base, "../evil"), None);
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn lookup_resolves_trailing_slash_routes_to_directory_index() {
+        // Regression: the export runs trailingSlash: true, so the webview
+        // requests "courses/" — the empty-segment path rule used to reject
+        // these, and a complete slot would then serve the hard 404 for every
+        // in-app navigation after an OTA update.
+        let base = temp_base();
+        let (m1, bytes1) = test_manifest(vec![
+            file_entry("index.html", b"root"),
+            file_entry("courses/index.html", b"courses-slotted"),
+            file_entry("review.html", b"review-slotted"),
+        ]);
+        download_to_inactive_slot(&base, &m1, &bytes1, "https://example.com/rel", |f| {
+            Ok(match f.path.as_str() {
+                "index.html" => b"root".to_vec(),
+                "courses/index.html" => b"courses-slotted".to_vec(),
+                "review.html" => b"review-slotted".to_vec(),
+                _ => b"".to_vec(),
+            })
+        })
+        .unwrap();
+        promote_inactive_slot(&base).unwrap();
+        assert_eq!(
+            lookup_in_active_slot(&base, "courses/"),
+            Some(b"courses-slotted".to_vec())
+        );
+        assert_eq!(
+            lookup_in_active_slot(&base, "review/"),
+            Some(b"review-slotted".to_vec())
+        );
+        assert_eq!(lookup_in_active_slot(&base, ""), Some(b"root".to_vec()));
         fs::remove_dir_all(&base).ok();
     }
 

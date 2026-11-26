@@ -27,8 +27,9 @@ name: Nightly OTA
 # rebuilt for promotion.
 #
 # Signing keys: TAURI_SIGNING_PRIVATE_KEY / TAURI_SIGNING_PRIVATE_KEY_PASSWORD
-# repo secrets (O1-09 key ceremony). When absent the workflow publishes UNSIGNED
-# with a loud warning — the client refuses unsigned manifests by design.
+# repo secrets (O1-09 key ceremony). A real publish without them FAILS CLOSED:
+# an unsigned release would move the channel pointer to a manifest every
+# client refuses. Dry runs and patch-measure probes still build unsigned.
 
 on:
   schedule:
@@ -564,8 +565,12 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
-            echo "::warning::TAURI_SIGNING_PRIVATE_KEY secret is not set — publishing UNSIGNED artifacts (client will refuse them; configure the O1-09 keys before a real nightly)."
-            exit 0
+            if [ "${{ inputs.dry_run || inputs.measure_patch }}" = "true" ] || [ "${{ needs.meta.outputs.publish }}" != "true" ]; then
+              echo "::warning::TAURI_SIGNING_PRIVATE_KEY secret is not set — building UNSIGNED artifacts (nothing will be published)."
+              exit 0
+            fi
+            echo "::error::TAURI_SIGNING_PRIVATE_KEY secret is not set — refusing to publish an unsigned nightly: the channel pointer would move to a manifest every client refuses. Configure the O1-09 keys, or run with dry_run."
+            exit 1
           fi
           PASS_ARGS=(-p "${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}")
           npx tauri signer sign -k "$TAURI_SIGNING_PRIVATE_KEY" "${PASS_ARGS[@]}" dist/nightly/manifest.json

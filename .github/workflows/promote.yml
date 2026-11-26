@@ -128,8 +128,8 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
-            echo "::warning::TAURI_SIGNING_PRIVATE_KEY secret is not set — publishing UNSIGNED pointer (client will refuse it). Configure the O1-09 keys."
-            exit 0
+            echo "::error::TAURI_SIGNING_PRIVATE_KEY secret is not set — refusing to promote: an unsigned pointer moves the channel to a manifest every client refuses. Configure the O1-09 keys."
+            exit 1
           fi
           npx tauri signer sign -k "$TAURI_SIGNING_PRIVATE_KEY" -p "${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}" "dist/promote/manifest-${TARGET_CHANNEL}.json"
           npx tauri signer sign -k "$TAURI_SIGNING_PRIVATE_KEY" -p "${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}" "dist/promote/${TARGET_CHANNEL}.json"

@@ -73,8 +73,17 @@ jobs:
 
       - run: npm ci --prefer-offline --no-audit --no-fund
 
+      # Write version.json into the bundled export: without it, shells built
+      # here (the `latest` channel) report 0.1.0 on first boot, the installed
+      # version never matches a nightly patch base, and the first update takes
+      # the full installer path instead of the slot hot update. Same monotonic
+      # stamp the windows/android jobs bake into tauri.conf.json.
       - name: Build web bundle for Tauri
-        run: npm run web:tauri
+        shell: bash
+        run: |
+          STAMP=$(node -p 'const d=new Date();const ymd=Number(`${String(d.getUTCFullYear()).slice(2)}${String(d.getUTCMonth()+1).padStart(2,"0")}${String(d.getUTCDate()).padStart(2,"0")}`);ymd*100+(Number(process.env.GITHUB_RUN_NUMBER||"0")%100)')
+          echo "version.json → 0.1.$STAMP"
+          LH_APP_VERSION="0.1.$STAMP" npm run web:tauri
 
       - name: Upload web export artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

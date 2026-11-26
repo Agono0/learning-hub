@@ -128,7 +128,7 @@ export function diffManifests(prevManifest, nextFiles) {
  * Defensive: each path is resolved and MUST stay inside `dir` — a hostile
  * previous manifest can never make us read outside the export directory.
  */
-export async function buildPatchBundle(dir, changedFiles) {
+export async function buildPatchBundle(dir, changedFiles, { allowEmpty = false } = {}) {
   const root = path.resolve(dir)
   const content = {}
   for (const file of changedFiles) {
@@ -141,7 +141,10 @@ export async function buildPatchBundle(dir, changedFiles) {
     }
     content[file.path] = new Uint8Array(await readFile(abs))
   }
-  if (Object.keys(content).length === 0) {
+  // Empty bundles stay an error unless the caller opted in: a deletion-only
+  // release legitimately ships a zero-file patch (the slot clear plus the
+  // full manifest perform the deletion client-side).
+  if (!allowEmpty && Object.keys(content).length === 0) {
     throw new Error('Refusing to build an empty patch bundle')
   }
   return zipSync(content)
@@ -227,8 +230,15 @@ export async function generateManifest(options) {
   for (const prevPath of prev.slice(0, MAX_PATCHES)) {
     const prevManifest = JSON.parse(await readFile(prevPath, 'utf8'))
     const changed = diffManifests(prevManifest, files)
-    if (changed.length === 0) continue // identical build on that path — no patch
-    const bytes = await buildPatchBundle(dir, changed)
+    // Deletions never appear in `changed` (the client reconciles them against
+    // the full manifest when it applies the patch), so a DELETION-ONLY release
+    // would emit no patch for this base and its clients could never take the
+    // delta path. Emit the (empty-file) patch bundle whenever files changed OR
+    // disappeared; skip only a truly identical build.
+    const nextPaths = new Set(files.map((f) => f.path))
+    const hasDeletions = (prevManifest?.files ?? []).some((f) => !nextPaths.has(f.path))
+    if (changed.length === 0 && !hasDeletions) continue // identical build on that path — no patch
+    const bytes = await buildPatchBundle(dir, changed, { allowEmpty: hasDeletions })
     const filename = `patch-${safeNameSegment(prevManifest.version)}-${safeNameSegment(version)}.zip`
     const url = `${base}${filename}`
     assertHttpsUrl(url, 'patch url')
