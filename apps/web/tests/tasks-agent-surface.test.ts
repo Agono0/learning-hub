@@ -134,7 +134,7 @@ describe('MCP task tools', () => {
       await expect(
         call('task_track_time', { id: t.task.id, minutes: 5, day }),
         day,
-      ).rejects.toThrow()
+      ).rejects.toThrow(/real calendar date/)
     }
     expect(D.sumTimeLogs({ taskId: t.task.id })).toBe(25 * 60_000)
     // a real leap day is accepted
