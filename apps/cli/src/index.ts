@@ -147,6 +147,10 @@ const builtinCommands: RegisteredCommand[] = [
 ]
 
 async function main() {
+  // stdout is reserved for command output (--json is parsed by callers): plugin loggers use
+  // console.info/debug, so send those to stderr like the loaded-plugins line below.
+  console.info = console.error
+  console.debug = console.error
   // Plugins first: their commands join the registry before dispatch.
   const plugins = await loadPlugins(['plugins'])
   const { cliCommands: pluginCommands } = getPluginContributions()
