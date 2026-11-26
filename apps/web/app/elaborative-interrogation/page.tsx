@@ -160,7 +160,7 @@ export default function ElaborativeInterrogationPage() {
         subtitle="Explain why each fact is true. Explaining beats re-reading."
       />
       {error ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-rose-600">
           {error}
         </p>
       ) : null}

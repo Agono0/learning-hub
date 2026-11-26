@@ -3,7 +3,7 @@
  * a fact with no stated relation has nothing to explain, and near-duplicates
  * waste practice. These lint rules run before a bank is saved.
  */
-import { classifyFact, contentWords, tokenize, type EiFact } from './index'
+import { classifyFact, contentWords, tokenize, type EiFact } from './engine'
 
 export interface FactIssue {
   factId: string

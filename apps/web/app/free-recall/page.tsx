@@ -85,7 +85,7 @@ export default function FreeRecallPage() {
         subtitle="Study, close the page, write what you remember. Retrieval beats re-reading."
       />
       {error ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-rose-600">
           {error}
         </p>
       ) : null}

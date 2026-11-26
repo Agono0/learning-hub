@@ -1,5 +1,5 @@
 /** Session reporting and export for Elaborative Interrogation. */
-import type { EiFact, EiFactState, EiGrade } from './index'
+import type { EiFact, EiFactState, EiGrade } from './engine'
 
 export interface EiAttempt {
   factId: string

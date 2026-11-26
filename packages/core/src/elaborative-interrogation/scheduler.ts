@@ -7,7 +7,7 @@
  * blends the EI interval with a scheduler interval. Pure: no ts-fsrs import, so
  * it stays usable in every host; callers pass the numeric rating on.
  */
-import type { EiGrade } from './index'
+import type { EiGrade } from './engine'
 
 /** FSRS rating values (kept numeric to avoid importing the scheduler). */
 export type FsrsRatingValue = 1 | 2 | 3 | 4
