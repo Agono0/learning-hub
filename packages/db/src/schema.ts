@@ -2584,6 +2584,16 @@ export const eiAttempts = table(
     predicted: real('predicted'),
     fsrsRating: integer('fsrs_rating').notNull(),
     rubric: text('rubric', { mode: 'json' }).$type<unknown[]>().notNull().default([]),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [
+    index('ei_attempts_fact_idx').on(t.factId, t.createdAt),
+    index('ei_attempts_created_idx').on(t.createdAt),
+  ],
+)
+
 /** Append-only history of retrieval-induced-forgetting audits (one summary row per saved audit). */
 export const rifAudits = table(
   'rif_audits',
@@ -2603,10 +2613,6 @@ export const rifAudits = table(
       .notNull()
       .$defaultFn(() => new Date().toISOString()),
   },
-  (t) => [
-    index('ei_attempts_fact_idx').on(t.factId, t.createdAt),
-    index('ei_attempts_created_idx').on(t.createdAt),
-  ],
   (t) => [index('rif_audits_created_idx').on(t.createdAt)],
 )
 
