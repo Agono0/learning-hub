@@ -71,7 +71,13 @@ export function ChipPicker<T extends string>({
   className,
 }: ChipPickerProps<T>): React.ReactElement {
   // Lazy one-shot gate for the press scale; stable across re-renders.
-  const [motionAllowed] = React.useState(motionOK)
+  // Hydration-safe: the server cannot know motionOK(), and a client-initialised `true` made
+  // framer-motion add tabIndex=0 to the buttons that the server HTML lacked (React hydration
+  // mismatch on /settings). Start false on both, then opt in after mount.
+  const [motionAllowed, setMotionAllowed] = React.useState(false)
+  React.useEffect(() => {
+    setMotionAllowed(motionOK())
+  }, [])
   return (
     <div
       role={multiple ? 'group' : 'radiogroup'}
