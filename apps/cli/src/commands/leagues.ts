@@ -71,7 +71,8 @@ import {
   submitDuelAnswers,
 } from '@learning-hub/db'
 import { DIVISION_ORDER, type DivisionTier } from '@learning-hub/core'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, writeFileSync } from 'node:fs'
+import { readBoundedText } from '../bounded-input'
 import { panel } from './ui'
 import type { RegisteredCommand } from './registry'
 
@@ -566,7 +567,12 @@ function importCommand(args: string[]): void {
   const file = args[0]
   if (!file) return fail('Usage: learning-hub leagues import <file>')
   if (!existsSync(file)) return fail(`File not found: ${file}`)
-  const raw = readFileSync(file, 'utf8')
+  let raw: string
+  try {
+    raw = readBoundedText(file)
+  } catch (err) {
+    return fail(err instanceof Error ? err.message : 'could not read file')
+  }
   try {
     const league = importLeague(raw)
     console.log(`Imported league '${league.slug}' (${league.title}).`)

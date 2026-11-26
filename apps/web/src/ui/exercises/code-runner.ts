@@ -76,10 +76,44 @@ function getSqliteSandbox(): Promise<SqliteSandboxModule> {
   return sqliteSandboxPromise
 }
 
-/** Worker body: no access to the page; network APIs are removed first. */
-const WORKER_SOURCE = `
-self.fetch = undefined; self.XMLHttpRequest = undefined; self.WebSocket = undefined;
-self.EventSource = undefined; self.importScripts = undefined; self.indexedDB = undefined;
+/**
+ * Capabilities removed from the worker before learner code runs. A blob worker
+ * is same-origin with the app, so besides the network APIs it must also lose
+ * storage, nested workers and channels. Each name is removed from the global
+ * AND from every prototype in its chain: assigning `self.fetch = undefined`
+ * alone leaves `Object.getPrototypeOf(self).fetch` reachable.
+ *
+ * Not claimed: dynamic `import()` of a remote or data: URL is not blockable from
+ * script, so this narrows the sandbox and is not a security boundary against a
+ * determined author. The code that runs is the learner's own.
+ */
+export const WORKER_BLOCKED_GLOBALS = [
+  'fetch',
+  'XMLHttpRequest',
+  'WebSocket',
+  'EventSource',
+  'importScripts',
+  'indexedDB',
+  'caches',
+  'Worker',
+  'SharedWorker',
+  'BroadcastChannel',
+  'WebTransport',
+  'FileSystemHandle',
+  'localStorage',
+  'sessionStorage',
+] as const
+
+/** Worker body: no access to the page; network, storage and nested-worker APIs are removed first. */
+export const WORKER_SOURCE = `
+(function (scope) {
+  var blocked = ${JSON.stringify(WORKER_BLOCKED_GLOBALS)};
+  for (var i = 0; i < blocked.length; i++) {
+    for (var o = scope; o && o !== Object.prototype && !(typeof EventTarget === 'function' && o === EventTarget.prototype); o = Object.getPrototypeOf(o)) {
+      try { Object.defineProperty(o, blocked[i], { value: undefined, writable: false, configurable: false }); } catch (e) {}
+    }
+  }
+})(self);
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 self.onmessage = (e) => {
   const { source, tests } = e.data;

@@ -10,7 +10,7 @@
  * Output shapes mirror the MCP tools; --json emits the same envelopes.
  */
 
-import { readFileSync } from 'node:fs'
+import { readBoundedJson } from '../bounded-input'
 import { type RegisteredCommand } from './registry'
 import {
   applyAllPendingVersions,
@@ -70,8 +70,8 @@ function readJsonPayload(args: string[]): unknown {
   const inline = parseFlag(args, '--data')
   if (inline) return JSON.parse(inline)
   const file = parseFlag(args, '--file')
-  if (file) return JSON.parse(readFileSync(file, 'utf8'))
-  return JSON.parse(readFileSync(0, 'utf8'))
+  if (file) return readBoundedJson(file)
+  return readBoundedJson(0)
 }
 
 function shareChannelsCommand(args: string[]): void {
@@ -218,6 +218,11 @@ function shareChannelsCommand(args: string[]): void {
       const secret = parseFlag(args, '--secret')
       if (!channelId || !secret) {
         console.error('usage: share-channels invite --channel <id> --secret <creator-secret>')
+        process.exitCode = 1
+        return
+      }
+      if (secret.length < 8) {
+        console.error('the creator secret must be at least 8 characters')
         process.exitCode = 1
         return
       }

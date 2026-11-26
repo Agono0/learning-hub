@@ -2,7 +2,8 @@
  * Reading, Study Plan, and GKT CLI commands.
  */
 import { type RegisteredCommand } from './registry'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { writeFileSync } from 'node:fs'
+import { readBoundedText } from '../bounded-input'
 import {
   propagateGktBelief,
   toICS,
@@ -57,7 +58,7 @@ export function readingCommand(args: string[]): void {
     let content = parseFlag(args, '--content')
     if (filePath) {
       try {
-        content = readFileSync(filePath, 'utf8')
+        content = readBoundedText(filePath)
       } catch (err) {
         console.error(`✖ Failed to read file "${filePath}": ${(err as Error).message}`)
         return

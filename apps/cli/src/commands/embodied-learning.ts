@@ -13,7 +13,7 @@
  * same envelope so hosts can be diffed by the host-parity test.
  */
 
-import { readFileSync } from 'node:fs'
+import { readBoundedJson } from '../bounded-input'
 import { type RegisteredCommand } from './registry'
 import {
   analyzeMismatch,
@@ -47,8 +47,8 @@ function readJsonPayload(args: string[]): unknown {
   const inline = parseFlag(args, '--data')
   if (inline) return JSON.parse(inline)
   const file = parseFlag(args, '--file')
-  if (file) return JSON.parse(readFileSync(file, 'utf8'))
-  return JSON.parse(readFileSync(0, 'utf8'))
+  if (file) return readBoundedJson(file)
+  return readBoundedJson(0)
 }
 
 function printScenarios(): void {

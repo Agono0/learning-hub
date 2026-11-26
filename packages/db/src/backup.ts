@@ -33,7 +33,13 @@ export interface BackupFile {
 
 /** zod schema for a backup envelope (`restoreAll` boundary validation). */
 export const backupFileSchema = z.object({
-  version: z.number().int(),
+  // Only envelope versions this build understands: a future (or zero/negative)
+  // version may carry semantics a destructive whole-DB restore would misread.
+  version: z
+    .number()
+    .int()
+    .min(1, 'unsupported backup version')
+    .max(BACKUP_VERSION, 'unsupported backup version (newer than this app)'),
   exportedAt: z.string(),
   tables: z.record(
     z.string(),
@@ -52,6 +58,48 @@ export const DEVICE_LOCAL_TABLES: ReadonlySet<string> = new Set([
   'focus_bridge',
   'online_identity',
 ])
+
+/**
+ * AI endpoint settings decide WHERE the device's API key and custom headers are
+ * sent, now or after the user later enters a key. A backup or sync snapshot is
+ * untrusted input, so none of these come from it: the key, headers, provider,
+ * model and base URL are all device-local. An existing local row keeps its
+ * values; a device with no row gets the defaults (no provider, no base URL).
+ */
+export const AI_ENDPOINT_COLUMNS = ['ai_provider', 'ai_model', 'ai_base_url'] as const
+
+export interface LocalAiSettings {
+  ai_provider: string | null
+  ai_model: string | null
+  ai_base_url: string | null
+  ai_api_key: string | null
+  ai_headers: string | null
+}
+
+const AI_DEFAULTS: LocalAiSettings = {
+  ai_provider: 'none',
+  ai_model: null,
+  ai_base_url: null,
+  ai_api_key: null,
+  ai_headers: null,
+}
+
+/** Whether the local row holds a credential. Kept for callers that report on it. */
+export function holdsAiSecret(local: Pick<LocalAiSettings, 'ai_api_key' | 'ai_headers'>): boolean {
+  return Boolean(local.ai_api_key) || Boolean(local.ai_headers)
+}
+
+/** Columns to write over an incoming `user_settings` row: always the local AI values or defaults. */
+export function aiSettingsOverlay(local: LocalAiSettings | undefined): Record<string, unknown> {
+  const source = local ?? AI_DEFAULTS
+  return {
+    ai_provider: source.ai_provider ?? 'none',
+    ai_model: source.ai_model,
+    ai_base_url: source.ai_base_url,
+    ai_api_key: source.ai_api_key,
+    ai_headers: source.ai_headers,
+  }
+}
 
 /** Tables defined by the drizzle schema — the restore whitelist. */
 export const KNOWN_TABLES: ReadonlySet<string> = new Set(
@@ -193,11 +241,11 @@ export function restoreAll(data: unknown, database: RawSqliteHandle = getRawDb()
       ? (database.prepare('SELECT * FROM "sync_configs"').all() as Record<string, unknown>[])
       : []
     const savedLocalSecrets = presentSet.has('user_settings')
-      ? (database.prepare('SELECT id, ai_api_key, ai_headers FROM "user_settings"').all() as {
-          id: string
-          ai_api_key: string | null
-          ai_headers: string | null
-        }[])
+      ? (database
+          .prepare(
+            'SELECT id, ai_provider, ai_model, ai_base_url, ai_api_key, ai_headers FROM "user_settings"',
+          )
+          .all() as (LocalAiSettings & { id: string })[])
       : []
 
     for (const table of [...order].reverse()) {
@@ -227,17 +275,18 @@ export function restoreAll(data: unknown, database: RawSqliteHandle = getRawDb()
       }
     }
 
-    // Re-attach local AI API keys/headers if the restored row had them stripped
-    for (const sec of savedLocalSecrets) {
-      if (sec.ai_api_key || sec.ai_headers) {
+    // The AI key/headers never come from a backup, and a local key pins the endpoint it is sent to.
+    if (presentSet.has('user_settings')) {
+      const restored = database.prepare('SELECT id FROM "user_settings"').all() as { id: string }[]
+      const localById = new Map(savedLocalSecrets.map((row) => [row.id, row]))
+      for (const { id } of restored) {
+        const overlay = aiSettingsOverlay(localById.get(id) ?? savedLocalSecrets[0])
+        const cols = Object.keys(overlay)
         database
           .prepare(
-            `UPDATE "user_settings"
-             SET ai_api_key = coalesce(ai_api_key, ?),
-                 ai_headers = coalesce(ai_headers, ?)
-             WHERE id = ?`,
+            `UPDATE "user_settings" SET ${cols.map((c) => `"${c}" = ?`).join(', ')} WHERE id = ?`,
           )
-          .run(sec.ai_api_key, sec.ai_headers, sec.id)
+          .run(...cols.map((c) => overlay[c] as string | null), id)
       }
     }
     void savedSyncConfigs

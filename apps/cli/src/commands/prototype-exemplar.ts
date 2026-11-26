@@ -14,7 +14,7 @@
  * deck }`) so hosts can be diffed by the host-parity test.
  */
 
-import { readFileSync } from 'node:fs'
+import { readBoundedJson } from '../bounded-input'
 import { type RegisteredCommand } from './registry'
 import {
   CANONICAL_CATEGORIZATION_SETS,
@@ -46,8 +46,8 @@ function readJsonPayload(args: string[]): unknown {
   const inline = parseFlag(args, '--data')
   if (inline) return JSON.parse(inline)
   const file = parseFlag(args, '--file')
-  if (file) return JSON.parse(readFileSync(file, 'utf8'))
-  return JSON.parse(readFileSync(0, 'utf8'))
+  if (file) return readBoundedJson(file)
+  return readBoundedJson(0)
 }
 
 function printEvaluation(evaluation: CategorizationEvaluation): void {
@@ -160,9 +160,7 @@ export function prototypeExemplarCommand(args: string[]): void {
     let schedule: StudyPlan | null = null
     const historyPayload = parseFlag(args, '--history')
     if (historyPayload !== undefined) {
-      const sessions = studyPlanSessionSchema
-        .array()
-        .parse(JSON.parse(readFileSync(historyPayload, 'utf8')))
+      const sessions = studyPlanSessionSchema.array().parse(readBoundedJson(historyPayload))
       const horizonDays = parseInt(parseFlag(args, '--days') || '10', 10)
       schedule = planCategorizationStudy(sessions, {
         now: parseFlag(args, '--now') || new Date().toISOString(),
