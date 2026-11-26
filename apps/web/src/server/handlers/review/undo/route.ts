@@ -9,7 +9,7 @@
  * FSRS-6 optimizer automatically exclude.
  */
 import { z } from 'zod'
-import { undoCardReview } from '@learning-hub/db'
+import { undoCardReview, UndoConflictError } from '@learning-hub/db'
 import { ApiError, readJson, withRoute } from '@/lib/api'
 
 /** ISO-8601 timestamp as produced by Date.toISOString() (any parseable ISO is accepted). */
@@ -43,11 +43,19 @@ export const POST = withRoute(async (req: Request) => {
     throw new ApiError(400, 'preReview.id must match cardId')
   }
 
-  const { card, revlogUndone, revlogId } = undoCardReview({
-    cardId: body.cardId,
-    revlogId: body.revlogId,
-    preReview: body.preReview,
-  })
+  let undone: ReturnType<typeof undoCardReview>
+  try {
+    undone = undoCardReview({
+      cardId: body.cardId,
+      revlogId: body.revlogId,
+      preReview: body.preReview,
+    })
+  } catch (err) {
+    // Stale / replayed / cross-card undo: the card row was not touched.
+    if (err instanceof UndoConflictError) throw new ApiError(409, err.message)
+    throw err
+  }
+  const { card, revlogUndone, revlogId } = undone
 
   return Response.json({
     ok: true,

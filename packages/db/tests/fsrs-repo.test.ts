@@ -13,6 +13,7 @@ import {
   loadActiveRevlogs,
   optimizeAndPersistFsrs,
   undoCardReview,
+  UndoConflictError,
 } from '../src/repos/fsrs'
 
 function createInMemoryDb() {
@@ -134,6 +135,103 @@ describe('per-deck FSRS presets, append-only Undo, and FSRS persistence repo', (
     expect(loadActiveRevlogs({ db: db as never })).toHaveLength(0)
     const [retView] = db.all<{ total: number }>(sql`SELECT total FROM v_true_retention`)
     expect(Number(retView?.total ?? 0)).toBe(0)
+  })
+
+  describe('undoCardReview guard (latest active review only)', () => {
+    const t1 = new Date('2026-06-01T12:00:00.000Z')
+    const t2 = new Date('2026-06-04T12:00:00.000Z')
+    function seedCards() {
+      db.insert(schema.decks).values({ id: 1, name: 'Deck', createdAt: t1.toISOString() }).run()
+      for (const id of [1, 2]) {
+        db.insert(schema.cards)
+          .values({
+            id,
+            deckId: 1,
+            type: 'basic',
+            content: { basic: { front: 'Q', back: 'A' } },
+            due: t1.toISOString(),
+            createdAt: t1.toISOString(),
+          })
+          .run()
+      }
+    }
+    const card = (id: number) =>
+      db.select().from(schema.cards).where(eq(schema.cards.id, id)).get()!
+    const tombstones = () => db.select().from(schema.revlogUndos).all()
+
+    it('rejects a stale undo of an older review and leaves the card untouched', async () => {
+      seedCards()
+      const r1 = await executeReview({ cardId: 1, grade: 3 }, { db: db as never, now: t1 })
+      const r2 = await executeReview({ cardId: 1, grade: 3 }, { db: db as never, now: t2 })
+      const before = card(1)
+      expect(() =>
+        undoCardReview(
+          { cardId: 1, revlogId: r1.revlog.id, preReview: r1.preReview },
+          { db: db as never },
+        ),
+      ).toThrow(UndoConflictError)
+      expect(card(1)).toEqual(before)
+      expect(before.reps).toBe(r2.card.reps)
+      expect(tombstones()).toHaveLength(0)
+    })
+
+    it('rejects a replayed undo after a newer review without touching the card', async () => {
+      seedCards()
+      const r1 = await executeReview({ cardId: 1, grade: 3 }, { db: db as never, now: t1 })
+      const payload = { cardId: 1, revlogId: r1.revlog.id, preReview: r1.preReview }
+      expect(undoCardReview(payload, { db: db as never }).revlogUndone).toBe(true)
+      await executeReview({ cardId: 1, grade: 3 }, { db: db as never, now: t2 })
+      const before = card(1)
+      expect(() => undoCardReview(payload, { db: db as never })).toThrow(UndoConflictError)
+      expect(card(1)).toEqual(before)
+      expect(tombstones()).toHaveLength(1)
+    })
+
+    it('rejects an immediate duplicate undo (already undone)', async () => {
+      seedCards()
+      const r1 = await executeReview({ cardId: 1, grade: 3 }, { db: db as never, now: t1 })
+      const payload = { cardId: 1, revlogId: r1.revlog.id, preReview: r1.preReview }
+      undoCardReview(payload, { db: db as never })
+      expect(() => undoCardReview(payload, { db: db as never })).toThrow(UndoConflictError)
+    })
+
+    it("rejects another card's revlogId", async () => {
+      seedCards()
+      const r1 = await executeReview({ cardId: 1, grade: 3 }, { db: db as never, now: t1 })
+      const r2 = await executeReview({ cardId: 2, grade: 3 }, { db: db as never, now: t2 })
+      const before = card(1)
+      expect(() =>
+        undoCardReview(
+          { cardId: 1, revlogId: r2.revlog.id, preReview: r1.preReview },
+          { db: db as never },
+        ),
+      ).toThrow(UndoConflictError)
+      expect(card(1)).toEqual(before)
+      expect(tombstones()).toHaveLength(0)
+    })
+
+    it('rejects an undo when the card has no active review', () => {
+      seedCards()
+      const snap = { ...card(1), lastReview: null }
+      expect(() => undoCardReview({ cardId: 1, preReview: snap }, { db: db as never })).toThrow(
+        UndoConflictError,
+      )
+    })
+
+    it('still undoes the latest review, with or without revlogId, newest first', async () => {
+      seedCards()
+      const r1 = await executeReview({ cardId: 1, grade: 3 }, { db: db as never, now: t1 })
+      const r2 = await executeReview({ cardId: 1, grade: 3 }, { db: db as never, now: t2 })
+      const u2 = undoCardReview({ cardId: 1, preReview: r2.preReview }, { db: db as never })
+      expect(u2.revlogId).toBe(r2.revlog.id)
+      expect(u2.card.reps).toBe(r1.card.reps)
+      const u1 = undoCardReview(
+        { cardId: 1, revlogId: r1.revlog.id, preReview: r1.preReview },
+        { db: db as never },
+      )
+      expect(u1.revlogUndone).toBe(true)
+      expect(u1.card.reps).toBe(0)
+    })
   })
 
   it('persists custom FSRS-6 weights and reschedules reviewed cards on demand', async () => {

@@ -253,9 +253,27 @@ export async function optimizeAndPersistFsrs(
 }
 
 /**
+ * Thrown by `undoCardReview` when the undo no longer applies: the revlog row is
+ * not this card's, is already undone, or is not the card's latest active
+ * review (a newer review happened, or the request is a replay). The card row is
+ * left untouched (→ 409).
+ */
+export class UndoConflictError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'UndoConflictError'
+  }
+}
+
+/**
  * Atomically undo a card review: restores `cards` to `preReview` AND records an
  * append-only tombstone in `revlog_undos` (never runs `DELETE FROM revlog`,
  * strictly upholding Hard Rule #8).
+ *
+ * Only the card's latest ACTIVE (non-undone) review can be undone. A stale or
+ * replayed request (older review, already-undone review, another card's
+ * revlog id, nothing to undo) throws `UndoConflictError` before any write, so
+ * the card row can never diverge from its active revlog.
  */
 export function undoCardReview(
   payload: { cardId: number; revlogId?: number; preReview: PreReviewSnapshot },
@@ -267,6 +285,27 @@ export function undoCardReview(
   return withTransaction((tx) => {
     const existing = tx.select().from(cards).where(eq(cards.id, payload.cardId)).limit(1).get()
     if (!existing) throw new CardNotFoundError(payload.cardId)
+
+    const notUndone = sql`NOT EXISTS (SELECT 1 FROM revlog_undos u WHERE u.revlog_id = ${revlog.id})`
+    const latestActive = tx
+      .select({ id: revlog.id, state: revlog.state })
+      .from(revlog)
+      .where(and(eq(revlog.cardId, payload.cardId), notUndone))
+      .orderBy(desc(revlog.id))
+      .limit(1)
+      .get()
+
+    if (!latestActive) throw new UndoConflictError('No active review to undo for this card')
+    if (payload.revlogId !== undefined) {
+      if (latestActive.id !== payload.revlogId) {
+        throw new UndoConflictError(
+          'revlogId is not the latest active review of this card (stale or already undone)',
+        )
+      }
+    } else if (latestActive.state !== snap.state) {
+      throw new UndoConflictError('preReview does not match the latest active review')
+    }
+    const targetRevlogId = latestActive.id
 
     tx.update(cards)
       .set({
@@ -284,37 +323,16 @@ export function undoCardReview(
       .where(eq(cards.id, payload.cardId))
       .run()
 
-    let targetRevlogId: number | null = payload.revlogId ?? null
-    if (!targetRevlogId) {
-      const latestMatching = tx
-        .select({ id: revlog.id })
-        .from(revlog)
-        .where(
-          and(
-            eq(revlog.cardId, payload.cardId),
-            eq(revlog.state, snap.state),
-            sql`NOT EXISTS (SELECT 1 FROM revlog_undos u WHERE u.revlog_id = ${revlog.id})`,
-          ),
-        )
-        .orderBy(desc(revlog.id))
-        .limit(1)
-        .get()
-      targetRevlogId = latestMatching?.id ?? null
-    }
-
-    let revlogUndone = false
-    if (targetRevlogId !== null) {
-      const res = tx
-        .insert(revlogUndos)
-        .values({
-          revlogId: targetRevlogId,
-          cardId: payload.cardId,
-          undoneAt: new Date().toISOString(),
-        })
-        .onConflictDoNothing()
-        .run()
-      revlogUndone = res.changes > 0
-    }
+    const res = tx
+      .insert(revlogUndos)
+      .values({
+        revlogId: targetRevlogId,
+        cardId: payload.cardId,
+        undoneAt: new Date().toISOString(),
+      })
+      .onConflictDoNothing()
+      .run()
+    const revlogUndone = res.changes > 0
 
     const restored = tx.select().from(cards).where(eq(cards.id, payload.cardId)).limit(1).get()
     return { card: restored!, revlogUndone, revlogId: targetRevlogId }
