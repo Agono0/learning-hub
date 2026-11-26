@@ -8,6 +8,18 @@ import { expect, test } from '@playwright/test'
  * deterministic; the Courses page runs against the real fixture DB.
  */
 const OUT = path.resolve(process.cwd(), process.env.VISUAL_OUT ?? 'visual-out')
+/** Set the intended mode on the root and ASSERT it, so a capture never carries a stale theme
+ * (the persisted settings row can override localStorage after load). */
+async function forceTheme(page: import('@playwright/test').Page, theme: 'dark' | 'light') {
+  await page.evaluate((t) => {
+    document.documentElement.classList.toggle('dark', t === 'dark')
+    document.documentElement.style.colorScheme = t
+  }, theme)
+  await page.waitForTimeout(300)
+  const isDark = await page.evaluate(() => document.documentElement.classList.contains('dark'))
+  expect(isDark).toBe(theme === 'dark')
+}
+
 test.beforeEach(async ({ context }) => {
   fs.mkdirSync(OUT, { recursive: true })
   await context.addInitScript(() => {
@@ -48,6 +60,7 @@ test('search hits are links and highlight the query terms (mock-backed hits)', a
   await expect(link).toHaveAttribute('href', '/notes')
   expect(await page.locator('mark.search-mark').count()).toBeGreaterThanOrEqual(3)
   await expect(page.locator('mark.search-mark').first()).toHaveText(/forgetting/i)
+  await forceTheme(page, 'light')
   await page.waitForTimeout(1200)
   await page.screenshot({ path: path.join(OUT, 'depth-search-hits.png') })
 })
@@ -103,6 +116,7 @@ for (const vp of [
       'href',
       '/courses/lesson?id=5',
     )
+    await forceTheme(page, vp.theme as 'dark' | 'light')
     await page.waitForTimeout(1500)
     await page.screenshot({ path: path.join(OUT, `depth-courses-${vp.name}.png`), fullPage: true })
     const overflow = await page.evaluate(
@@ -129,11 +143,23 @@ for (const vp of [
     await page.goto('/decks')
     const edit = page.getByRole('button', { name: /^Edit card:/ }).first()
     await expect(edit).toBeVisible({ timeout: 60_000 })
+    await forceTheme(page, vp.theme as 'dark' | 'light')
     await page.waitForTimeout(1500)
     await page.screenshot({ path: path.join(OUT, `depth-decks-${vp.name}.png`), fullPage: true })
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     )
     expect(overflow).toBeLessThanOrEqual(0)
+    if (vp.width < 640) {
+      // Browser-measured: the first card row must sit near the top once the Leitner boxes are a
+      // compact strip (before: five stacked tiles pushed it past ~1300px at 390 wide).
+      const y = await edit.evaluate((el) => el.getBoundingClientRect().top + window.scrollY)
+      expect(y).toBeLessThan(1000)
+      await page.getByRole('button', { name: /^Box 1,/ }).click()
+      await expect(page.getByRole('button', { name: /^Box 1,/ })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+    }
   })
 }
