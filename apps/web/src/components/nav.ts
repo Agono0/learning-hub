@@ -15,6 +15,7 @@ import {
   BarChart3,
   CalendarCheck,
   CalendarRange,
+  CalendarClock,
   Columns3,
   Compass,
   Cpu,
@@ -171,6 +172,7 @@ export const NAV: NavGroup[] = [
         shortLabel: 'Retention',
       },
       { href: '/readiness', label: 'Exam readiness', icon: Target, shortLabel: 'Readiness' },
+      { href: '/exam-prep', label: 'Exam prep', icon: CalendarClock, shortLabel: 'Prep' },
     ],
   },
   {

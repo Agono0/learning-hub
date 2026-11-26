@@ -184,3 +184,10 @@ export async function forecastCards(
       unseen: !isSeen(c),
     }))
 }
+
+/**
+ * The simulation primitives, for planners built on the same model (exam-prep).
+ * One object so the barrel adds a single name instead of five generic ones.
+ */
+export const simulationKit = { getScheduler, reviewOnce, fsrsRecall, toFsrs, startOfDay } as const
+export type SimulationScheduler = Scheduler
