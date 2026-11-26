@@ -2,7 +2,7 @@ name: CI
 
 # paths-ignore lists only files no check reads: prettier (format:check) covers every other
 # *.md and the vitest suites read docs/curriculum, so ignoring docs broadly would silently skip
-# real checks. Because a path-ignored run is not created at all, make the `CI gate` job the
+# real checks. Because a path-ignored run is not created at all, make the aggregate gate job (named like the old single job) the
 # required status check, and never add a path here that a job below consumes.
 on:
   push:
@@ -320,7 +320,7 @@ jobs:
   # Single required check. Keeps the old protected name's meaning: it is green only when
   # every job really succeeded. A skipped or cancelled job is a failure, never a green pass.
   gate:
-    name: CI gate
+    name: Typecheck, lint, test, e2e, build
     if: always()
     needs: [static, unit, e2e, ui, prod]
     runs-on: ubuntu-latest
