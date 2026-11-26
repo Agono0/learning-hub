@@ -164,7 +164,7 @@ export default function ContextVariabilityPage() {
             <h2 className="text-sm font-semibold">Home versus away</h2>
             {data.audit.transfer.verdict === 'insufficient' ? (
               <p className="mt-1 text-sm text-neutral-500">
-                Not enough cards reviewed both at home and elsewhere yet (needs 3 cards and 10
+                Not enough cards reviewed both at home and elsewhere yet (needs 6 cards and 10
                 reviews each way).
               </p>
             ) : (

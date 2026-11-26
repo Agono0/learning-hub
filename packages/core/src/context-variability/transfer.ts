@@ -74,6 +74,8 @@ export function cardProfiles(
 }
 
 /** Smallest gap worth acting on. The interval must clear it for "context-bound" and sit under it for "transfers". */
+/** Cards seen both at home and away needed before the card-level resampling means anything. */
+export const MIN_CARDS = 6
 export const GAP_THRESHOLD = 0.03
 const BOOTSTRAP_RESAMPLES = 500
 
@@ -153,7 +155,7 @@ export function transferGap(rows: ReviewContext[], minCardReviews = 4): Transfer
     gapHigh: null,
     verdict: 'insufficient',
   }
-  if (homeN < 10 || awayN < 10 || cards < 3) return empty
+  if (homeN < 10 || awayN < 10 || cards < MIN_CARDS) return empty
   const gapOf = (list: CardTally[]): number | null => {
     let hn = 0
     let hs = 0

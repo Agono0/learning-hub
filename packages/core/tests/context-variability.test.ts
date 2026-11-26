@@ -137,20 +137,20 @@ function boundHistory(cards: number): CtxReview[] {
 const sess = [session(1, 'home', iso(1, 0), iso(6, 23)), session(2, 'cafe', iso(7, 0), iso(12, 23))]
 
 describe('transfer gap and card profiles', () => {
-  const rows = attributeReviews(boundHistory(5), sess, { now: NOW })
+  const rows = attributeReviews(boundHistory(6), sess, { now: NOW })
   it('flags a clear home-versus-away drop as context-bound', () => {
     const t = transferGap(rows)
     expect(t.verdict).toBe('context-bound')
     expect(t.homeRate).toBeGreaterThan(t.awayRate!)
     expect(t.gapLow).toBeGreaterThan(0.03)
-    expect(t.cardsCompared).toBe(5)
+    expect(t.cardsCompared).toBe(6)
   })
   it('says insufficient with little data', () => {
     expect(transferGap(rows.slice(0, 6)).verdict).toBe('insufficient')
   })
   it('says transfers when away reviews are as good as home reviews', () => {
     const flat = attributeReviews(
-      Array.from({ length: 5 }, (_, i) => i + 1).flatMap((c) => [
+      Array.from({ length: 6 }, (_, i) => i + 1).flatMap((c) => [
         rv(c, 3, iso(1, 9)),
         rv(c, 3, iso(2, 9)),
         ...[3, 4, 5, 6].map((d) => rv(c, 3, iso(d, 9))),
@@ -161,14 +161,14 @@ describe('transfer gap and card profiles', () => {
     expect(transferGap(flat).verdict).toBe('transfers')
   })
   it('is inconclusive when the interval spans the threshold', () => {
-    // 5 cards, 3 reviews each way. Two cards fail away, three do not, so resampled cards give a wide interval.
+    // 5 cards, 3 reviews each way. Three cards fail away, three do not, so resampled cards give a wide interval.
     const mixed = attributeReviews(
-      Array.from({ length: 5 }, (_, i) => i + 1).flatMap((c) => [
+      Array.from({ length: 6 }, (_, i) => i + 1).flatMap((c) => [
         rv(c, 3, iso(1, 9)),
         rv(c, 3, iso(2, 9)),
         ...[3, 4].map((d) => rv(c, 3, iso(d, 9))),
         rv(c, 3, iso(5, 9)),
-        ...[7, 8].map((d) => rv(c, c <= 2 ? 1 : 3, iso(d, 20))),
+        ...[7, 8].map((d) => rv(c, c <= 3 ? 1 : 3, iso(d, 20))),
         rv(c, 3, iso(9, 20)),
       ]),
       sess,
@@ -180,7 +180,7 @@ describe('transfer gap and card profiles', () => {
   })
   it('ignores unlogged reviews instead of counting them as away', () => {
     const noSessions = attributeReviews(
-      Array.from({ length: 5 }, (_, i) => i + 1).flatMap((c) => [
+      Array.from({ length: 6 }, (_, i) => i + 1).flatMap((c) => [
         ...[1, 2, 3, 4, 5, 6, 7, 8].map((d) => rv(c, d < 5 ? 3 : 1, iso(d, 9))),
       ]),
       [],
@@ -188,12 +188,16 @@ describe('transfer gap and card profiles', () => {
     expect(transferGap(noSessions).verdict).toBe('insufficient')
     expect(cardProfiles(noSessions.filter((r) => r.place !== 'unlogged'))).toHaveLength(0)
   })
+  it('needs six cards seen both at home and away', () => {
+    const five = attributeReviews(boundHistory(5), sess, { now: NOW })
+    expect(transferGap(five).verdict).toBe('insufficient')
+  })
   it('uses whole-card resampling: the same data gives the same interval', () => {
     expect(transferGap(rows)).toEqual(transferGap(rows))
   })
   it('profiles cards by context share', () => {
     const p = cardProfiles(rows)
-    expect(p).toHaveLength(5)
+    expect(p).toHaveLength(6)
     expect(p[0]!.reviews).toBe(10)
     expect(cardProfiles(rows, 50)).toEqual([])
     const single = attributeReviews(
@@ -266,8 +270,8 @@ describe('audit and report', () => {
     noise: null,
   }
   it('runs end to end and finds the bound cards with suggestions', () => {
-    const a = runContextAudit(boundHistory(5), sess, [goal], { now: NOW, windowDays: 60 })
-    expect(a.reviews).toBe(50)
+    const a = runContextAudit(boundHistory(6), sess, [goal], { now: NOW, windowDays: 60 })
+    expect(a.reviews).toBe(60)
     expect(a.attributedShare).toBe(1)
     expect(a.transfer.verdict).toBe('context-bound')
     expect(a.byPlace.map((p) => p.key).sort()).toEqual(['cafe', 'home'])
