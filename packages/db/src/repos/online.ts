@@ -42,7 +42,10 @@ export function updateOnlineIdentity(
   const conn = database ?? getDb()
   const current = getOnlineIdentity(conn)
 
-  conn.update(onlineIdentity).set(updates).where(eq(onlineIdentity.id, current.id)).run()
+  // drizzle throws "No values to set" on an empty/undefined-only patch; an empty patch is a no-op.
+  if (Object.values(updates).some((v) => v !== undefined)) {
+    conn.update(onlineIdentity).set(updates).where(eq(onlineIdentity.id, current.id)).run()
+  }
 
   return conn.select().from(onlineIdentity).where(eq(onlineIdentity.id, current.id)).get()!
 }
@@ -74,7 +77,9 @@ export function updateOnlinePrefs(
   const conn = database ?? getDb()
   const current = getOnlinePrefs(conn)
 
-  conn.update(onlinePrefs).set(updates).where(eq(onlinePrefs.id, current.id)).run()
+  if (Object.values(updates).some((v) => v !== undefined)) {
+    conn.update(onlinePrefs).set(updates).where(eq(onlinePrefs.id, current.id)).run()
+  }
 
   return conn.select().from(onlinePrefs).where(eq(onlinePrefs.id, current.id)).get()!
 }

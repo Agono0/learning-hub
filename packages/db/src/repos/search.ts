@@ -236,7 +236,8 @@ export function ftsExpression(query: string): string {
 }
 
 export function searchAll(db: LearningHubDB, query: string, limit = 24): SearchResult {
-  const q = query.trim()
+  // A NUL (or other C0 control) in the term makes SQLite fail with "unterminated string" (500).
+  const q = query.replace(/[\u0000-\u001f\u007f]/g, ' ').trim()
   if (!q) return { hits: [], mode: 'fts5' }
 
   // FTS5 first; fall back to LIKE when the shadow tables are missing

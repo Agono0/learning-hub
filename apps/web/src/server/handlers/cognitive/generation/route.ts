@@ -11,13 +11,24 @@ import {
   generationTierEnum,
   generationTrialInputSchema,
 } from '@learning-hub/core'
-import { readJson, withRoute } from '@/lib/api'
+import { ApiError, readJson, withRoute } from '@/lib/api'
 
 const createLadderInputSchema = z.object({
   concept: z.string().min(1),
   explanation: z.string().min(1),
   tier: generationTierEnum.default('stem_completion'),
 })
+
+function invalidBody(error: z.ZodError): ApiError {
+  return new ApiError(
+    400,
+    'Invalid request body',
+    error.issues.map((issue) => ({
+      path: issue.path.map(String).join('.'),
+      message: issue.message,
+    })),
+  )
+}
 
 export const GET = withRoute(async () => {
   const ladder = createGenerationLadder(
@@ -29,17 +40,20 @@ export const GET = withRoute(async () => {
 })
 
 export const POST = withRoute(async (req: Request) => {
-  const json: unknown = await req.clone().json()
-  const isTrial =
-    typeof json === 'object' && json !== null && 'userAttempt' in json && 'expectedAnswer' in json
+  // Read the body once through readJson (400 on malformed JSON), then pick the schema.
+  const json = await readJson(req, z.record(z.string(), z.unknown()))
+  const isTrial = 'userAttempt' in json && 'expectedAnswer' in json
 
   if (isTrial) {
-    const trialInput = await readJson(req, generationTrialInputSchema)
-    const result = evaluateGenerationTrial(trialInput)
+    const trialInput = generationTrialInputSchema.safeParse(json)
+    if (!trialInput.success) throw invalidBody(trialInput.error)
+    const result = evaluateGenerationTrial(trialInput.data)
     return Response.json({ ok: true, result })
   }
 
-  const ladderInput = await readJson(req, createLadderInputSchema)
+  const ladderParsed = createLadderInputSchema.safeParse(json)
+  if (!ladderParsed.success) throw invalidBody(ladderParsed.error)
+  const ladderInput = ladderParsed.data
   const ladder = createGenerationLadder(
     ladderInput.concept,
     ladderInput.explanation,

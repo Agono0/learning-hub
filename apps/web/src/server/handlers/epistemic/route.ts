@@ -86,14 +86,14 @@ const activeModel: EpistemicDiscourseModel = buildEpistemicDiscourseModel(
   STANDARD_EPISTEMIC_CODES,
 )
 
-export async function GET() {
+export const GET = withRoute(async () => {
   return Response.json({
     model: activeModel,
     standardCodes: STANDARD_EPISTEMIC_CODES,
   })
-}
+})
 
-export async function POST(req: Request) {
+export const POST = withRoute(async (req: Request) => {
   const body = await readJson(req, EpistemicActionSchema)
 
   if (body.action === 'bridge_curriculum') {
@@ -117,7 +117,4 @@ export async function POST(req: Request) {
     model: activeModel,
     status: 'success',
   })
-}
-
-export const getHandler = withRoute(GET)
-export const postHandler = withRoute(POST)
+})
