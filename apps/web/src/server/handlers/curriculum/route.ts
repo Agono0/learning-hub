@@ -17,9 +17,9 @@ import { aiErrorResponse, readJson, withRoute } from '@/lib/api'
 import { insertGeneratedCourse } from '@/lib/curriculum-server'
 
 const generateSchema = z.object({
-  topic: z.string().trim().optional(),
+  topic: z.string().trim().max(500).optional(),
   pdfId: z.number().int().positive().optional(),
-  depth: z.string().optional(),
+  depth: z.string().max(100).optional(),
   /** Manual (non-AI) course structure — validated with the same schema the AI output must satisfy. */
   manual: z.unknown().optional(),
 })
