@@ -7,7 +7,8 @@
  * chooses what to look for, so results are always the user's own data.
  */
 import React, { Suspense, useEffect, useMemo, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { Search, Sparkles, X } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
@@ -93,8 +94,31 @@ function SearchTipsStrip() {
   )
 }
 
+/** Wraps query terms in <mark> (shape cue: bold + underline, so it never relies on hue alone). */
+function Highlight({ text, terms }: { text: string; terms: string[] }) {
+  const clean = terms
+    .map((t) => t.trim())
+    .filter((t) => t.length > 1)
+    .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  if (clean.length === 0 || !text) return <>{text}</>
+  const re = new RegExp(`(${clean.join('|')})`, 'gi')
+  const lower = new Set(clean.map((t) => t.toLowerCase().replace(/\\/g, '')))
+  return (
+    <>
+      {text.split(re).map((part, i) =>
+        lower.has(part.toLowerCase()) ? (
+          <mark key={i} className="search-mark">
+            {part}
+          </mark>
+        ) : (
+          <React.Fragment key={i}>{part}</React.Fragment>
+        ),
+      )}
+    </>
+  )
+}
+
 function SearchPageInner() {
-  const router = useRouter()
   const params = useSearchParams()
   const initial = params.get('q') ?? ''
 
@@ -119,6 +143,8 @@ function SearchPageInner() {
     for (const hit of data?.hits ?? []) set.add(hit.kind)
     return ALL_KINDS.filter((k) => set.has(k))
   }, [data?.hits])
+
+  const terms = useMemo(() => debounced.split(/\s+/), [debounced])
 
   const shown = useMemo(() => {
     const hits = data?.hits ?? []
@@ -266,13 +292,13 @@ function SearchPageInner() {
             <Stagger key={`${debounced}|${activeKind}`} className="space-y-2">
               {shown.map((hit, i) => (
                 <StaggerItem key={`${hit.kind}:${hit.id}`} index={i}>
-                  <button
-                    onClick={() => router.push(hit.href)}
+                  <Link
+                    href={hit.href}
                     className="panel block w-full text-left transition-colors hover:border-indigo-400/60"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-medium text-sm">
-                        {hit.title || '(untitled)'}
+                        <Highlight text={hit.title || '(untitled)'} terms={terms} />
                         {hit.kind === 'task' && hit.done ? (
                           <Badge tone="neutral" className="ml-2 align-middle">
                             done
@@ -283,8 +309,10 @@ function SearchPageInner() {
                         {KIND_LABELS[hit.kind] ?? hit.kind}
                       </span>
                     </div>
-                    <p className="mt-1 text-sm text-tertiary leading-relaxed">{hit.snippet}</p>
-                  </button>
+                    <p className="mt-1 text-sm text-tertiary leading-relaxed">
+                      <Highlight text={hit.snippet} terms={terms} />
+                    </p>
+                  </Link>
                 </StaggerItem>
               ))}
             </Stagger>
