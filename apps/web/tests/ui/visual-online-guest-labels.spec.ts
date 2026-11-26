@@ -124,7 +124,13 @@ for (const vp of viewports) {
       )
       await page.route('**/api/online/rooms', (r) =>
         r.fulfill(
-          json({ ok: true, code: room.code, room, wsUrl: `ws://localhost:${PORT}/mock-room` }),
+          json({
+            ok: true,
+            code: room.code,
+            room,
+            wsUrl: `ws://localhost:${PORT}/mock-room`,
+            joinAssertion: null,
+          }),
         ),
       )
       await page.route('**/api/online/library**', (r) => r.fulfill(json(library)))
