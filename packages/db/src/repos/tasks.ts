@@ -1762,7 +1762,9 @@ export function deleteTaskViewRow(id: number, database?: DbOrTx): boolean {
   return txRun((conn) => {
     const existing = conn.select().from(taskViews).where(eq(taskViews.id, id)).get()
     if (!existing) return false
+    const commit = pendingTombstone('task_views', id, Boolean(database))
     conn.delete(taskViews).where(eq(taskViews.id, id)).run()
+    commit()
     return true
   }, database)
 }

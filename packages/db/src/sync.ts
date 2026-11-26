@@ -252,11 +252,15 @@ export function computeRecordNaturalKey(
     case 'context_goals':
       return `label:${str(row['label']).toLowerCase()}:place:${str(row['place'])}`
 
+    // Keys use only fields that never change after creation (created_at, parent ids): a key that
+    // included a title, text or name broke on rename (the renamed row stopped matching its twin
+    // and tombstones keyed to the old text missed). Two rows sharing one key (same-millisecond
+    // creation) are detected in mergeBackup and fall back to id matching.
     // Tables below had no natural key: every re-merge of the same snapshot inserted
     // them again once ids collided across devices. Keys use stable content plus the
     // (already remapped) parent ids.
     case 'study_plans':
-      return `created:${str(row['created_at'])}:wk:${str(row['weekly_minutes'])}`
+      return `created:${str(row['created_at'])}`
     case 'reminder_log':
       return `kind:${str(row['kind'])}:at:${str(row['sent_at'])}:title:${str(row['title'])}`
     case 'reminder_clicks':
@@ -264,7 +268,7 @@ export function computeRecordNaturalKey(
     case 'notification_log':
       return `ch:${str(row['channel'])}:at:${str(row['created_at'])}:title:${str(row['title'])}`
     case 'mindmaps':
-      return `title:${str(row['title'])}:created:${str(row['created_at'])}`
+      return `created:${str(row['created_at'])}`
     case 'boss_battles':
       return `boss:${str(row['boss_key'])}:started:${str(row['started_at'])}`
     case 'online_servers':
@@ -274,7 +278,7 @@ export function computeRecordNaturalKey(
     case 'audio_sessions':
       return `deck:${str(row['deck_id'])}:mode:${str(row['mode'])}:at:${str(row['created_at'])}`
     case 'quick_captures':
-      return `at:${str(row['created_at'])}:txt:${str(row['text'])}`
+      return `created:${str(row['created_at'])}`
     case 'concept_dependencies':
       return `src:${str(row['source_concept'])}:tgt:${str(row['target_concept'])}`
     case 'seasonal_progress':
@@ -288,33 +292,33 @@ export function computeRecordNaturalKey(
     case 'share_channel_sync_records':
       return `ch:${str(row['channel_id'])}:at:${str(row['at'])}:to:${str(row['to_version'])}`
     case 'task_projects':
-      return `title:${str(row['title'])}:created:${str(row['created_at'])}`
+      return `created:${str(row['created_at'])}`
     case 'task_tags':
       return `name:${str(row['name'])}`
     case 'task_repeat_cfgs':
-      return `created:${str(row['created_at'])}:cycle:${str(row['cycle'])}:int:${str(row['interval'])}`
+      return `created:${str(row['created_at'])}`
     case 'task_items':
-      return `title:${str(row['title'])}:created:${str(row['created_at'])}`
+      return `created:${str(row['created_at'])}`
     case 'task_item_tags':
       return `item:${str(row['item_id'])}:tag:${str(row['tag_id'])}`
     case 'task_reminders':
-      return `task:${str(row['task_id'])}:at:${str(row['remind_at'])}:type:${str(row['type'])}`
+      return `task:${str(row['task_id'])}:created:${str(row['created_at'])}`
     case 'task_time_logs':
-      return `task:${str(row['task_id'])}:day:${str(row['day'])}:at:${str(row['created_at'])}:ms:${str(row['session_ms'])}`
+      return `task:${str(row['task_id'])}:created:${str(row['created_at'])}`
     case 'task_sections':
-      return `name:${str(row['name'])}:created:${str(row['created_at'])}`
+      return `created:${str(row['created_at'])}`
     case 'task_attachments':
-      return `task:${str(row['task_id'])}:type:${str(row['type'])}:val:${str(row['value'])}`
+      return `task:${str(row['task_id'])}:created:${str(row['created_at'])}`
     case 'task_archive_tiers':
       return `task:${str(row['task_id'])}`
     case 'simple_counters':
-      return `label:${str(row['label'])}:created:${str(row['created_at'])}`
+      return `created:${str(row['created_at'])}`
     case 'simple_counter_logs':
       return `counter:${str(row['counter_id'])}:day:${str(row['day'])}`
     case 'metric_days':
       return `day:${str(row['day'])}`
     case 'task_views':
-      return `name:${str(row['name'])}:kind:${str(row['kind'])}`
+      return `created:${str(row['created_at'])}`
     default:
       return null
   }
@@ -670,12 +674,27 @@ export async function mergeBackup(
       const localById = new Map<number, Record<string, unknown>>()
       const localByNaturalKey = new Map<string, Record<string, unknown>>()
 
+      // Keys shared by two rows (e.g. created in the same millisecond) cannot identify either
+      // one: matching on them would merge two different rows into one.
+      const ambiguousLocal = new Set<string>()
+      const ambiguousIncoming = new Set<string>()
+      const seenIncoming = new Set<string>()
+      for (const ir of incomingRows) {
+        const k = computeRecordNaturalKey(table, ir)
+        if (!k) continue
+        if (seenIncoming.has(k)) ambiguousIncoming.add(k)
+        seenIncoming.add(k)
+      }
+
       for (const lr of localRows) {
         if (singleIntPk && typeof lr['id'] === 'number') {
           localById.set(lr['id'], lr)
         }
         const nk = computeRecordNaturalKey(table, lr)
-        if (nk) localByNaturalKey.set(nk, lr)
+        if (nk) {
+          if (localByNaturalKey.has(nk)) ambiguousLocal.add(nk)
+          localByNaturalKey.set(nk, lr)
+        }
       }
 
       // Prune local mutable rows that have a newer deletion tombstone
@@ -683,7 +702,7 @@ export async function mergeBackup(
         const delStmt = database.prepare(`DELETE FROM "${table}" WHERE id = ?`)
         for (const lr of localRows) {
           const nk = computeRecordNaturalKey(table, lr)
-          if (!nk) continue
+          if (!nk || ambiguousLocal.has(nk)) continue
           const deletedAt = tombstoneMap.get(`${table}::${nk}`)
           if (deletedAt && deletedAt > (rowTimestamp(lr) || '0')) {
             delStmt.run(Number(lr['id']))
@@ -748,7 +767,14 @@ export async function mergeBackup(
           }
         }
 
-        const nk = computeRecordNaturalKey(table, remapped)
+        const rawKey = computeRecordNaturalKey(table, rawInc)
+        const computedKey = computeRecordNaturalKey(table, remapped)
+        const nk =
+          computedKey &&
+          !ambiguousLocal.has(computedKey) &&
+          !(rawKey && ambiguousIncoming.has(rawKey))
+            ? computedKey
+            : null
 
         // 2. Skip incoming mutable rows tombstoned more recently
         if (!APPEND_ONLY_TABLES.has(table) && nk) {
