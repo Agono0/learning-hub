@@ -833,12 +833,17 @@ export function deleteTaskTag(id: number, database?: DbOrTx): boolean {
 /** Replace a task's tag set (all ids must exist — {@link ensureTagsExist}). */
 export function setTaskItemTags(itemId: number, tagIds: number[], database?: DbOrTx): void {
   txRun((conn) => {
-    ensureTagsExist(conn, tagIds)
+    if (!conn.select({ id: taskItems.id }).from(taskItems).where(eq(taskItems.id, itemId)).get()) {
+      throw new Error(`task #${itemId} not found`)
+    }
+    // A repeated id would hit the (item, tag) primary key and roll the whole replace back.
+    const unique = [...new Set(tagIds)]
+    ensureTagsExist(conn, unique)
     conn.delete(taskItemTags).where(eq(taskItemTags.itemId, itemId)).run()
-    if (tagIds.length > 0) {
+    if (unique.length > 0) {
       conn
         .insert(taskItemTags)
-        .values(tagIds.map((tagId) => ({ itemId, tagId })))
+        .values(unique.map((tagId) => ({ itemId, tagId })))
         .run()
     }
   }, database)
