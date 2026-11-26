@@ -587,6 +587,12 @@ h6 {
   font-family: inherit;
 }
 
+/* A text input with a leading icon: placed after .input so its padding wins (logical, RTL-safe). */
+.input-icon-start {
+  padding-inline-start: 2.25rem;
+  padding-inline-end: 2.25rem;
+}
+
 .label {
   @apply text-xs font-medium uppercase tracking-wide text-tertiary;
 }

@@ -187,7 +187,7 @@ function SearchPageInner() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-faint" />
             <input
-              className="input pl-9 pr-9"
+              className="input input-icon-start"
               placeholder="Search your entire library…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
