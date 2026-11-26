@@ -31,6 +31,7 @@ import { todayStatsCommands } from './commands/today-stats'
 import { workloadCommands } from './commands/workload'
 import { readinessCommands } from './commands/readiness'
 import { examPrepCommands } from './commands/exam-prep'
+import { studySessionCommands } from './commands/study-session'
 import { curriculumCommands } from './commands/curriculum'
 import { habitsCommands, journalCommands, physioCommands } from './commands/lifestyle'
 import { gktCommands, planCommands, readingCommands } from './commands/learning-path'
@@ -97,6 +98,7 @@ const builtinCommands: RegisteredCommand[] = [
   ...workloadCommands,
   ...readinessCommands,
   ...examPrepCommands,
+  ...studySessionCommands,
   ...exposureCommands,
   ...habitsCommands,
   ...journalCommands,

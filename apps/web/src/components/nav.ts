@@ -16,6 +16,7 @@ import {
   CalendarCheck,
   CalendarRange,
   CalendarClock,
+  ListFilter,
   Columns3,
   Compass,
   Cpu,
@@ -173,6 +174,7 @@ export const NAV: NavGroup[] = [
       },
       { href: '/readiness', label: 'Exam readiness', icon: Target, shortLabel: 'Readiness' },
       { href: '/exam-prep', label: 'Exam prep', icon: CalendarClock, shortLabel: 'Prep' },
+      { href: '/study-session', label: 'Study session', icon: ListFilter, shortLabel: 'Session' },
     ],
   },
   {
