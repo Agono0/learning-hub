@@ -1,5 +1,5 @@
 import { strToU8, zipSync } from 'fflate'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MAX_ARTICLE_HTML_CHARS, MAX_CHAPTER_HTML_CHARS } from '@learning-hub/core/html-scan'
 
 const createSource = vi.fn((v: Record<string, unknown>) => ({ id: 1, ...v }))
@@ -9,11 +9,8 @@ vi.mock('@learning-hub/db', async (orig) => ({
   ...(await orig<Record<string, unknown>>()),
   createSource: (v: Record<string, unknown>) => createSource(v),
 }))
-vi.mock('@learning-hub/ai-adapters', async (orig) => ({
-  ...(await orig<Record<string, unknown>>()),
-  networkFetch: async () => new Response(pageHtml, { status: 200 }),
-}))
 
+import { setPinnedFetch } from '../src/server/bounded-fetch'
 import { POST as ingestPost } from '../src/server/handlers/reading/ingest/route'
 import { POST as readingPost } from '../src/server/handlers/reading/route'
 
@@ -42,7 +39,12 @@ function json(body: unknown) {
 }
 
 describe('oversized HTML maps to 422, not 400 or 500', () => {
-  beforeEach(() => createSource.mockClear())
+  beforeEach(() => {
+    createSource.mockClear()
+    // The URL fetch goes through the pinned transport, not the AI adapters' fetch.
+    setPinnedFetch(async () => new Response(pageHtml, { status: 200 }))
+  })
+  afterEach(() => setPinnedFetch(null))
 
   it('ingest epub mode: a chapter over the limit is a 422 with fixed text and no source', async () => {
     const big = epubWithChapter(chapterOf(MAX_CHAPTER_HTML_CHARS + 10))
@@ -66,13 +68,13 @@ describe('oversized HTML maps to 422, not 400 or 500', () => {
     expect(createSource).toHaveBeenCalledOnce()
   })
 
-  it('ingest url mode: an article over the limit is a 422', async () => {
-    pageHtml = `<html><body>${'b'.repeat(MAX_ARTICLE_HTML_CHARS + 10)}</body></html>`
+  it('ingest url mode: a page over the 5MB byte cap is refused (413) before the 8M-character check can matter', async () => {
+    // The byte cap (5MB) is below the article character cap (8M chars), so the pinned,
+    // bounded fetch refuses an oversized page first. The 422 mapping stays as a backstop.
+    pageHtml = `<html><body>${'b'.repeat(5 * 1024 * 1024 + 10)}</body></html>`
     const res = await ingestPost(json({ mode: 'url', url: 'https://example.com/a' }))
-    expect(res.status).toBe(422)
-    const text = await res.text()
-    expect(text).toMatch(/too large to import safely/i)
-    expect(text).not.toContain('bbbb')
+    expect(res.status).toBe(413)
+    expect(await res.text()).not.toContain('bbbb')
     expect(createSource).not.toHaveBeenCalled()
   })
 
