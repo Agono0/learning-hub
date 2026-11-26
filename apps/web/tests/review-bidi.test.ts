@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest'
 
 const src = readFileSync(join(__dirname, '../app/review/page.tsx'), 'utf8')
 
-const flat = src.replace(/\s+/g, ' ')
+const flat = src.replace(/\s+/g, ' ').replace(/> \{/g, '>{').replace(/\} </g, '}<')
 
 describe('review card faces use dir="auto"', () => {
   it('basic front and back, cloze text, typein and mcq questions', () => {
