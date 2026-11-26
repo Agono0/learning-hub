@@ -30,7 +30,7 @@
   --color-neutral-300: var(--n-300);
   --color-neutral-400: var(--n-400);
   --color-neutral-500: var(--n-500);
-  --color-neutral-600: var(--n-600);
+  --color-neutral-600: var(--n-600-ink);
   --color-neutral-700: var(--n-700);
   --color-neutral-800: var(--n-800);
   --color-neutral-900: var(--n-900);
@@ -41,7 +41,7 @@
   --color-slate-300: var(--n-300);
   --color-slate-400: var(--n-400);
   --color-slate-500: var(--n-500);
-  --color-slate-600: var(--n-600);
+  --color-slate-600: var(--n-600-ink);
   --color-slate-700: var(--n-700);
   --color-slate-800: var(--n-800);
   --color-slate-900: var(--n-900);
@@ -214,6 +214,11 @@
   --n-400: color-mix(in oklab, var(--tint) 38%, white);
   --n-500: color-mix(in oklab, var(--tint) 52%, white);
   --n-600: color-mix(in oklab, var(--tint) 64%, black 6%);
+  /* `text-neutral-600` is used as light-mode body-ish text across ~70 sites. The raw 600 step gave
+     about 2.6:1 on the ocean palette (computed), so the utility maps to this darker ink: 28% black
+     computes to >= 4.5:1 on n-50..n-100 for every palette. --n-600 itself is unchanged, so
+     --text-tertiary/--text-faint are untouched. */
+  --n-600-ink: color-mix(in oklab, var(--tint) 64%, black 28%);
   --n-700: color-mix(in oklab, var(--tint) 52%, black 22%);
   --n-800: color-mix(in oklab, var(--tint) 40%, black 38%);
   --n-900: color-mix(in oklab, var(--tint) 30%, black 52%);
@@ -377,6 +382,11 @@
   --n-400: color-mix(in oklab, var(--tint) 38%, white);
   --n-500: color-mix(in oklab, var(--tint) 52%, white);
   --n-600: color-mix(in oklab, var(--tint) 64%, black 6%);
+  /* `text-neutral-600` is used as light-mode body-ish text across ~70 sites. The raw 600 step gave
+     about 2.6:1 on the ocean palette (computed), so the utility maps to this darker ink: 28% black
+     computes to >= 4.5:1 on n-50..n-100 for every palette. --n-600 itself is unchanged, so
+     --text-tertiary/--text-faint are untouched. */
+  --n-600-ink: color-mix(in oklab, var(--tint) 64%, black 28%);
   --n-700: color-mix(in oklab, var(--tint) 52%, black 22%);
   --n-800: color-mix(in oklab, var(--tint) 40%, black 38%);
   --n-900: color-mix(in oklab, var(--tint) 30%, black 52%);
@@ -891,6 +901,7 @@ html.theme-e-ink {
   --n-400: #a3a3a3;
   --n-500: #737373;
   --n-600: #525252;
+  --n-600-ink: #525252;
   --n-700: #404040;
   --n-800: #262626;
   --n-900: #171717;
