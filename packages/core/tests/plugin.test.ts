@@ -90,7 +90,7 @@ describe('parsePluginDefinition / pluginDefinitionIssues — loader-side validat
 describe('createPluginLogger — namespaced console wrapper', () => {
   afterEach(() => vi.restoreAllMocks())
 
-  it('prefixes every level with [plugin:<name>]', () => {
+  it('prefixes every level with [plugin:<name>] and keeps stdout free', () => {
     const info = vi.spyOn(console, 'info').mockImplementation(() => {})
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -102,10 +102,13 @@ describe('createPluginLogger — namespaced console wrapper', () => {
     logger.error('boom', new Error('x'))
     logger.debug('whisper')
 
-    expect(info).toHaveBeenCalledWith('[plugin:echo]', 'hello', 1)
+    // info and debug go to stderr (console.error): stdout belongs to the host protocol.
+    expect(error).toHaveBeenCalledWith('[plugin:echo]', 'hello', 1)
     expect(warn).toHaveBeenCalledWith('[plugin:echo]', 'careful')
     expect(error).toHaveBeenCalledWith('[plugin:echo]', 'boom', expect.any(Error))
-    expect(debug).toHaveBeenCalledWith('[plugin:echo]', 'whisper')
+    expect(error).toHaveBeenCalledWith('[plugin:echo]', 'whisper')
+    expect(info).not.toHaveBeenCalled()
+    expect(debug).not.toHaveBeenCalled()
   })
 })
 
