@@ -53,6 +53,7 @@ import { elaborativeInterrogationTools } from './tools/elaborative-interrogation
 import { contextVariabilityTools } from './tools/context-variability'
 import { dualcodingTools } from './tools/dualcoding'
 import { taskTools } from './tools/tasks'
+import { taskOrganizeTools } from './tools/tasks-organize'
 import { leagueTools, remoteLeagueMembershipTools } from './tools/leagues'
 import { checkArgsSize, type RegisteredTool } from './tool-kit'
 import { interferenceTools } from './tools/interference'
@@ -105,6 +106,7 @@ async function main() {
     ...dualcodingTools,
     ...leagueTools,
     ...taskTools,
+    ...taskOrganizeTools,
     ...remoteLeagueMembershipTools,
   ] as RegisteredTool[]) {
     server.registerTool(

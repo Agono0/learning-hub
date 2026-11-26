@@ -28,6 +28,7 @@ import { leaguesCommands } from './commands/leagues'
 import { leaguesRemoteCommands } from './commands/leagues-remote'
 import { notesCommands } from './commands/notes'
 import { tasksCommands } from './commands/tasks'
+import { tasksOrganizeCommands } from './commands/tasks-organize'
 import { reviewCommands } from './commands/review'
 import { systemCommands } from './commands/system'
 import { todayStatsCommands } from './commands/today-stats'
@@ -167,6 +168,7 @@ const builtinCommands: RegisteredCommand[] = [
   ...leaguesRemoteCommands,
   ...notesCommands,
   ...tasksCommands,
+  ...tasksOrganizeCommands,
 ]
 
 async function main() {
