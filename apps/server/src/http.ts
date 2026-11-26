@@ -46,15 +46,27 @@ export function jsonError(
 
 /**
  * Read the request body as JSON and validate it with the given zod schema.
- * Throws ApiError(400) with flattened issues as `detail` on any failure.
+ * Throws ApiError(400) with flattened issues as `detail` on a malformed or invalid body, and
+ * ApiError(413) when the body is over the byte limit (1 MiB unless `opts.maxBytes` raises it).
  */
-export async function readJson<T>(req: IncomingMessage, schema: z.ZodType<T>): Promise<T> {
+export async function readJson<T>(
+  req: IncomingMessage,
+  schema: z.ZodType<T>,
+  opts: { maxBytes?: number } = {},
+): Promise<T> {
+  const limit = opts.maxBytes ?? MAX_BODY_BYTES
+  // Refuse on the declared length before reading a byte; the streamed count below still applies
+  // because the header can be absent (chunked) or wrong.
+  const declared = Number(req.headers['content-length'])
+  if (Number.isFinite(declared) && declared > limit) {
+    throw new ApiError(413, 'Request body too large')
+  }
   const chunks: Buffer[] = []
   let size = 0
   for await (const chunk of req) {
     size += (chunk as Buffer).length
-    if (size > MAX_BODY_BYTES) {
-      throw new ApiError(400, 'Request body too large')
+    if (size > limit) {
+      throw new ApiError(413, 'Request body too large')
     }
     chunks.push(chunk as Buffer)
   }

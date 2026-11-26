@@ -35,19 +35,28 @@ Plugins are loaded at boot exactly like the other hosts: core's
 `loadPlugins(["plugins"])` scans the repo-root `plugins/` directory. Loading
 failures are isolated by core and never prevent the server from starting.
 
-## Auth — read this before widening the host
+## Auth and browser protection: read this before widening the host
 
-**There is no authentication or authorization on any endpoint.** The server is
-meant for the local user's own machine:
+There is no login. The server is meant for the local user's own machine. What it does check
+(`apps/server/src/guard.ts`, run before every route):
 
-- It binds `127.0.0.1` by default — other devices on the network cannot reach it.
-- If you pass `--host 0.0.0.0` (or set `LEARNING_HUB_HOST`), **anyone on your
-  network can read and write your learning data**, including `POST /review`
-  which mutates the database. Only widen the host on a trusted network or put
-  an authenticating reverse proxy in front.
-- CORS: no CORS headers are sent, so browser pages on other origins cannot read
-  responses (a small incidental protection; curl/server-side clients are
-  unaffected).
+- **Host.** Only loopback names (`localhost`, `127.0.0.1`, `[::1]`), IP literals and hostnames you list
+  are served; anything else gets `421`. This stops DNS rebinding, where a web page re-points its own
+  hostname at your machine to read your data. Serve a hostname with
+  `LEARNING_HUB_ALLOWED_HOSTS=desk.lan,other.lan:4000` (comma list, `host:port` pins the port).
+- **Origin on writes.** A cross-origin `POST`/`PUT`/`PATCH`/`DELETE` gets `403`, including the
+  `text/plain` form a web page can send without a preflight. Trusted without configuration:
+  same-origin, the native shell (`tauri://localhost`, `http(s)://tauri.localhost`) and any
+  `chrome-extension://` origin. Add more with `LEARNING_HUB_ALLOWED_ORIGINS=https://phone.lan` and pin
+  the extension with `LEARNING_HUB_EXTENSION_IDS=<id>,<id>`.
+- **Bearer token (optional).** Set `LEARNING_HUB_API_TOKEN` and every request must send
+  `Authorization: Bearer <token>` (`401` otherwise). Use it whenever you pass `--host 0.0.0.0`: the
+  server prints a warning at boot if it listens beyond loopback with no token.
+- **Body size.** A JSON body over 1 MiB gets `413`.
+
+What this is not: a request with no `Origin` header (curl, a script, a local program) passes the
+Host and Origin checks, so only the token protects against another program or another machine that
+can reach the port. CORS headers are never sent, so other origins cannot read responses.
 
 ## Endpoints
 
