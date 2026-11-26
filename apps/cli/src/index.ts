@@ -24,6 +24,7 @@ import { focusCommands } from './commands/focus-pomodoro'
 import { exposureCommands } from './commands/exposure'
 import { goalsCommands } from './commands/goals'
 import { notesCommands } from './commands/notes'
+import { tasksCommands } from './commands/tasks'
 import { reviewCommands } from './commands/review'
 import { systemCommands } from './commands/system'
 import { todayStatsCommands } from './commands/today-stats'
@@ -140,6 +141,7 @@ const builtinCommands: RegisteredCommand[] = [
   // New domain commands over the shared repos (commands/goals.ts, commands/notes.ts)
   ...goalsCommands,
   ...notesCommands,
+  ...tasksCommands,
 ]
 
 async function main() {

@@ -43,6 +43,7 @@ import { feedbackTools } from './tools/feedback'
 import { prototypeExemplarTools } from './tools/prototype-exemplar'
 import { cognitiveLoadTools } from './tools/cognitive-load'
 import { dualcodingTools } from './tools/dualcoding'
+import { taskTools } from './tools/tasks'
 import type { RegisteredTool } from './tool-kit'
 
 // ─── Server ─────────────────────────────────────────────────────────────────
@@ -81,6 +82,7 @@ async function main() {
     ...prototypeExemplarTools,
     ...cognitiveLoadTools,
     ...dualcodingTools,
+    ...taskTools,
   ] as RegisteredTool[]) {
     server.registerTool(
       registered.name,
