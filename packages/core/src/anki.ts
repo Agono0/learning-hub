@@ -691,6 +691,80 @@ interface AnkiModel {
 }
 
 /**
+ * Local resource policy (not an Anki or ZIP rule): the `meta` entry is read only up to this
+ * many inflated bytes. Real ones are 2 bytes; the cap is enforced from the declared size
+ * BEFORE anything is inflated, by reading it through a second bounded view of the same bytes.
+ */
+export const APKG_META_MAX_BYTES = 4096
+
+/**
+ * Package version from a `.apkg` `meta` entry, or undefined when there is no `meta` entry.
+ * `meta` is a protobuf message; only field 1 (varint Version) is used. Unknown fields are
+ * skipped by wire type, a repeated field 1 keeps the last value, and a truncated or
+ * overrunning field, a group, a reserved wire type or field number 0 is malformed. A missing
+ * or 0 version, or one outside 1..3, is refused as unknown.
+ */
+function readApkgMetaVersion(
+  bytes: Uint8Array,
+  zip: ReturnType<typeof openBoundedZip>,
+): 1 | 2 | 3 | undefined {
+  if (!zip.has('meta')) return undefined
+  let meta: Uint8Array
+  try {
+    meta = openBoundedZip(bytes, { ...APKG_LIMITS, maxEntryBytes: APKG_META_MAX_BYTES }).read(
+      'meta',
+    )
+  } catch (err) {
+    if (err instanceof ArchiveLimitError) {
+      throw new Error(
+        err.code === 'limit'
+          ? `invalid .apkg: meta is larger than ${APKG_META_MAX_BYTES} bytes`
+          : `invalid .apkg: ${err.message}`,
+      )
+    }
+    throw err
+  }
+  const malformed = (why: string): Error => new Error(`invalid .apkg: malformed meta (${why})`)
+  let i = 0
+  const varint = (): bigint => {
+    let v = 0n
+    for (let shift = 0n, n = 0; n < 10; n++, shift += 7n) {
+      if (i >= meta.length) throw malformed('truncated varint')
+      const b = meta[i++]!
+      v |= BigInt(b & 0x7f) << shift
+      if ((b & 0x80) === 0) return v
+    }
+    throw malformed('varint longer than 10 bytes')
+  }
+  const skip = (n: bigint): void => {
+    if (n > BigInt(meta.length - i)) throw malformed('field overruns the entry')
+    i += Number(n)
+  }
+  let version: bigint | undefined
+  while (i < meta.length) {
+    const tag = varint()
+    const field = tag >> 3n
+    const wire = Number(tag & 7n)
+    if (field === 0n) throw malformed('field number 0')
+    if (field === 1n && wire !== 0) throw malformed('version has the wrong wire type')
+    if (wire === 0) {
+      const v = varint()
+      if (field === 1n) version = v
+    } else if (wire === 1) skip(8n)
+    else if (wire === 2) skip(varint())
+    else if (wire === 5) skip(4n)
+    else throw malformed('group or reserved wire type')
+  }
+  if (version === undefined || version === 0n || version > 3n) {
+    throw new Error(
+      `unsupported .apkg: meta declares ${version === undefined ? 'no package version' : `unknown package version ${version}`} ` +
+        '(this reader understands versions 1 to 3); re-export the deck from a supported Anki version',
+    )
+  }
+  return Number(version) as 1 | 2 | 3
+}
+
+/**
  * Parse an Anki deck package (`.apkg`): a ZIP holding a legacy Anki 2 SQLite
  * collection (`collection.anki2` / `collection.anki21`). Maps the standard
  * models — `Basic`, `Basic (and reversed card)` (→ two reciprocal basic cards)
@@ -706,8 +780,9 @@ interface AnkiModel {
  * ONLY code path that touches it. Async: unzipping is sync, but the lazy
  * driver load is not.
  *
- * Throws when `buffer` is not a ZIP or has no readable legacy collection
- * (e.g. the newer zstd-compressed `collection.anki21b` format).
+ * A `meta` entry, when present, selects the collection (version 1 = collection.anki2,
+ * 2 = collection.anki21, 3 = compressed layout, refused). Throws when `buffer` is not a ZIP,
+ * has no readable legacy collection, or declares the compressed `collection.anki21b` layout.
  */
 export async function parseApkg(
   buffer: Uint8Array | ArrayBuffer,
@@ -721,23 +796,41 @@ export async function parseApkg(
     if (err instanceof ArchiveLimitError) throw new Error(`invalid .apkg: ${err.message}`)
     throw err
   }
-  // Exactly one legacy collection is accepted. When both collection.anki2 and
-  // collection.anki21 are present, which one holds the real data depends on the exporting
-  // Anki version (legacy-support exports can carry a stub next to the real one), and no rule
-  // is grounded in fixtures here, so refuse instead of guessing. Neither is inflated first.
-  const present = ['collection.anki2', 'collection.anki21'].filter((k) => zip.has(k))
-  if (present.length > 1) {
+  // When the package carries a `meta` entry, its declared version selects the collection:
+  // 1 reads collection.anki2, 2 reads collection.anki21 (the collection.anki2 beside it is a
+  // placeholder), 3 is the zstd-compressed collection.anki21b layout and is refused before any
+  // collection is read. A declared collection that is missing is refused, never replaced by
+  // another entry. Without `meta` the original rule applies unchanged: exactly one of
+  // collection.anki2 / collection.anki21 is accepted, and both present is refused as ambiguous.
+  let collectionKey: string | undefined
+  const version = readApkgMetaVersion(bytes, zip)
+  if (version === undefined) {
+    const present = ['collection.anki2', 'collection.anki21'].filter((k) => zip.has(k))
+    if (present.length > 1) {
+      throw new Error(
+        'invalid .apkg: both collection.anki2 and collection.anki21 are present and which one ' +
+          'holds the deck is ambiguous; re-export the deck from a single Anki version',
+      )
+    }
+    collectionKey = present[0]
+    if (!collectionKey) {
+      throw new Error(
+        'no legacy collection found in .apkg — expected collection.anki2 or collection.anki21 ' +
+          '(zstd-compressed collection.anki21b exports are not supported; re-export with "support older Anki versions" enabled)',
+      )
+    }
+  } else if (version === 3) {
     throw new Error(
-      'invalid .apkg: both collection.anki2 and collection.anki21 are present and which one ' +
-        'holds the deck is ambiguous; re-export the deck from a single Anki version',
+      'unsupported .apkg: its meta declares the compressed (collection.anki21b) package layout, ' +
+        'which is not supported; re-export the deck from Anki with "support older Anki versions" enabled',
     )
-  }
-  const collectionKey = present[0]
-  if (!collectionKey) {
-    throw new Error(
-      'no legacy collection found in .apkg — expected collection.anki2 or collection.anki21 ' +
-        '(zstd-compressed collection.anki21b exports are not supported; re-export with "support older Anki versions" enabled)',
-    )
+  } else {
+    collectionKey = version === 1 ? 'collection.anki2' : 'collection.anki21'
+    if (!zip.has(collectionKey)) {
+      throw new Error(
+        `invalid .apkg: its meta declares package version ${version} but ${collectionKey} is missing`,
+      )
+    }
   }
 
   let collection: Uint8Array
