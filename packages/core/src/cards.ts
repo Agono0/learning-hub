@@ -13,7 +13,77 @@ import { exerciseSchema } from './practice/schema'
 export type ClozeSegment =
   { kind: 'text'; text: string } | { kind: 'blank'; index: number; answer: string; hint?: string }
 
-const CLOZE_MARKER = /\{\{c(\d+)::(.*?)\}\}/g
+/** One `{{cN::inner}}` marker: `index` is where it starts in the source, `end` just past its `}}`. */
+export interface ClozeMarker {
+  index: number
+  end: number
+  /** The digits after `c` (as written). */
+  num: string
+  /** Everything between `::` and the closing `}}` (answer and optional `::hint`). */
+  inner: string
+}
+
+const isLineBreak = (ch: string) => ch === '\n' || ch === '\r' || ch === '\u2028' || ch === '\u2029'
+
+/**
+ * Find every `{{cN::…}}` marker, left to right and non-overlapping. This returns exactly the
+ * matches of `/\{\{c(\d+)::(.*?)\}\}/g` (the inner text never spans a line break and ends at the
+ * first `}}`), but in linear time: with that regex, a long line of openers and no `}}` was
+ * quadratic, because every opener rescanned to the end of the line.
+ */
+export function findClozeMarkers(text: string): ClozeMarker[] {
+  const out: ClozeMarker[] = []
+  // Cached "next `}}`" and "next line break" lookups, valid while the search start stays at or
+  // before the cached hit (or for ever once a search found nothing).
+  let closeFrom = -1
+  let closeAt = -1
+  let breakFrom = -1
+  let breakAt = -1
+  let pos = 0
+  while (true) {
+    const open = text.indexOf('{{c', pos)
+    if (open === -1) break
+    let j = open + 3
+    while (j < text.length && text.charCodeAt(j) >= 48 && text.charCodeAt(j) <= 57) j++
+    if (j === open + 3 || text[j] !== ':' || text[j + 1] !== ':') {
+      pos = open + 1
+      continue
+    }
+    const start = j + 2
+    if (closeFrom === -1 || start < closeFrom || (closeAt !== -1 && start > closeAt)) {
+      closeFrom = start
+      closeAt = text.indexOf('}}', start)
+    }
+    if (closeAt === -1) break // no `}}` left anywhere, so no later marker can match either
+    if (breakFrom === -1 || start < breakFrom || (breakAt !== -1 && start > breakAt)) {
+      breakFrom = start
+      breakAt = -1
+      for (let k = start; k < text.length; k++) {
+        if (isLineBreak(text[k]!)) {
+          breakAt = k
+          break
+        }
+      }
+    }
+    if (breakAt !== -1 && breakAt < closeAt) {
+      pos = open + 1
+      continue
+    }
+    out.push({
+      index: open,
+      end: closeAt + 2,
+      num: text.slice(open + 3, j),
+      inner: text.slice(start, closeAt),
+    })
+    pos = closeAt + 2
+  }
+  return out
+}
+
+/** True when `text` holds at least one `{{cN::…}}` marker. */
+export function hasClozeMarker(text: string): boolean {
+  return findClozeMarkers(text).length > 0
+}
 
 /**
  * Parse cloze markup: `parseCloze("The capital of {{c1::France}} is {{c2::Paris}}.")`
@@ -29,11 +99,11 @@ export function parseCloze(
   const answers: string[] = []
   let hint: string | undefined
   const seen = new Set<number>()
-  for (const match of raw.matchAll(CLOZE_MARKER)) {
-    const idx = Number(match[1])
+  for (const match of findClozeMarkers(raw)) {
+    const idx = Number(match.num)
     if (seen.has(idx)) continue
     seen.add(idx)
-    const inner = match[2] ?? ''
+    const inner = match.inner
     const [answer, hintPart] = inner.split('::')
     if (answer !== undefined && answer !== '') {
       answers.push(answer)
@@ -55,18 +125,18 @@ export function parseCloze(
 export function clozeSegments(text: string): ClozeSegment[] {
   const segments: ClozeSegment[] = []
   let cursor = 0
-  for (const match of text.matchAll(CLOZE_MARKER)) {
-    const start = match.index ?? 0
+  for (const match of findClozeMarkers(text)) {
+    const start = match.index
     if (start > cursor) segments.push({ kind: 'text', text: text.slice(cursor, start) })
-    const inner = match[2] ?? ''
+    const inner = match.inner
     const [answer, hintPart] = inner.split('::')
     segments.push({
       kind: 'blank',
-      index: Number(match[1]),
+      index: Number(match.num),
       answer: answer ?? '',
       ...(hintPart ? { hint: hintPart } : {}),
     })
-    cursor = start + match[0].length
+    cursor = match.end
   }
   if (cursor < text.length) segments.push({ kind: 'text', text: text.slice(cursor) })
   return segments

@@ -10,7 +10,7 @@
  * learner saves them through the normal validated bulk card path
  * ({@link ingestedCardToCardItem} → `PUT /api/cards?bulk=1`).
  */
-import { parseCloze } from '../cards'
+import { hasClozeMarker, parseCloze } from '../cards'
 import type { CardContent } from '../types'
 
 export interface VideoTranscriptSegment {
@@ -277,7 +277,7 @@ export function extractMarkdownNotesAndClozes(rawMarkdown: string): IngestedCard
   // 1. Cloze deletions on individual lines
   for (const line of lines) {
     const trimmed = line.trim().replace(/^[-*•]\s+/, '')
-    if (/\{\{c\d+::.*?\}\}/.test(trimmed)) {
+    if (hasClozeMarker(trimmed)) {
       const parsed = parseCloze(trimmed)
       if (parsed.answers.length > 0) {
         cards.push({
