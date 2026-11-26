@@ -15,6 +15,8 @@
  */
 
 import { readBoundedJson } from '../bounded-input'
+import { numFlag } from '../flags'
+import { readFileSync } from 'node:fs'
 import { type RegisteredCommand } from './registry'
 import {
   CANONICAL_CATEGORIZATION_SETS,
@@ -153,7 +155,7 @@ export function prototypeExemplarCommand(args: string[]): void {
 
   if (sub === 'plan') {
     const setId = parseFlag(args, '--set') || 'proto-bird-typicality'
-    const maxTrials = parseInt(parseFlag(args, '--trials') || '6', 10)
+    const maxTrials = numFlag(parseFlag(args, '--trials'), '--trials', 6, { int: true })
     const set = findCategorySet(setId)
     const plan = planDiscriminatingBlock(set, maxTrials)
 
@@ -162,6 +164,10 @@ export function prototypeExemplarCommand(args: string[]): void {
     if (historyPayload !== undefined) {
       const sessions = studyPlanSessionSchema.array().parse(readBoundedJson(historyPayload))
       const horizonDays = parseInt(parseFlag(args, '--days') || '10', 10)
+      const sessions = studyPlanSessionSchema
+        .array()
+        .parse(JSON.parse(readFileSync(historyPayload, 'utf8')))
+      const horizonDays = numFlag(parseFlag(args, '--days'), '--days', 10, { int: true })
       schedule = planCategorizationStudy(sessions, {
         now: parseFlag(args, '--now') || new Date().toISOString(),
         horizonDays,
@@ -187,7 +193,7 @@ export function prototypeExemplarCommand(args: string[]): void {
 
   if (sub === 'deck') {
     const setId = parseFlag(args, '--set') || 'proto-bird-typicality'
-    const criBaseline = parseInt(parseFlag(args, '--cri') || '50', 10)
+    const criBaseline = numFlag(parseFlag(args, '--cri'), '--cri', 50, { int: true })
     const set = findCategorySet(setId)
     const neutralEvaluation = evaluateCategorizationSession(set, { setId: set.id })
     neutralEvaluation.cri = criBaseline

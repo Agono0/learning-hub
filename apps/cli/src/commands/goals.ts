@@ -10,6 +10,7 @@
  *   goals plan list [--goal <id>] | plan add <goalId> "<if…>" "<then…>"
  *                   | plan pause <planId> | plan resume <planId> | plan delete <planId>
  */
+import { limitFlag } from '../flags'
 import {
   createGoal,
   createIfThenPlan,
@@ -33,7 +34,7 @@ function parseFlag(args: string[], flag: string): string | undefined {
 
 function listGoalsCommand(args: string[]): void {
   const status = parseFlag(args, '--status')
-  const limit = Number(parseFlag(args, '--limit') ?? '50')
+  const limit = limitFlag(parseFlag(args, '--limit'), 50)
   const goals = listGoals({ ...(status !== undefined ? { status } : {}), limit })
   if (goals.length === 0) {
     console.log('No goals yet — try `learning-hub goals create "finish the thesis"`.')

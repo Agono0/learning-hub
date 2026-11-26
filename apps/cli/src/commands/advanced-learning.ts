@@ -16,6 +16,7 @@
  * 14. contrasting: Schwartz & Bransford (1998, 2004) Contrasting Cases & Inventing with Examples
  */
 
+import { numFlag } from '../flags'
 import { type RegisteredCommand } from './registry'
 import {
   CANONICAL_SKILLS,
@@ -187,10 +188,10 @@ export function skillsCommand(args: string[]): void {
 // ── 2. Successive Relearning Command (Rawson & Dunlosky 2011) ─────────────────
 
 export function relearningCommand(args: string[]): void {
-  const initial = Number(parseFlag(args, '--initial') || '600')
-  const relearn = Number(parseFlag(args, '--relearn') || '210')
-  const days = Number(parseFlag(args, '--days') || '7')
-  const trials = Number(parseFlag(args, '--trials') || '3')
+  const initial = numFlag(parseFlag(args, '--initial'), '--initial', 600)
+  const relearn = numFlag(parseFlag(args, '--relearn'), '--relearn', 210)
+  const days = numFlag(parseFlag(args, '--days'), '--days', 7)
+  const trials = numFlag(parseFlag(args, '--trials'), '--trials', 3)
 
   const savings = calculateEbbinghausSavings(initial, relearn)
   const retention = predictRetentionAtDays(0.08, days)
@@ -224,9 +225,9 @@ export function relearningCommand(args: string[]): void {
 // ── 3. SRL Zimmerman Metacognitive Matrix Command ────────────────────────────
 
 export function srlCommand(args: string[]): void {
-  const forethought = Number(parseFlag(args, '--forethought') || '8')
-  const performance = Number(parseFlag(args, '--performance') || '7')
-  const reflection = Number(parseFlag(args, '--reflection') || '9')
+  const forethought = numFlag(parseFlag(args, '--forethought'), '--forethought', 8)
+  const performance = numFlag(parseFlag(args, '--performance'), '--performance', 7)
+  const reflection = numFlag(parseFlag(args, '--reflection'), '--reflection', 9)
   const challengeId = parseFlag(args, '--challenge')
 
   const index = calculateSRLMaturityIndex(forethought, performance, reflection)
@@ -259,7 +260,7 @@ export function srlCommand(args: string[]): void {
 // ── 4. Epistemic Network Analysis Command (Shaffer 2016) ──────────────────────
 
 export function epistemicCommand(args: string[]): void {
-  const baseMastery = Number(parseFlag(args, '--mastery') || '0.75')
+  const baseMastery = numFlag(parseFlag(args, '--mastery'), '--mastery', 0.75)
 
   const sampleUtterances = [
     {
@@ -323,7 +324,7 @@ export function epistemicCommand(args: string[]): void {
 
 export function causalCommand(args: string[]): void {
   const target = parseFlag(args, '--target') || 'ExamScore'
-  const studyIntervention = Number(parseFlag(args, '--study') || '16')
+  const studyIntervention = numFlag(parseFlag(args, '--study'), '--study', 16)
 
   const model = createStandardEducationSCM()
   const result = evaluateCounterfactual(model, {
@@ -358,7 +359,7 @@ export function causalCommand(args: string[]): void {
 
 export function thresholdCommand(args: string[]): void {
   const conceptId = parseFlag(args, '--concept') || 'tc_pointers_memory'
-  const baseMastery = Number(parseFlag(args, '--mastery') || '0.70')
+  const baseMastery = numFlag(parseFlag(args, '--mastery'), '--mastery', 0.7)
 
   const concepts = getStandardThresholdConcepts()
   const concept = concepts.find((c) => c.id === conceptId) || concepts[0]!
@@ -437,8 +438,8 @@ export function zpdCommand(args: string[]): void {
   }
 
   if (sub === 'deck') {
-    const pre = Number(parseFlag(args, '--pre') || String(zpdDefaults.preTestScore))
-    const post = Number(parseFlag(args, '--post') || String(zpdDefaults.postTestScore))
+    const pre = numFlag(parseFlag(args, '--pre'), '--pre', zpdDefaults.preTestScore)
+    const post = numFlag(parseFlag(args, '--post'), '--post', zpdDefaults.postTestScore)
     const scenario = getZpdScenarioById(scenarioId) || listZpdScenarios()[0]!
     const metrics = calculateZpdMetrics(
       pre,
@@ -461,9 +462,9 @@ export function zpdCommand(args: string[]): void {
   }
 
   // Default: eval
-  const pre = Number(parseFlag(args, '--pre') || String(zpdDefaults.preTestScore))
-  const post = Number(parseFlag(args, '--post') || String(zpdDefaults.postTestScore))
-  const hints = Number(parseFlag(args, '--hints') || String(zpdDefaults.promptsConsumed))
+  const pre = numFlag(parseFlag(args, '--pre'), '--pre', zpdDefaults.preTestScore)
+  const post = numFlag(parseFlag(args, '--post'), '--post', zpdDefaults.postTestScore)
+  const hints = numFlag(parseFlag(args, '--hints'), '--hints', zpdDefaults.promptsConsumed)
   const scenario = getZpdScenarioById(scenarioId) || listZpdScenarios()[0]!
   const metrics = calculateZpdMetrics(pre, post, hints, zpdDefaults.transferScores)
 
@@ -538,8 +539,8 @@ export function pfCommand(args: string[]): void {
   }
 
   if (sub === 'deck') {
-    const _pfi = parseInt(parseFlag(args, '--pfi') || '85', 10)
-    const cig = parseInt(parseFlag(args, '--cig') || '80', 10)
+    const _pfi = numFlag(parseFlag(args, '--pfi'), '--pfi', 85, { int: true })
+    const cig = numFlag(parseFlag(args, '--cig'), '--cig', 80, { int: true })
 
     const dummyMetrics = calculatePFMetrics({
       representations: scenario.exemplarStudentRepresentations,
@@ -581,9 +582,9 @@ export function pfCommand(args: string[]): void {
   }
 
   // Default: metrics evaluation
-  const repCount = parseInt(parseFlag(args, '--reps') || '3', 10)
-  const affective = parseInt(parseFlag(args, '--affective') || '4', 10)
-  const cigScore = parseInt(parseFlag(args, '--cig') || '85', 10)
+  const repCount = numFlag(parseFlag(args, '--reps'), '--reps', 3, { int: true })
+  const affective = numFlag(parseFlag(args, '--affective'), '--affective', 4, { int: true })
+  const cigScore = numFlag(parseFlag(args, '--cig'), '--cig', 85, { int: true })
 
   const metrics = calculatePFMetrics({
     representations: scenario.exemplarStudentRepresentations.slice(0, repCount),
@@ -663,7 +664,7 @@ export function piCommand(args: string[]): void {
   }
 
   if (sub === 'deck') {
-    const hakeGain = parseFloat(parseFlag(args, '--gain') || '0.75')
+    const hakeGain = numFlag(parseFlag(args, '--gain'), '--gain', 0.75)
     const dummyMetrics = calculatePIMetrics({
       suite,
       q1InitialOptionId: suite.q1Options[0].id,
@@ -693,8 +694,8 @@ export function piCommand(args: string[]): void {
   }
 
   // Default: eval / trajectory
-  const vote1 = parseInt(parseFlag(args, '--pre') || '38', 10)
-  const vote2 = parseInt(parseFlag(args, '--post') || '82', 10)
+  const vote1 = numFlag(parseFlag(args, '--pre'), '--pre', 38, { int: true })
+  const vote2 = numFlag(parseFlag(args, '--post'), '--post', 82, { int: true })
   const q1Correct = suite.q1Options.find((o) => o.isCorrect)!.id
   const q2Correct = suite.q2Options.find((o) => o.isCorrect)!.id
 
@@ -756,10 +757,10 @@ export function inquiryCommand(args: string[]): void {
 
   if (sub === 'trial') {
     const trial = runInquiryTrial(lab, 0, {
-      length: parseFloat(parseFlag(args, '--length') || '1.0'),
-      mass: parseFloat(parseFlag(args, '--mass') || '0.2'),
-      angle: parseFloat(parseFlag(args, '--angle') || '15'),
-      gravity: parseFloat(parseFlag(args, '--gravity') || '9.81'),
+      length: numFlag(parseFlag(args, '--length'), '--length', 1.0),
+      mass: numFlag(parseFlag(args, '--mass'), '--mass', 0.2),
+      angle: numFlag(parseFlag(args, '--angle'), '--angle', 15),
+      gravity: numFlag(parseFlag(args, '--gravity'), '--gravity', 9.81),
     })
 
     console.log('\n🔬 Scientific Inquiry Experimental Trial Simulation')
@@ -773,7 +774,7 @@ export function inquiryCommand(args: string[]): void {
   }
 
   if (sub === 'deck') {
-    const sdiScore = parseInt(parseFlag(args, '--sdi') || '85', 10)
+    const sdiScore = numFlag(parseFlag(args, '--sdi'), '--sdi', 85, { int: true })
     const dummyMetrics = calculateInquiryMetrics({
       lab,
       trials: [
@@ -814,7 +815,7 @@ export function inquiryCommand(args: string[]): void {
   }
 
   // Default: evaluation
-  const votatRigor = parseFloat(parseFlag(args, '--vri') || '1.0')
+  const votatRigor = numFlag(parseFlag(args, '--vri'), '--vri', 1.0)
   const reaction =
     (parseFlag(args, '--reaction') as
       | 'ignore'
@@ -1460,8 +1461,8 @@ export function systemDynamicsCommand(args: string[]): void {
   }
 
   if (sub === 'simulate') {
-    const steps = parseInt(parseFlag(args, '--steps') || '40', 10)
-    const multiplier = parseFloat(parseFlag(args, '--multiplier') || '1.0')
+    const steps = numFlag(parseFlag(args, '--steps'), '--steps', 40, { int: true })
+    const multiplier = numFlag(parseFlag(args, '--multiplier'), '--multiplier', 1.0)
     const primaryFlow = scenario.flows[0]?.id
     const flowMultipliers: Record<string, number> = {}
     if (primaryFlow) {
@@ -1490,7 +1491,7 @@ export function systemDynamicsCommand(args: string[]): void {
   }
 
   if (sub === 'deck') {
-    const sdi = parseInt(parseFlag(args, '--sdi') || '85', 10)
+    const sdi = numFlag(parseFlag(args, '--sdi'), '--sdi', 85, { int: true })
     const mockEvaluation = {
       sfdr: sdi,
       flia: sdi,
