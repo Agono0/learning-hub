@@ -27,10 +27,24 @@ async function shot(page: Page, name: string, theme: Theme) {
   await page.screenshot({ path: path.join(OUT, `final-${name}-${theme}.png`) })
 }
 
-test.beforeEach(async ({ context }) => {
+test.beforeEach(async ({ page, context }) => {
   fs.mkdirSync(OUT, { recursive: true })
   await context.addInitScript(() => {
     window.localStorage.setItem('lh-onboarding-dismissed', '1')
+  })
+  // The fixture DB settings row defaults to theme 'dark' and ThemeSync
+  // re-applies it when the settings query resolves — on a cold CI shard that
+  // override can land inside a light shot's assert window. Pin the persisted
+  // theme to 'light' (the first shot each route test takes); the single
+  // override then either agrees with the forced theme or fires before the
+  // dark shot toggles it. The onboarding test registers its own /api/settings
+  // route, which wins over this one (last registered route matches first).
+  await page.route('**/api/settings', async (route) => {
+    if (route.request().method() !== 'GET') return route.continue()
+    const res = await route.fetch()
+    const json = (await res.json()) as { settings?: Record<string, unknown> }
+    json.settings = { ...(json.settings ?? {}), theme: 'light' }
+    return route.fulfill({ response: res, json })
   })
 })
 

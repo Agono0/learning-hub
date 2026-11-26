@@ -17,6 +17,7 @@ on:
       - 'packages/**'
       - 'scripts/tauri-*.mjs'
       - 'scripts/serve-static.mjs'
+      - 'scripts/vendor-sqlite-wasm.mjs'
       - 'apps/web/next.config.ts'
       - 'package.json'
       - 'package-lock.json'

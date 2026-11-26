@@ -1270,6 +1270,18 @@ pub fn apply_patch_bundle_internal(
 /// the path is unsafe, or the file does not exist — every one of those cases
 /// means "fall back to the bundled assets", not "error out the webview".
 pub fn lookup_in_active_slot(base_dir: &Path, rel_path: &str) -> Option<Vec<u8>> {
+    // The export sets trailingSlash: true (apps/web/next.config.ts), so the
+    // webview asks for directory routes WITH the slash ("courses/"). Strip it
+    // BEFORE the unsafe-path check: its empty-segment rule would reject every
+    // slash route, and the serving seam's hard 404 for complete slots would
+    // then break in-app navigation after an OTA update. The root resolves to
+    // index.html here too (lib.rs already maps it, this is defense in depth).
+    let rel_path = rel_path.trim_end_matches('/');
+    let rel_path = if rel_path.is_empty() {
+        "index.html"
+    } else {
+        rel_path
+    };
     if is_unsafe_rel_path(rel_path) {
         return None;
     }
@@ -1290,6 +1302,23 @@ pub fn lookup_in_active_slot(base_dir: &Path, rel_path: &str) -> Option<Vec<u8>>
         return fs::read(html).ok();
     }
     None
+}
+
+/// True when the active slot carries a complete installed export.
+///
+/// Both slot-fill paths (`download_to_inactive_slot` and
+/// `apply_patch_bundle_internal`) write every manifest file and the slot
+/// manifest LAST, so the manifest's presence marks the slot as complete.
+/// The serving seam (`serve_slot_protocol` in lib.rs) uses this to decide
+/// whether a lookup miss means "file deleted in the current build" (complete
+/// slot → 404) or "no OTA payload installed yet" (incomplete/absent slot →
+/// fall back to the bundled export). Without the distinction, the bundle
+/// fallback resurrects files the new build deliberately removed.
+pub fn active_slot_is_complete(base_dir: &Path) -> bool {
+    match active_slot(base_dir) {
+        Ok(slot) => slot_manifest_path(base_dir, slot).is_file(),
+        Err(_) => false,
+    }
 }
 
 // ─── Signature-verified manifest registry ───────────────────────────────────
@@ -2192,6 +2221,63 @@ mod slot_tests {
     }
 
     #[test]
+    fn lookup_resolves_trailing_slash_routes_to_directory_index() {
+        // Regression: the export runs trailingSlash: true, so the webview
+        // requests "courses/" — the empty-segment path rule used to reject
+        // these, and a complete slot would then serve the hard 404 for every
+        // in-app navigation after an OTA update.
+        let base = temp_base();
+        let (m1, bytes1) = test_manifest(vec![
+            file_entry("index.html", b"root"),
+            file_entry("courses/index.html", b"courses-slotted"),
+            file_entry("review.html", b"review-slotted"),
+        ]);
+        download_to_inactive_slot(&base, &m1, &bytes1, "https://example.com/rel", |f| {
+            Ok(match f.path.as_str() {
+                "index.html" => b"root".to_vec(),
+                "courses/index.html" => b"courses-slotted".to_vec(),
+                "review.html" => b"review-slotted".to_vec(),
+                _ => b"".to_vec(),
+            })
+        })
+        .unwrap();
+        promote_inactive_slot(&base).unwrap();
+        assert_eq!(
+            lookup_in_active_slot(&base, "courses/"),
+            Some(b"courses-slotted".to_vec())
+        );
+        assert_eq!(
+            lookup_in_active_slot(&base, "review/"),
+            Some(b"review-slotted".to_vec())
+        );
+        assert_eq!(lookup_in_active_slot(&base, ""), Some(b"root".to_vec()));
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn active_slot_is_complete_only_once_the_slot_manifest_lands() {
+        let base = temp_base();
+        // No pointer yet (first run): not complete — bundle fallback applies.
+        assert!(!active_slot_is_complete(&base));
+
+        let (m1, bytes1) = test_manifest(vec![file_entry("index.html", b"v1")]);
+        download_to_inactive_slot(&base, &m1, &bytes1, "https://example.com/rel", |f| {
+            Ok(if f.path == "index.html" {
+                b"v1".to_vec()
+            } else {
+                b"".to_vec()
+            })
+        })
+        .unwrap();
+        // Downloaded but not promoted: the ACTIVE slot is still unset.
+        assert!(!active_slot_is_complete(&base));
+
+        promote_inactive_slot(&base).unwrap();
+        assert!(active_slot_is_complete(&base));
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
     fn boot_counter_increments_and_rolls_back_after_max_misses() {
         let base = temp_base();
         // Boot 1..=MAX_BOOT_MISSES increment the counter, staying on slot A.
@@ -2693,6 +2779,42 @@ mod patch_tests {
 
         let status = list_current(&base).unwrap();
         assert_eq!(status.active_version.as_deref(), Some("20261125-chain05"));
+        fs::remove_dir_all(&base).ok();
+    }
+
+    /// Deletion-only release (CI now emits a ZERO-FILE patch bundle via
+    /// update-manifest.mjs' allowEmpty opt-in): the slot clear plus the target
+    /// manifest perform the deletion; every remaining file is reused unchanged
+    /// from the active slot. The empty archive must be accepted.
+    #[test]
+    fn deletion_only_patch_with_empty_zip_applies() {
+        let base = temp_base();
+        let (m1, bytes1) = manifest_for(
+            "20261121-del01",
+            vec![("a.txt", b"A1"), ("gone.txt", b"GONE")],
+        );
+        download_to_inactive_slot(&base, &m1, &bytes1, "https://example.com/rel", |f| {
+            Ok(match f.path.as_str() {
+                "a.txt" => b"A1".to_vec(),
+                _ => b"GONE".to_vec(),
+            })
+        })
+        .expect("v1 download");
+        promote_inactive_slot(&base).expect("v1 promote");
+
+        // v2 deletes gone.txt; a.txt is byte-identical — an EMPTY patch zip.
+        let (m2, bytes2) = manifest_for("20261122-del02", vec![("a.txt", b"A1")]);
+        let empty_patch = zip_bundle(&[]);
+        apply_patch_bundle(&base, &m1, &m2, &bytes2, &empty_patch).expect("empty patch applies");
+        promote_inactive_slot(&base).expect("v2 promote");
+
+        assert_eq!(
+            lookup_in_active_slot(&base, "a.txt"),
+            Some(b"A1".to_vec())
+        );
+        assert_eq!(lookup_in_active_slot(&base, "gone.txt"), None);
+        let status = list_current(&base).expect("status");
+        assert_eq!(status.active_version.as_deref(), Some("20261122-del02"));
         fs::remove_dir_all(&base).ok();
     }
 

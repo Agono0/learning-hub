@@ -151,10 +151,21 @@ child.on('exit', (code) => {
       }
     }
 
-    // Direct GitHub Release asset upload when running on CI
+    // Direct GitHub Release asset upload when running on CI.
+    // Publish targets are main (the stable `latest` sideload URL) and version
+    // tags ONLY: creating a release from a branch dispatch also creates a
+    // branch-named git tag, which collides with the branch name and pollutes
+    // the Releases page (this actually happened: releases+tags named after
+    // fix/* branches). Branch builds keep their APKs as workflow artifacts.
     if (env.GITHUB_ACTIONS && (env.GH_TOKEN || env.GITHUB_TOKEN)) {
-      const tag = env.GITHUB_REF_NAME === 'main' ? 'latest' : (env.GITHUB_REF_NAME ?? 'latest')
-      const filesToUpload = canonicalApks.length > 0 ? canonicalApks : apkFiles
+      const ref = env.GITHUB_REF_NAME ?? ''
+      const tag = ref === 'main' ? 'latest' : /^v\d/.test(ref) ? ref : null
+      if (tag === null) {
+        console.log(
+          `[tauri-android] ref '${ref}' is not a release target — skipping release upload (artifacts only)`,
+        )
+      }
+      const filesToUpload = tag === null ? [] : canonicalApks.length > 0 ? canonicalApks : apkFiles
       if (filesToUpload.length > 0) {
         try {
           console.log(`[tauri-android] publishing direct .apk assets to GitHub release '${tag}'...`)

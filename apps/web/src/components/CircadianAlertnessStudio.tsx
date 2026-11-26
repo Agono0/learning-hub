@@ -72,7 +72,15 @@ export function CircadianAlertnessStudio({
   const oscRightRef = useRef<OscillatorNode | null>(null)
   const gainNodeRef = useRef<GainNode | null>(null)
 
-  const currentHour = new Date().getHours()
+  // Client-only clock: resolving the hour during prerender would stamp the
+  // build machine's clock into the exported HTML, breaking the byte-identical
+  // export the OTA content-addressed manifest relies on (docs/updates.md).
+  // null until mounted → no live highlight in the static export; the real
+  // hour appears on hydration.
+  const [currentHour, setCurrentHour] = useState<number | null>(null)
+  useEffect(() => {
+    setCurrentHour(new Date().getHours())
+  }, [])
 
   // Simulate circadian alertness curve
   const circadianResult = useMemo(
@@ -207,7 +215,7 @@ export function CircadianAlertnessStudio({
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
               </span>
               <span className="text-xs font-semibold tracking-wide uppercase text-indigo-400">
-                Live Circadian Tracking · {currentHour}:00
+                Live Circadian Tracking{currentHour !== null ? ` · ${currentHour}:00` : ''}
               </span>
             </div>
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -626,7 +634,7 @@ export function CircadianAlertnessStudio({
                   <button
                     key={p.label}
                     type="button"
-                    onClick={() => addDose(p.mg, currentHour)}
+                    onClick={() => addDose(p.mg, currentHour ?? new Date().getHours())}
                     className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 p-2 text-left hover:bg-white/10 transition text-xs"
                   >
                     <span>

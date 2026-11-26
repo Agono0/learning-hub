@@ -16,6 +16,15 @@ import { Button, Panel, Badge, EpistemicNetworkHUD } from '@/ui'
 import { apiGet, apiSend } from '@/lib/transport'
 import type { EpistemicDiscourseModel, DiscourseUtterance } from '@learning-hub/core'
 
+/**
+ * Deterministic timestamp for the built-in demo discourse fixture. A constant
+ * (not `new Date()`) keeps the prerendered export byte-identical between
+ * builds of the same commit, which the OTA content-addressed manifest
+ * (scripts/update-manifest.mjs) relies on to skip unchanged nightlies and to
+ * keep hot-update patches empty for docs-only changes.
+ */
+const DEMO_FIXTURE_TIMESTAMP = '2026-01-01T09:00:00.000Z'
+
 export function EpistemicNetworkStudio() {
   const [activeTab, setActiveTab] = useState<'discourse' | 'network' | 'space' | 'gaps'>(
     'discourse',
@@ -92,7 +101,7 @@ export function EpistemicNetworkStudio() {
         unitId: 'unit_1',
         conversationId: 'conv_1',
         lineIndex: 0,
-        timestamp: new Date().toISOString(),
+        timestamp: DEMO_FIXTURE_TIMESTAMP,
         speaker: 'Learner',
         text: 'According to Amdahls Law, the theoretical speedup of a program using multiple processors is strictly bounded by the sequential fraction.',
         appliedCodes: ['code_domain_principle', 'code_causal_reasoning'],
@@ -102,7 +111,7 @@ export function EpistemicNetworkStudio() {
         unitId: 'unit_1',
         conversationId: 'conv_1',
         lineIndex: 1,
-        timestamp: new Date().toISOString(),
+        timestamp: DEMO_FIXTURE_TIMESTAMP,
         speaker: 'Tutor',
         text: 'How does your benchmark run on 16 threads compare with that predicted theoretical limit?',
         appliedCodes: ['code_empirical_evidence'],
@@ -112,7 +121,7 @@ export function EpistemicNetworkStudio() {
         unitId: 'unit_1',
         conversationId: 'conv_1',
         lineIndex: 2,
-        timestamp: new Date().toISOString(),
+        timestamp: DEMO_FIXTURE_TIMESTAMP,
         speaker: 'Learner',
         text: 'The throughput plateaued at 4.2x speedup because lock contention in the global heap allocator dominated the sequential portion.',
         appliedCodes: [
@@ -126,7 +135,7 @@ export function EpistemicNetworkStudio() {
         unitId: 'unit_1',
         conversationId: 'conv_1',
         lineIndex: 3,
-        timestamp: new Date().toISOString(),
+        timestamp: DEMO_FIXTURE_TIMESTAMP,
         speaker: 'Learner',
         text: 'Let me double check whether false sharing on cache lines could be distorting these thread latency metrics.',
         appliedCodes: ['code_metacognitive_check', 'code_counterfactual_critique'],
@@ -256,7 +265,7 @@ export function EpistemicNetworkStudio() {
       },
     ],
     overallMaturityScore: 78,
-    createdAt: new Date().toISOString(),
+    createdAt: DEMO_FIXTURE_TIMESTAMP,
   })
 
   // Initial Data Fetch

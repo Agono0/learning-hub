@@ -88,6 +88,16 @@ describe('update-manifest script (O1-07)', () => {
       const dir = await tempDir()
       await expect(hashTree(dir)).rejects.toThrow(/empty manifest/i)
     })
+
+    it('excludes version.json (per-build stamp would defeat the unchanged-build skip)', async () => {
+      const dir = await tempDir()
+      await writeFiles(dir, {
+        'index.html': '<html></html>',
+        'version.json': '{"version":"20261125-cb0da8f"}',
+      })
+      const files = await hashTree(dir)
+      expect(files.map((f) => f.path)).toEqual(['index.html'])
+    })
   })
 
   describe('generateManifest', () => {
@@ -149,6 +159,41 @@ describe('update-manifest script (O1-07)', () => {
       expect(names).toEqual(['CHANGELOG.md', 'index.html'])
       expect(Buffer.from(unzipped['index.html']).toString()).toContain('CHANGED')
       expect(Buffer.from(unzipped['CHANGELOG.md']).toString()).toContain('## v2')
+    })
+
+    it('emits an (empty-file) patch bundle for a deletion-only release', async () => {
+      // Deletions never appear in the changed-file list (the client reconciles
+      // them against the full manifest), so without special handling a
+      // deletion-only release would emit no patch and its clients could never
+      // take the delta path.
+      const dirV1 = await fixtureExport('v1')
+      const manifestV1 = await manifestFor(dirV1, '20261121-old1')
+      const manifestPath = path.join(await tempDir(), 'manifest-1.json')
+      await writeFile(manifestPath, JSON.stringify(manifestV1))
+
+      // New build: app.js DELETED, index.html byte-identical to v1.
+      const dirV2 = await tempDir()
+      await writeFiles(dirV2, {
+        'index.html': '<html>v=v1</html>',
+      })
+
+      const { manifest, patchArtifacts } = await generateManifest({
+        dir: dirV2,
+        version: '20261122-new1',
+        buildSha: 'def7654321',
+        minNativeVersion: '0.5.2',
+        fullPackageUrl: FULL_URL,
+        prev: [manifestPath],
+        createdAt: '2026-11-22T10:00:00.000Z',
+      })
+
+      expect(manifest.patches).toHaveLength(1)
+      expect(manifest.patches[0].fromVersion).toBe('20261121-old1')
+      expect(patchArtifacts).toHaveLength(1)
+      // The bundle is a valid zip carrying no files: the client's slot clear
+      // plus the full manifest perform the deletion on apply.
+      expect(Object.keys(unzipSync(patchArtifacts[0].bytes))).toEqual([])
+      expect(() => updateManifestSchema.parse(manifest)).not.toThrow()
     })
 
     it('caps patches at 5 previous manifests (O1-19 chain)', async () => {
