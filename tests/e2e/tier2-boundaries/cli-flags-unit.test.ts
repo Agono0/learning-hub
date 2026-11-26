@@ -27,11 +27,15 @@ describe('numFlag', () => {
 describe('limitFlag', () => {
   it('defaults and bounds', () => {
     expect(limitFlag(undefined, 20)).toBe(20)
+    expect(limitFlag('0', 20)).toBe(0)
     expect(limitFlag('1', 20)).toBe(1)
     expect(limitFlag('500', 20)).toBe(500)
-    expect(() => limitFlag('501', 20)).toThrow(FlagError)
-    expect(() => limitFlag('0', 20)).toThrow(FlagError)
+    expect(limitFlag('1000', 20)).toBe(1000)
+    expect(limitFlag('2000', 20)).toBe(2000)
+    expect(limitFlag('10000', 20)).toBe(10_000)
+    expect(() => limitFlag('10001', 20)).toThrow(FlagError)
     expect(() => limitFlag('-1', 20)).toThrow(FlagError)
     expect(() => limitFlag('2.5', 20)).toThrow(FlagError)
+    expect(() => limitFlag('abc', 20)).toThrow(FlagError)
   })
 })

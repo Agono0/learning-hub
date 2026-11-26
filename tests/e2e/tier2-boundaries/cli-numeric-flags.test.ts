@@ -11,7 +11,6 @@ describe('Tier 2: CLI numeric flag validation', () => {
   it.each([
     [['notes', 'list', '--limit', 'abc'], '--limit'],
     [['notes', 'list', '--limit', '-1'], '--limit'],
-    [['notes', 'list', '--limit', '0'], '--limit'],
     [['notes', 'list', '--limit', '1.5'], '--limit'],
     [['notes', 'list', '--limit', 'Infinity'], '--limit'],
     [['goals', 'list', '--limit', 'NaN'], '--limit'],
@@ -21,6 +20,11 @@ describe('Tier 2: CLI numeric flag validation', () => {
     expect(res.stderr).toContain(`error: ${flag} must be`)
     expect(res.stderr).not.toContain('    at ')
     expect(res.stdout).not.toContain('NaN')
+  })
+
+  it.each(['0', '1000', '2000'])('documented usage --limit %s still works', async (v) => {
+    const res = await runCli(['notes', 'list', '--limit', v], getActiveDbPath())
+    expect(res.exitCode).toBe(0)
   })
 
   it('valid limits still work', async () => {

@@ -50,12 +50,12 @@ export function numFlag(
   return n
 }
 
-/** Row-count flag: an integer in [1, max]. */
+/** Row-count flag: an integer in [0, max]. 0 is a valid "show none"; the DB layer caps at 10000. */
 export function limitFlag(
   raw: string | undefined,
   fallback: number,
-  max = 500,
+  max = 10_000,
   name = '--limit',
 ): number {
-  return numFlag(raw, name, fallback, { int: true, min: 1, max })
+  return numFlag(raw, name, fallback, { int: true, min: 0, max })
 }
