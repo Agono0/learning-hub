@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { expect, test } from '@playwright/test'
 
@@ -106,11 +106,20 @@ for (const mode of ['normal', 'reduced'] as const) {
 }
 
 test.describe('recorded navigation', () => {
-  test.use({
-    viewport: { width: 1280, height: 800 },
-    video: { mode: 'on', size: { width: 1280, height: 800 } },
-  })
-  test('today to review to decks through the sidebar', async ({ page }) => {
+  // Video cannot be switched on inside a describe via test.use, so this test records through an
+  // explicit context that mirrors the project's baseURL and service-worker setting.
+  test('today to review to decks through the sidebar', async ({ browser }, testInfo) => {
+    const context = await browser.newContext({
+      baseURL: testInfo.project.use.baseURL,
+      serviceWorkers: 'block',
+      viewport: { width: 1280, height: 800 },
+      recordVideo: { dir: path.join(OUT, 'video-tmp'), size: { width: 1280, height: 800 } },
+    })
+    await context.addInitScript(() => {
+      window.localStorage.setItem('lh-onboarding-dismissed', '1')
+      window.localStorage.setItem('lh-theme', 'dark')
+    })
+    const page = await context.newPage()
     await page.goto('/')
     await expect(page.locator('h1').first()).toBeVisible({ timeout: 60_000 })
     await page.waitForTimeout(1200)
@@ -120,8 +129,10 @@ test.describe('recorded navigation', () => {
     await page.getByRole('link', { name: /Decks/ }).first().click()
     await expect(page.locator('h1').first()).toBeVisible()
     await page.waitForTimeout(1200)
-    await page.close()
-    await page.video()?.saveAs(path.join(OUT, 'motion-nav.webm'))
+    const video = page.video()
+    await context.close()
+    await video?.saveAs(path.join(OUT, 'motion-nav.webm'))
+    rmSync(path.join(OUT, 'video-tmp'), { recursive: true, force: true })
   })
 })
 
