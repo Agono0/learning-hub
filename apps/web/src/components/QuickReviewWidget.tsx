@@ -127,7 +127,7 @@ export function QuickReviewWidget({ className }: QuickReviewWidgetProps) {
             <button
               type="button"
               onClick={() => setRevealed(true)}
-              className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-semibold text-neutral-600 hover:border-indigo-400 dark:border-(--hub-border) dark:text-secondary"
+              className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-semibold text-tertiary hover:border-indigo-400 dark:border-(--hub-border) dark:text-secondary"
             >
               <Timer className="h-3.5 w-3.5" /> Try recall, then reveal
             </button>
