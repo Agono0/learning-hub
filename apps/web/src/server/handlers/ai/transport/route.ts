@@ -62,10 +62,13 @@ async function buildPrompt(
       if (rawId === null) {
         return `Concept the learner was teaching: ${text('concept') || '(name the concept here)'}\n\nTeach-back transcript:\n[PASTE YOUR TEACH-BACK EXPLANATION HERE: no saved session was linked, so replace this line with what you explained, in your own words]`
       }
-      if (!/^[1-9]\d{0,14}$/.test(rawId)) {
+      // chat_sessions.id is an INTEGER PRIMARY KEY AUTOINCREMENT read back as a JS number, so
+      // every representable id is a positive safe integer. Sibling handlers accept Number()
+      // output (which also takes "1e3", "1.0", "0x10"); this one takes decimal digits only.
+      const sessionId = /^\d+$/.test(rawId) ? Number(rawId) : 0
+      if (!Number.isSafeInteger(sessionId) || sessionId <= 0) {
         throw new Error('sessionId must be a positive integer')
       }
-      const sessionId = Number(rawId)
       const session = getChatSession(sessionId)
       if (!session) throw new Error(`chat session ${sessionId} not found`)
       const transcript = ((session.messages as { role: string; content: string }[]) ?? [])

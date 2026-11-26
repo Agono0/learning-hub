@@ -116,6 +116,53 @@ describe('GET /api/ai/transport?feature=feynman-grader', () => {
   })
 })
 
+describe('sessionId boundary', () => {
+  it('treats every positive safe integer as a valid id, however many digits', async () => {
+    for (const id of ['1234567890123456', String(Number.MAX_SAFE_INTEGER)]) {
+      const res = await get(`?feature=feynman-grader&sessionId=${id}`)
+      expect(res.status, id).toBe(400)
+      const msg = JSON.stringify(await res.json())
+      expect(msg).toContain(`chat session ${id} not found`) // well-formed, just unknown
+      expect(msg).not.toContain('must be a positive integer')
+    }
+  })
+
+  it('accepts a zero-padded decimal id for an existing session', async () => {
+    const res = await get(`?feature=feynman-grader&sessionId=000${sessionId}`)
+    expect(res.status).toBe(200)
+    expect(((await res.json()) as Info).envelope.prompt).toContain('Synthetic learner line one.')
+  })
+})
+
+describe('sessionId validation through POST params', () => {
+  const viaPost = (id: string): Promise<Response> =>
+    post({ feature: 'feynman-grader', params: { sessionId: id } })
+
+  it('rejects malformed, zero, scientific, hex, whitespace and unsafe ids with 400', async () => {
+    for (const bad of ['', ' ', ' 5', '0', '-1', '1.5', '1e3', '0x10', 'abc', '9007199254740992']) {
+      const res = await viaPost(bad)
+      expect(res.status, `sessionId=${JSON.stringify(bad)}`).toBe(400)
+      expect(JSON.stringify(await res.json())).toContain('sessionId must be a positive integer')
+    }
+  })
+
+  it('lets a safe 16-digit id through to the missing-session refusal', async () => {
+    for (const id of ['1234567890123456', String(Number.MAX_SAFE_INTEGER)]) {
+      const res = await viaPost(id)
+      expect(res.status, id).toBe(400)
+      expect(JSON.stringify(await res.json())).toContain(`chat session ${id} not found`)
+    }
+  })
+
+  it('serves the real transcript for an existing id', async () => {
+    const res = await viaPost(String(sessionId))
+    expect(res.status).toBe(200)
+    expect(((await res.json()) as Info).envelope.prompt).toContain(
+      'Learner: Synthetic learner line one.',
+    )
+  })
+})
+
 describe('other literal GETs the pages issue stay unchanged', () => {
   it('discovery lists the features and provider status', async () => {
     const res = await get('')
