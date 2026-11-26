@@ -17,7 +17,7 @@
  */
 import type { CardContent, CardFormat } from './types'
 import { exerciseToText } from './practice/to-text'
-import { clozeSegments } from './cards'
+import { clozeSegments, replaceClozeMarkers } from './cards'
 
 /** One linter finding: Wozniak rule id, severity, message, optional fix. */
 export interface LintResult {
@@ -94,7 +94,7 @@ export function cardFrontText(content: CardContent): string {
   if (content.basic) return content.basic.front
   if (content.mcq) return content.mcq.question
   if (content.typein) return content.typein.question
-  if (content.cloze) return content.cloze.text.replace(/\{\{c\d+::.*?\}\}/g, '___')
+  if (content.cloze) return replaceClozeMarkers(content.cloze.text, () => '___')
   if (content.grammar) return content.grammar.sentence
   if (content.proof_step) return content.proof_step.theorem
   if (content.exercise) return content.exercise.prompt
