@@ -258,6 +258,9 @@ import * as calendarImport from '../server/handlers/calendar/import/route'
 import * as embodiedLearningRoute from '../server/handlers/embodied-learning/route'
 import * as implementationIntentionsRoute from '../server/handlers/implementation-intentions/route'
 import * as feedbackStudioRoute from '../server/handlers/feedback-studio/route'
+import * as elaborativeInterrogationRoute from '../server/handlers/elaborative-interrogation/route'
+import * as elaborativeInterrogationBankRoute from '../server/handlers/elaborative-interrogation/bank/route'
+import * as freeRecallRoute from '../server/handlers/free-recall/route'
 
 /** Request→Response function as produced by `withRoute` (context optional). */
 export type HubHandler = (req: Request, context?: unknown) => Promise<Response>
@@ -537,6 +540,9 @@ add('calendar/import', calendarImport)
 add('embodied-learning', embodiedLearningRoute)
 add('implementation-intentions', implementationIntentionsRoute)
 add('feedback-studio', feedbackStudioRoute)
+add('elaborative-interrogation', elaborativeInterrogationRoute)
+add('elaborative-interrogation/bank', elaborativeInterrogationBankRoute)
+add('free-recall', freeRecallRoute)
 
 /** A registry match: the handler plus the resolved `[id]` params. */
 export interface HubRouteMatch {

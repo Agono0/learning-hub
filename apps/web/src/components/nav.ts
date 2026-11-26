@@ -177,6 +177,8 @@ export const NAV: NavGroup[] = [
       { href: '/readiness', label: 'Exam readiness', icon: Target, shortLabel: 'Readiness' },
       { href: '/exam-prep', label: 'Exam prep', icon: CalendarClock, shortLabel: 'Prep' },
       { href: '/study-session', label: 'Study session', icon: ListFilter, shortLabel: 'Session' },
+      { href: '/elaborative-interrogation', label: 'Elaborative Interrogation', icon: Sparkles },
+      { href: '/free-recall', label: 'Free Recall', icon: Sparkles },
     ],
   },
   {

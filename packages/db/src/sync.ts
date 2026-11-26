@@ -50,6 +50,7 @@ const APPEND_ONLY_TABLES = new Set([
   'circadian_audio_sessions',
   'dialectic_arena_debates',
   'exposure_events',
+  'ei_attempts',
 ])
 
 const SKIP_TABLES = new Set([
