@@ -11,6 +11,7 @@
  */
 import { z } from 'zod'
 import { readJson, withRoute } from '@/lib/api'
+import { outboundFetch } from '@/server/bounded-fetch'
 import {
   createChannelProposal,
   decideChannelProposal,
@@ -226,7 +227,8 @@ export const POST = withRoute(async (req: Request) => {
     case 'fetch-manifest': {
       const transport = new HttpChannelTransport({
         baseUrl: body.hostBaseUrl,
-        fetchFn: (input, init) => fetch(input, init),
+        // Connect-time address pinning, like boundedFetchText; never the bare global fetch.
+        fetchFn: outboundFetch,
       })
       try {
         const manifest = await transport.fetchManifest(body.channelId, {

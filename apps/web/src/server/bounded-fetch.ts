@@ -180,6 +180,16 @@ function defaultFetch(): (url: string, init?: RequestInit) => Promise<Response> 
   return (u, i) => remoteFetch(u, i)
 }
 
+/**
+ * The outbound transport for handlers that give a fetch to a library (for example the share
+ * channel transport): the connect-time pinned fetch on a Node server (fail closed when it is not
+ * registered), the native bridge elsewhere. Resolved on every call so a later registration is seen.
+ * Never the bare global fetch: that would skip the address check on what the socket connects to.
+ */
+export function outboundFetch(url: string, init?: RequestInit): Promise<Response> {
+  return defaultFetch()(url, init)
+}
+
 export function setPinnedFetch(fn: FetchLike | null): void {
   ;(globalThis as Record<symbol, unknown>)[PINNED_KEY] = fn ?? undefined
 }
