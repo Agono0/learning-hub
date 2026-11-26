@@ -227,7 +227,7 @@ function Sidebar({ pathname }: { pathname: string | null }) {
                 className={`mb-0.5 flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors ${
                   active
                     ? 'nav-active font-medium text-indigo-600 dark:text-indigo-300'
-                    : 'text-neutral-600 hover:bg-neutral-100 dark:text-faint dark:hover:bg-(--hub-panel-2)'
+                    : 'text-tertiary hover:bg-neutral-100 dark:text-faint dark:hover:bg-(--hub-panel-2)'
                 }`}
               >
                 <Icon className="h-4 w-4 shrink-0" />
