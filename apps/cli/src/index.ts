@@ -27,6 +27,7 @@ import { goalsCommands } from './commands/goals'
 import { leaguesCommands } from './commands/leagues'
 import { leaguesRemoteCommands } from './commands/leagues-remote'
 import { notesCommands } from './commands/notes'
+import { tasksReportCommands } from './commands/tasks-reports'
 import { tasksCommands } from './commands/tasks'
 import { tasksOrganizeCommands } from './commands/tasks-organize'
 import { reviewCommands } from './commands/review'
@@ -165,6 +166,7 @@ const builtinCommands: RegisteredCommand[] = [
   // New domain commands over the shared repos (commands/goals.ts, commands/notes.ts)
   ...goalsCommands,
   ...leaguesCommands,
+  ...tasksReportCommands,
   ...leaguesRemoteCommands,
   ...notesCommands,
   ...tasksCommands,
