@@ -53,6 +53,9 @@ describe('Tier 1: task views, worklog, metrics and finish-day over CLI and MCP',
     expect((await cli('task-metrics', 'set', '2026-03-01', '--impact', '9')).exitCode).toBe(2)
     expect((await cli('task-metrics', 'set', '2026-03-01', '--energy', '0')).exitCode).toBe(2)
     expect((await cli('task-metrics', 'set', 'nope')).exitCode).toBe(2)
+    expect(
+      (await cli('task-metrics', 'list', '--from', '2026-03-05', '--to', '2026-03-01')).exitCode,
+    ).toBe(2)
 
     const fin = await cli('finish-day', '2026-03-01')
     expect(fin.exitCode).toBe(0)

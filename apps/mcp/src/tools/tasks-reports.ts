@@ -78,6 +78,9 @@ export const taskReportTools: RegisteredTool[] = [
     'Daily task metric records (impact, energy, reflection, counters) in an optional day range.',
     { from: realDay.optional(), to: realDay.optional() },
     ({ from, to }) => {
+      if (from !== undefined && to !== undefined && from > to) {
+        return json({ ok: false, error: 'from must not be after to' })
+      }
       const days = listMetricDays({ from, to })
       return json({ count: days.length, days })
     },

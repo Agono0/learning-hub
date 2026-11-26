@@ -140,10 +140,10 @@ function metricsDispatch(args: string[]): void {
   if (sub === 'list') {
     const rawFrom = flagValue(args, '--from')
     const rawTo = flagValue(args, '--to')
-    const days = listMetricDays({
-      from: rawFrom === undefined ? undefined : realDay(rawFrom, '--from'),
-      to: rawTo === undefined ? undefined : realDay(rawTo, '--to'),
-    })
+    const from = rawFrom === undefined ? undefined : realDay(rawFrom, '--from')
+    const to = rawTo === undefined ? undefined : realDay(rawTo, '--to')
+    if (from !== undefined && to !== undefined && from > to) usage('--from must not be after --to')
+    const days = listMetricDays({ from, to })
     if (days.length === 0) return console.log('No metric days recorded.')
     return console.log(
       panel(
@@ -207,7 +207,8 @@ export const tasksReportCommands: RegisteredCommand[] = [
   },
   {
     name: 'finish-day',
-    description: 'end-of-day pass: done, tracked, still due, auto-archive',
+    description:
+      'end-of-day pass: done, tracked, still due; also runs the auto-archive pass (writes)',
     usage: '[YYYY-MM-DD]',
     run: (a) => run('finish-day', a, finishDayDispatch),
   },
