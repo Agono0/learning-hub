@@ -7,6 +7,7 @@ import { communityItemSchema, filterContentSafety, makeRoomCode } from '@learnin
 import { BOSS_ROSTER } from '@learning-hub/core/boss'
 import { isOwnBossKey } from './raid-validation'
 import { createLeague, signerIdFromPubKey } from '@learning-hub/core/leagues'
+import { createLeague } from '@learning-hub/core/leagues'
 import { BossRaid } from './boss-raid'
 import { LeagueRoom } from './league-room'
 import { StudyRoom } from './study-room'
@@ -165,9 +166,6 @@ export default {
         // A key that is already registered keeps its stored id (no rebinding of existing rows);
         // a new key gets an id derived from the whole key, so keys no longer collide.
         let userId = await deriveUserId(body.pubkey)
-        // Fingerprint, not a key-text prefix: every P-256 SPKI key shares the same
-        // first 16 base64 characters, so a prefix would give all users one id.
-        let userId = await signerIdFromPubKey(body.pubkey)
         const nowIso = new Date().toISOString()
         const { clean: cleanAlias } = filterContentSafety(body.alias.slice(0, 40))
 
