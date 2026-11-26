@@ -10,12 +10,14 @@ import { describe, expect, it } from 'vitest'
 
 const src = readFileSync(join(__dirname, '../app/review/page.tsx'), 'utf8')
 
+const flat = src.replace(/\s+/g, ' ')
+
 describe('review card faces use dir="auto"', () => {
   it('basic front and back, cloze text, typein and mcq questions', () => {
-    expect(src).toContain('<div dir="auto" className="text-xl font-medium">{front}</div>')
-    expect(src).toContain('<div dir="auto">{content.basic.back}</div>')
-    expect(src).toContain('<div dir="auto" className="text-xl leading-loose">')
-    const questions = src.match(
+    expect(flat).toContain('<div dir="auto" className="text-xl font-medium">{front}</div>')
+    expect(flat).toContain('<div dir="auto">{content.basic.back}</div>')
+    expect(flat).toContain('<div dir="auto" className="text-xl leading-loose">')
+    const questions = flat.match(
       /<div dir="auto" className="text-xl font-medium">\{question\}<\/div>/g,
     )
     expect(questions?.length).toBe(2)
