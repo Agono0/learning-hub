@@ -321,7 +321,7 @@ export function SocraticDialecticStudio({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 max-w-full">
           {/* Case Selector */}
           <select
             value={selectedCaseSlug}
@@ -358,7 +358,7 @@ export function SocraticDialecticStudio({
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex border-b border-white/10 bg-slate-900/40 px-6 text-xs font-semibold text-tertiary">
+      <div className="flex border-b border-white/10 bg-slate-900/40 px-6 text-xs font-semibold text-tertiary overflow-x-auto [&>button]:shrink-0 [&>button]:whitespace-nowrap">
         <button
           type="button"
           onClick={() => setActiveTab('arena')}

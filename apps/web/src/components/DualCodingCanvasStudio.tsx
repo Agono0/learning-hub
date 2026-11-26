@@ -810,7 +810,7 @@ export function DualCodingCanvasStudio({
 
       {/* Footer Actions */}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-neutral-100 dark:border-neutral-800">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 max-w-full">
           {decksData?.decks && (
             <select
               value={selectedDeckId}

@@ -139,6 +139,26 @@ jobs:
         if: github.event_name != 'pull_request'
         run: npm run build
 
+      # Production render pass: serve the bundle built above with `next start` and rerun the
+      # actual-route visual spec (same strict zero-error assertions) into a separate artifact.
+      - name: Production-build UI pass
+        if: github.event_name != 'pull_request'
+        run: npx playwright test visual-redesign.spec.ts
+        working-directory: apps/web
+        env:
+          UI_SMOKE_PORT: 3101
+          LH_PROD: '1'
+          VISUAL_OUT: visual-out-prod
+
+      - name: Upload production-build screenshots
+        if: always() && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-screenshots-prod
+          path: apps/web/visual-out-prod/
+          if-no-files-found: ignore
+          retention-days: 14
+
       # Synthetic, isolated, no network egress: the built server must register the pinned
       # fetch from src/instrumentation.ts and must refuse outbound fetches when it is missing.
       - name: Pinned fetch server smoke

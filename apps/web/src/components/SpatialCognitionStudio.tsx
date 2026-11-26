@@ -8,7 +8,7 @@
  * 4. Free Spaced Repetition Scheduler (FSRS-6) spatial retention deck
  */
 
-import React, { useId, useMemo, useState } from 'react'
+import React, { useEffect, useId, useMemo, useState } from 'react'
 import {
   calculateMentalRotationVelocity,
   calculateSpatialVisualizationMetrics,
@@ -51,9 +51,12 @@ export function SpatialCognitionStudio() {
   const [selectedShapeId, setSelectedShapeId] = useState<string>('sm_canonical_alpha')
   const [leftEuler, setLeftEuler] = useState<RotationEuler>({ pitch: 15, yaw: 30, roll: 0 })
   const [rightEuler, setRightEuler] = useState<RotationEuler>({ pitch: 15, yaw: 90, roll: 0 })
-  const [trial, setTrial] = useState<ShepardMetzlerTrial | null>(() =>
-    generateShepardMetzlerTrial('sm_canonical_alpha', 60, false),
-  )
+  // The first trial picks a random rotation axis, so it is generated after mount; building it
+  // in the initializer made the server HTML differ from the client (hydration mismatch).
+  const [trial, setTrial] = useState<ShepardMetzlerTrial | null>(null)
+  useEffect(() => {
+    setTrial((t) => t ?? generateShepardMetzlerTrial('sm_canonical_alpha', 60, false))
+  }, [])
   const [trialStartTime, setTrialStartTime] = useState<number | null>(null)
   const [lastAttempt, setLastAttempt] = useState<RotationPerformanceAttempt | null>(null)
   const [attemptsHistory, setAttemptsHistory] = useState<RotationPerformanceAttempt[]>([])
@@ -228,7 +231,7 @@ export function SpatialCognitionStudio() {
               </div>
 
               {/* Stimulus Shape Selector */}
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 max-w-full">
                 <span className="text-xs text-secondary">Stimulus:</span>
                 <select
                   value={selectedShapeId}
@@ -366,7 +369,7 @@ export function SpatialCognitionStudio() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3 max-w-full">
                 <Button
                   variant="secondary"
                   className="flex items-center gap-2 px-4 py-2"
@@ -437,7 +440,7 @@ export function SpatialCognitionStudio() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 max-w-full">
                 <Button
                   variant="secondary"
                   className="text-xs h-8 px-3"
@@ -839,7 +842,7 @@ export function SpatialCognitionStudio() {
                       <span className="text-[11px] text-secondary">
                         Rate Mental Retrieval Difficulty:
                       </span>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2 max-w-full">
                         {['Again (1)', 'Hard (2)', 'Good (3)', 'Easy (4)'].map((rate, rIdx) => (
                           <Button
                             key={rate}

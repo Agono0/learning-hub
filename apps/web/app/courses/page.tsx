@@ -23,12 +23,12 @@ import {
 import { curriculumApi, curriculumKeys, type CatalogCourse } from '@/lib/curriculum-api'
 import { apiGet, apiSend } from '@/lib/transport'
 import {
+  BentoTile,
   Badge,
   Callout,
   EmptyState,
   PageHeader,
   Panel,
-  ProgressBar,
   ProgressRing,
   Sheet,
   Skeleton,
@@ -95,33 +95,70 @@ function CourseCard({ course }: { course: CatalogCourse }) {
   )
 }
 
-function ContinueCard({ course }: { course: CatalogCourse }) {
+/** The courses hero: the one lesson to resume, large, with progress as a number and a ring. */
+function ContinueHero({ course }: { course: CatalogCourse }) {
+  const pct = Math.round(course.progress.fraction * 100)
   return (
-    <Panel className="border-indigo-500/30 bg-gradient-to-br from-indigo-600/10 to-transparent">
-      <div className="flex items-start gap-3">
-        <span className="text-3xl" aria-hidden>
-          {course.emoji ?? '📘'}
-        </span>
-        <div className="min-w-0 flex-1 space-y-1">
-          <div className="text-xs font-medium uppercase tracking-wide text-indigo-600 dark:text-indigo-300">
-            Continue learning
-          </div>
-          <div className="font-semibold">{course.title}</div>
-          {course.nextLesson && (
-            <div className="truncate text-sm text-tertiary">Next: {course.nextLesson.title}</div>
-          )}
-          <ProgressBar value={course.progress.fraction} label="Course progress" className="mt-2" />
-        </div>
+    <BentoTile
+      hero
+      size="lg"
+      tall
+      aria-labelledby="courses-continue-title"
+      className="flex flex-col"
+    >
+      <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-ac-text">
+        <span aria-hidden>{course.emoji ?? '📘'}</span>
+        Continue learning · {course.title}
+      </p>
+      <h2
+        id="courses-continue-title"
+        className="mt-3 max-w-[24ch] text-balance text-3xl font-bold leading-tight tracking-tight text-strong sm:text-4xl"
+      >
+        {course.nextLesson ? course.nextLesson.title : course.title}
+      </h2>
+      <div className="mt-4 flex items-center gap-4">
+        <ProgressRing
+          value={course.progress.fraction}
+          label={`${course.title}: ${pct}% complete`}
+        />
+        <p className="text-sm text-secondary">
+          <span className="tnum text-lg font-semibold text-strong">
+            {course.progress.completed}/{course.progress.total}
+          </span>{' '}
+          lessons done
+        </p>
       </div>
       {course.nextLesson && (
-        <Link
-          href={`/courses/lesson?id=${course.nextLesson.id}`}
-          className="btn w-full justify-center sm:w-auto"
-        >
-          <Play className="h-4 w-4" /> Resume
-        </Link>
+        <div className="mt-auto pt-6">
+          <Link
+            href={`/courses/lesson?id=${course.nextLesson.id}`}
+            className="btn h-12 px-6 text-base"
+          >
+            <Play className="h-4 w-4" /> Resume
+          </Link>
+        </div>
       )}
-    </Panel>
+    </BentoTile>
+  )
+}
+
+function CourseStatTile({
+  label,
+  value,
+  detail,
+  className,
+}: {
+  label: string
+  value: number
+  detail: string
+  className?: string
+}) {
+  return (
+    <BentoTile size="stat" className={className}>
+      <p className="text-xs font-medium uppercase tracking-wider text-tertiary">{label}</p>
+      <p className="mt-1 tnum text-4xl font-bold text-strong">{value}</p>
+      <p className="mt-1 text-xs text-tertiary">{detail}</p>
+    </BentoTile>
   )
 }
 
@@ -336,7 +373,19 @@ export default function CoursesPage() {
 
       {active && (
         <ClayIn delayS={staggerDelay(1)}>
-          <ContinueCard course={active} />
+          <div className="bento">
+            <ContinueHero course={active} />
+            <CourseStatTile
+              label="Lessons done"
+              value={(courses ?? []).reduce((n, c) => n + c.progress.completed, 0)}
+              detail="across every course"
+            />
+            <CourseStatTile
+              label="In progress"
+              value={(courses ?? []).filter((c) => c.progress.completed > 0 && c.nextLesson).length}
+              detail={`of ${(courses ?? []).length} courses · ${(courses ?? []).filter((c) => c.certified).length} certified`}
+            />
+          </div>
         </ClayIn>
       )}
 

@@ -23,9 +23,12 @@ const projectScopeSchema = z
   .union([z.enum(['all', 'inbox']), z.coerce.number().int().positive()])
   .default('all')
 
-/** Parent scopes: `'all'` → any level, `'top'` → top-level only, id → subtasks of one. */
+/**
+ * Parent scopes: `'all'` (alias `'any'`, which six task pages already send) → any level,
+ * `'top'` → top-level only, id → subtasks of one.
+ */
 const parentScopeSchema = z
-  .union([z.enum(['all', 'top']), z.coerce.number().int().positive()])
+  .union([z.enum(['all', 'any', 'top']), z.coerce.number().int().positive()])
   .default('top')
 
 const listQuerySchema = z.object({
@@ -45,13 +48,13 @@ function toProjectScope(v: z.infer<typeof projectScopeSchema>): number | null | 
 
 /** `all|top|<id>` query value → repo scope (`'any'` | null | id). */
 function toParentScope(v: z.infer<typeof parentScopeSchema>): number | null | 'any' {
-  if (v === 'all') return 'any'
+  if (v === 'all' || v === 'any') return 'any'
   if (v === 'top') return null
   return v
 }
 
 /** GET /api/tasks — the SP task list (open top-level tasks by default). */
-export async function GET(req: Request) {
+export const GET = withRoute(async (req: Request) => {
   const q = readQuery(req, listQuerySchema)
   const tasks = listTaskItems({
     projectId: toProjectScope(q.projectId),
@@ -61,7 +64,7 @@ export async function GET(req: Request) {
     limit: q.limit,
   })
   return Response.json({ tasks })
-}
+})
 
 /** POST /api/tasks — create a task (201 with the persisted core model). */
 export const POST = withRoute(async (req: Request) => {

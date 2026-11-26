@@ -291,6 +291,12 @@ function DistractionAppsPanel() {
 }
 
 export default function FocusPage() {
+  // Hydration-safe press scale: motionOK() differs between server and client, and framer-motion
+  // adds tabIndex when whileTap is set, which mismatched the server HTML. Opt in after mount.
+  const [tapOk, setTapOk] = useState(false)
+  useEffect(() => {
+    setTapOk(motionOK())
+  }, [])
   const qc = useQueryClient()
   const { toast } = useToast()
 
@@ -678,7 +684,7 @@ export default function FocusPage() {
           <div className="flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-neutral-100/50 p-1 dark:border-(--hub-border) dark:bg-(--hub-panel)">
             <motion.button
               type="button"
-              whileTap={motionOK() ? { scale: 0.97 } : undefined}
+              whileTap={tapOk ? { scale: 0.97 } : undefined}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 inline-flex items-center ${
                 activeTab === 'standard'
                   ? 'bg-hub-accent/10 text-hub-accent ring-2 ring-(--ac-strong)'
@@ -690,7 +696,7 @@ export default function FocusPage() {
             </motion.button>
             <motion.button
               type="button"
-              whileTap={motionOK() ? { scale: 0.97 } : undefined}
+              whileTap={tapOk ? { scale: 0.97 } : undefined}
               className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 ${
                 activeTab === 'max'
                   ? 'bg-hub-accent/10 text-hub-accent ring-2 ring-(--ac-strong)'

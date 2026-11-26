@@ -61,7 +61,7 @@ export function InterleavingHUD({
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600/10 text-ac-text">
             <Shuffle className="h-5 w-5" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h3 className="text-sm font-semibold text-strong">
               Interleaving &amp; Discrimination HUD
             </h3>

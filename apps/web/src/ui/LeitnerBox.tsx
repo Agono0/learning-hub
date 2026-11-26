@@ -111,8 +111,40 @@ export function LeitnerProgression({
         </div>
       </div>
 
-      {/* Conveyor grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      {/* Compact strip (below sm): the same five boxes as one row of chips, each with its count and a
+          due marker, so the card list stays near the top. Same selection as the full tiles. */}
+      <div className="grid grid-cols-5 gap-1.5 sm:hidden" role="group" aria-label="Leitner boxes">
+        {boxes.map((box) => {
+          const isSelected = selectedLevel === box.level
+          const accent = TIER_ACCENTS[box.level] ?? TIER_ACCENTS[1]
+          const due = box.dueCount ?? 0
+          return (
+            <button
+              key={box.level}
+              type="button"
+              aria-pressed={isSelected}
+              aria-label={`Box ${box.level}, ${box.title}: ${box.count} cards${due > 0 ? `, ${due} due` : ''}, every ${box.interval}`}
+              onClick={() => onSelectBox?.(box.level)}
+              className={cx(
+                'flex min-h-11 flex-col items-center justify-center rounded-lg border px-1 py-1.5 text-center',
+                'focus:outline-none focus-visible:ring-2',
+                accent.ring,
+                accent.border,
+                isSelected ? 'bg-neutral-900/10 dark:bg-neutral-100/15' : 'bg-neutral-500/5',
+              )}
+            >
+              <span className={cx('text-[11px] font-semibold', accent.text)}>B{box.level}</span>
+              <span className="tnum text-base font-bold leading-tight">{box.count}</span>
+              <span className="text-[10px] text-danger-text">
+                {due > 0 ? `${due} due` : '\u00a0'}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Conveyor grid (sm and up) */}
+      <div className="hidden grid-cols-2 gap-3 sm:grid md:grid-cols-3 lg:grid-cols-5">
         {boxes.map((box) => {
           const isSelected = selectedLevel === box.level
           const accent = TIER_ACCENTS[box.level] ?? TIER_ACCENTS[1]

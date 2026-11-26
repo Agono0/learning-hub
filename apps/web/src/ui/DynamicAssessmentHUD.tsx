@@ -64,8 +64,8 @@ export function DynamicAssessmentHUD({
           <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
             <Compass className="w-5 h-5" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-semibold uppercase tracking-wider text-secondary">
                 Dynamic Assessment Telemetry
               </span>
@@ -101,7 +101,7 @@ export function DynamicAssessmentHUD({
             </span>
             <span className="text-[11px] text-secondary">pre-test</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">Independent baseline capacity</p>
+          <p className="text-[10px] text-tertiary line-clamp-2">Independent baseline capacity</p>
         </div>
 
         {/* Potential Developmental Level (PDL) */}
@@ -116,7 +116,7 @@ export function DynamicAssessmentHUD({
             </span>
             <span className="text-[11px] text-secondary">assisted</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">Mediated capacity ceiling</p>
+          <p className="text-[10px] text-tertiary line-clamp-2">Mediated capacity ceiling</p>
         </div>
 
         {/* ZPD Bandwidth */}
@@ -131,7 +131,9 @@ export function DynamicAssessmentHUD({
             </span>
             <span className="text-[11px] text-secondary">span</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">Target zone for accelerated growth</p>
+          <p className="text-[10px] text-tertiary line-clamp-2">
+            Target zone for accelerated growth
+          </p>
         </div>
 
         {/* Learning Potential Score (LPS) */}
@@ -146,7 +148,7 @@ export function DynamicAssessmentHUD({
             </span>
             <span className="text-[11px] text-secondary">Budoff gain</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">Modifiability gain ratio</p>
+          <p className="text-[10px] text-tertiary line-clamp-2">Modifiability gain ratio</p>
         </div>
       </div>
 

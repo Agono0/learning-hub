@@ -669,7 +669,7 @@ export function OntologicalShiftStudio() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 max-w-full">
               <Button variant="secondary" onClick={() => setTab('attribute_crucible')}>
                 Back to Attributes
               </Button>
@@ -796,7 +796,7 @@ export function OntologicalShiftStudio() {
                   Decentralized Emergence Simulation (Step {simStep + 1}/100)
                 </span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 max-w-full">
                 <button
                   type="button"
                   onClick={() => setIsSimRunning((p) => !p)}
@@ -885,7 +885,7 @@ export function OntologicalShiftStudio() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 max-w-full">
               <Button variant="secondary" onClick={() => setTab('tree_remapping')}>
                 Back to Tree
               </Button>
@@ -991,7 +991,7 @@ export function OntologicalShiftStudio() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 max-w-full">
               <Button variant="secondary" onClick={handleCopyDeck}>
                 <Copy className="w-3.5 h-3.5 mr-1.5 inline" />
                 {isDeckCopied ? 'Deck Copied!' : 'Copy Cards'}

@@ -78,8 +78,8 @@ export function ProductiveFailureHUD({
           <div className="p-2 rounded-lg bg-amber-500/10 text-status-warning-text dark:text-status-warning-text">
             <Lightbulb className="w-5 h-5" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-semibold uppercase tracking-wider text-secondary">
                 Productive Failure Telemetry
               </span>
@@ -115,7 +115,7 @@ export function ProductiveFailureHUD({
             </span>
             <span className="text-[11px] text-secondary">overall</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">Synergistic learning efficiency</p>
+          <p className="text-[10px] text-tertiary line-clamp-2">Synergistic learning efficiency</p>
         </div>
 
         {/* Generation Diversity Index (GDI) */}
@@ -130,7 +130,7 @@ export function ProductiveFailureHUD({
             </span>
             <span className="text-[11px] text-secondary">breadth</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">Novel representations explored</p>
+          <p className="text-[10px] text-tertiary line-clamp-2">Novel representations explored</p>
         </div>
 
         {/* Impasse Sensitivity Score (ISS) */}
@@ -145,7 +145,7 @@ export function ProductiveFailureHUD({
             </span>
             <span className="text-[11px] text-secondary">awareness</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">Boundary gap articulation</p>
+          <p className="text-[10px] text-tertiary line-clamp-2">Boundary gap articulation</p>
         </div>
 
         {/* Adaptive Transfer Score (ATS) */}
@@ -160,9 +160,17 @@ export function ProductiveFailureHUD({
             </span>
             <span className="text-[11px] text-secondary">deep</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">Near, medium, far invariance</p>
+          <p className="text-[10px] text-tertiary line-clamp-2">Near, medium, far invariance</p>
         </div>
       </div>
+
+      {metrics.productiveFailureIndex === 0 &&
+        metrics.impasseSensitivityScore === 0 &&
+        metrics.adaptiveTransferScore === 0 && (
+          <p className="text-[11px] text-secondary" data-testid="pf-zero-state">
+            No attempts recorded yet. Scores read 0 until you generate solutions and run the probes.
+          </p>
+        )}
 
       {/* Progress & Consolidation Bar */}
       <div className="space-y-2 pt-1 border-t border-neutral-200 dark:border-(--hub-border)">

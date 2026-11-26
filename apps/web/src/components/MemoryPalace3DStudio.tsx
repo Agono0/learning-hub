@@ -620,7 +620,7 @@ export function MemoryPalace3DStudio({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 max-w-full">
           {/* Architectural Theme Selector */}
           <select
             value={archetype}

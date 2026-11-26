@@ -46,6 +46,8 @@ import { claySpring } from '@/lib/motion'
 // restructure (docs/ux-audit.md P1-2); existing saved arrays predate it, so a
 // one-time key bump re-applies the calmer defaults instead of showing the new
 // group expanded for everyone.
+const DAILY_LEARN_HREFS = ['/', '/review', '/courses', '/decks', '/reading', '/planner', '/metrics']
+
 const COLLAPSED_STORAGE_KEY = 'lh-sidebar-collapsed-v2'
 
 function Brand({ compact = false }: { compact?: boolean }) {
@@ -178,7 +180,7 @@ function Sidebar({ pathname }: { pathname: string | null }) {
   }
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-20 hidden w-56 print:hidden flex-col border-r border-neutral-200 bg-white/80 backdrop-blur lg:flex dark:border-(--hub-border) dark:bg-(--hub-sunken)/90">
+    <aside className="fixed inset-y-0 left-0 z-20 hidden w-60 print:hidden flex-col border-r border-neutral-200 bg-white/80 backdrop-blur lg:flex dark:border-(--hub-border) dark:bg-(--hub-sunken)/90">
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <Brand />
         <span className="flex items-center gap-1">
@@ -208,6 +210,31 @@ function Sidebar({ pathname }: { pathname: string | null }) {
         {NAV.map((section) => {
           const hasActiveItem = section.items.some((item) => isActive(pathname, item.href))
           const isGroupCollapsed = collapsed.includes(section.group) && !hasActiveItem
+          // Daily core of the Learn group stays visible; the long tail folds into one disclosure.
+          const split = section.group === 'Learn'
+          const daily = split
+            ? section.items.filter((i) => DAILY_LEARN_HREFS.includes(i.href))
+            : section.items
+          const rest = split ? section.items.filter((i) => !DAILY_LEARN_HREFS.includes(i.href)) : []
+          const renderItem = (item: (typeof section.items)[number]) => {
+            const active = isActive(pathname, item.href)
+            const Icon = item.icon
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? 'page' : undefined}
+                className={`mb-0.5 flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors ${
+                  active
+                    ? 'nav-active font-medium text-indigo-600 dark:text-indigo-300'
+                    : 'text-tertiary hover:bg-neutral-100 dark:text-faint dark:hover:bg-(--hub-panel-2)'
+                }`}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                {item.label}
+              </Link>
+            )
+          }
           return (
             <div key={section.group}>
               <button
@@ -232,25 +259,24 @@ function Sidebar({ pathname }: { pathname: string | null }) {
               </button>
               {!isGroupCollapsed && (
                 <div className="mt-0.5">
-                  {section.items.map((item) => {
-                    const active = isActive(pathname, item.href)
-                    const Icon = item.icon
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        aria-current={active ? 'page' : undefined}
-                        className={`mb-0.5 flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors ${
-                          active
-                            ? 'bg-indigo-600/10 font-medium text-indigo-600 dark:text-indigo-300'
-                            : 'text-neutral-600 hover:bg-neutral-100 dark:text-faint dark:hover:bg-(--hub-panel-2)'
-                        }`}
-                      >
-                        <Icon className="h-4 w-4 shrink-0" />
-                        {item.label}
-                      </Link>
-                    )
-                  })}
+                  {daily.map(renderItem)}
+                  {rest.length > 0 && (
+                    <details
+                      className="group/more"
+                      open={rest.some((i) => isActive(pathname, i.href))}
+                    >
+                      <summary className="[@media(pointer:coarse)]:min-h-11 mb-0.5 flex cursor-pointer list-none items-center justify-between rounded-lg px-2 py-1.5 text-sm text-tertiary transition-colors hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2) [&::-webkit-details-marker]:hidden">
+                        <span>More ways to learn</span>
+                        <span className="flex items-center gap-1">
+                          <span className="rounded-full bg-neutral-200/70 px-1.5 text-[9px] tabular-nums dark:bg-(--hub-border)">
+                            {rest.length}
+                          </span>
+                          <ChevronDown className="h-3 w-3 transition-transform group-open/more:rotate-180" />
+                        </span>
+                      </summary>
+                      {rest.map(renderItem)}
+                    </details>
+                  )}
                 </div>
               )}
             </div>
@@ -664,9 +690,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main
           id="main-content"
           tabIndex={-1}
-          className="min-w-0 flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 md:pl-16 lg:pl-56 print:p-0"
+          className="min-w-0 flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 md:pl-16 lg:pl-60 print:p-0"
         >
-          <div className="mx-auto max-w-5xl px-4 py-4 sm:px-6 sm:py-6">
+          <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
             <OfflineBanner />
             <UpdateController />
             <StorageWarning />

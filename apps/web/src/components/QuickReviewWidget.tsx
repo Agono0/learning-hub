@@ -19,7 +19,8 @@ export interface QuickReviewWidgetProps {
 }
 
 interface QuickCard {
-  cardId: number
+  /** The /api/hud/quick-review rows are keyed `id` (same as QuickHudModal); /api/review takes it as cardId. */
+  id: number
   front?: string
   prompt?: string
   deckName?: string
@@ -44,7 +45,7 @@ function frontOf(card: QuickCard): string {
     }
     if (typeof c.front === 'string') return c.front
   }
-  return `Card #${card.cardId}`
+  return `Card #${card.id}`
 }
 
 /**
@@ -127,7 +128,7 @@ export function QuickReviewWidget({ className }: QuickReviewWidgetProps) {
             <button
               type="button"
               onClick={() => setRevealed(true)}
-              className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-semibold text-neutral-600 hover:border-indigo-400 dark:border-(--hub-border) dark:text-secondary"
+              className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-semibold text-tertiary hover:border-indigo-400 dark:border-(--hub-border) dark:text-secondary"
             >
               <Timer className="h-3.5 w-3.5" /> Try recall, then reveal
             </button>
@@ -136,14 +137,14 @@ export function QuickReviewWidget({ className }: QuickReviewWidgetProps) {
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => gradeMutation.mutate({ cardId: card.cardId, grade: 1 })}
+                onClick={() => gradeMutation.mutate({ cardId: card.id, grade: 1 })}
                 className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl bg-rose-600/90 px-3 py-2 text-xs font-bold text-white hover:bg-rose-500"
               >
                 <XCircle className="h-4 w-4" /> Missed
               </button>
               <button
                 type="button"
-                onClick={() => gradeMutation.mutate({ cardId: card.cardId, grade: 3 })}
+                onClick={() => gradeMutation.mutate({ cardId: card.id, grade: 3 })}
                 className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl bg-emerald-600/90 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-500"
               >
                 <CheckCircle2 className="h-4 w-4" /> Recalled

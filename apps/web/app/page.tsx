@@ -12,13 +12,13 @@
  * <300ms — the loading skeletons and error callout stay instant).
  */
 import React, { useRef } from 'react'
-import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowDown, ArrowUp, Repeat2, RotateCcw, Sparkles, Sprout } from 'lucide-react'
+import { ArrowDown, ArrowUp, RotateCcw, Sparkles, Sprout } from 'lucide-react'
 import { levelFromXp } from '@learning-hub/core/xp'
 import { nextFreshStart, streakBrokeWithinDays } from '@learning-hub/core/freshStart'
 import { apiGet } from '@/lib/transport'
-import { Badge, Button, Callout, IconButton, PageHeader, Skeleton } from '@/ui'
+import { BentoGrid, Button, Callout, IconButton, PageHeader, Skeleton } from '@/ui'
+import { TodayHeroTile, TodayStatTiles } from '@/components/dashboard/TodayHero'
 import { DEFAULT_ORDER, useDashboardWidgets } from '@/components/dashboard/widgets'
 import { ErrorBoundary } from '@/ui'
 import { classifyRequestError } from '@/lib/use-api-error'
@@ -136,16 +136,16 @@ export default function DashboardPage() {
           </div>
           <Skeleton className="h-11 w-44" />
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
-        </div>
-        <div className="grid gap-3 md:grid-cols-2">
-          <Skeleton className="h-44" />
-          <Skeleton className="h-44" />
-        </div>
+        {/* Same bento geometry as the loaded page (hero + stat stack, focus + quick review,
+            review loop), so data arriving does not reflow the layout. */}
+        <BentoGrid>
+          <Skeleton className="bento-lg bento-tall min-h-[16rem]" />
+          <Skeleton className="bento-stat min-h-[7.5rem]" />
+          <Skeleton className="bento-stat min-h-[7.5rem]" />
+          <Skeleton className="bento-stat min-h-[10rem]" />
+          <Skeleton className="bento-lg min-h-[10rem]" />
+        </BentoGrid>
+        <Skeleton className="h-48" />
       </div>
     )
   }
@@ -203,28 +203,26 @@ export default function DashboardPage() {
           subtitle={`${d.dateKey} · Level ${level} · ${d.xpToday} XP earned today`}
           actions={
             <div className="flex items-center gap-2">
-              <Badge tone="accent" data-ota-test>
-                OTA verified — DELTA-V8 live
-              </Badge>
               <button
                 type="button"
-                className="btn-ghost border text-xs"
-                title={ORDER_KEY_HINT}
+                className="btn-ghost inline-flex min-h-[44px] min-w-[44px] items-center justify-center"
+                title={`Reset layout. ${ORDER_KEY_HINT}`}
+                aria-label="Reset layout"
                 onClick={() => setOrder(DEFAULT_ORDER)}
               >
-                <RotateCcw className="h-3.5 w-3.5" /> Reset layout
+                <RotateCcw className="h-4 w-4" aria-hidden />
               </button>
-              <Link href="/review" className="btn h-11 px-6 text-base">
-                <Repeat2 className="h-5 w-5" />
-                {d.dueCount > 0 ? `Review ${d.dueCount} cards` : 'Start Daily Loop'}
-              </Link>
             </div>
           }
         />
       </Entrance>
 
       <Entrance step={ENTRANCE_SLOT.quickReview}>
-        <QuickReviewWidget />
+        <BentoGrid>
+          <TodayHeroTile data={d} />
+          <TodayStatTiles data={d} />
+          <QuickReviewWidget className="bento-lg" />
+        </BentoGrid>
       </Entrance>
 
       {d.freshStart && (

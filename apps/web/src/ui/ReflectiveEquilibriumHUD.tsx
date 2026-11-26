@@ -117,7 +117,7 @@ export function ReflectiveEquilibriumHUD({
           <ProgressBar
             value={Math.max(0, Math.min(1, 1 - evaluation.brierMetrics.overconfidenceGap))}
           />
-          <span className="text-[10px] text-tertiary truncate">
+          <span className="text-[10px] text-tertiary line-clamp-2">
             {evaluation.brierMetrics.calibrationGrade}
           </span>
         </div>

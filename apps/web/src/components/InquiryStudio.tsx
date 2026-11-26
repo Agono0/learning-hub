@@ -163,7 +163,7 @@ export function InquiryStudio() {
         </div>
 
         {/* Lab Selector Dropdown */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 max-w-full">
           <label className="text-xs font-semibold text-secondary whitespace-nowrap">
             Inquiry Lab:
           </label>

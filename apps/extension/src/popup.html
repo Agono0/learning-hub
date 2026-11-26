@@ -6,80 +6,157 @@
     <title>Learning HUB Focus</title>
     <style>
       :root {
-        --bg: #09090b;
-        --card: #141417;
-        --border: #27272a;
-        --text: #f4f4f5;
-        --muted: #a1a1aa;
+        color-scheme: dark;
+        --bg: #09090f;
+        --card: #12121c;
+        --card-2: #181826;
+        --border: #2a2a40;
+        --text: #f4f4f8;
+        --muted: #b0b0c4;
         --primary: #6366f1;
+        --primary-2: #4f46e5;
+        --ok: #34d399;
+      }
+      * {
+        box-sizing: border-box;
       }
       body {
         width: 320px;
         margin: 0;
-        padding: 16px;
-        background: var(--bg);
+        padding: 14px;
+        background: radial-gradient(120% 80% at 0% 0%, #17172b 0%, var(--bg) 60%);
         color: var(--text);
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        box-sizing: border-box;
+        font-size: 13px;
+        line-height: 1.4;
       }
       h2 {
-        font-size: 16px;
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
         margin: 0 0 12px;
         display: flex;
         align-items: center;
         gap: 8px;
       }
+      #status-container,
+      #friction-container,
+      #active-info {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      #status-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 12px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px 12px 0 0;
+      }
+      #friction-container {
+        padding: 8px 12px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-top: 0;
+      }
+      #active-info {
+        padding: 8px 12px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-top: 0;
+        border-radius: 0 0 12px 12px;
+      }
+      #friction-container {
+        margin-top: 0 !important;
+      }
+      #active-info {
+        margin-top: 0 !important;
+      }
+      /* idle: the active-info row is hidden, so the friction row closes the card */
+      #friction-container:has(+ #active-info[style*='display: none']) {
+        border-radius: 0 0 12px 12px;
+      }
       .status-badge {
         display: inline-block;
-        padding: 3px 8px;
-        border-radius: 6px;
+        padding: 2px 9px;
+        border-radius: 999px;
         font-size: 12px;
-        font-weight: 500;
+        font-weight: 600;
       }
       .status-active {
-        background: rgba(16, 185, 129, 0.2);
-        color: #34d399;
-        border: 1px solid rgba(16, 185, 129, 0.3);
+        background: rgba(16, 185, 129, 0.16);
+        color: var(--ok);
+        border: 1px solid rgba(16, 185, 129, 0.35);
       }
       .status-idle {
-        background: rgba(161, 161, 170, 0.15);
+        background: rgba(176, 176, 196, 0.12);
         color: var(--muted);
-        border: 1px solid rgba(161, 161, 170, 0.2);
+        border: 1px solid rgba(176, 176, 196, 0.25);
+      }
+      form {
+        margin-top: 14px;
+        padding: 12px;
+        background: var(--card-2);
+        border: 1px solid var(--border);
+        border-radius: 12px;
       }
       label {
         display: block;
         font-size: 12px;
+        font-weight: 600;
         color: var(--muted);
         margin-top: 10px;
         margin-bottom: 4px;
       }
+      label:first-child {
+        margin-top: 0;
+      }
       input {
         width: 100%;
-        box-sizing: border-box;
+        min-height: 36px;
         padding: 8px 10px;
-        background: var(--card);
+        background: var(--bg);
         border: 1px solid var(--border);
-        border-radius: 6px;
+        border-radius: 8px;
         color: var(--text);
         font-size: 13px;
+      }
+      input::placeholder {
+        color: #8a8aa3;
+      }
+      input:focus-visible,
+      button:focus-visible {
+        outline: 2px solid #a5b4fc;
+        outline-offset: 2px;
       }
       button {
         margin-top: 14px;
         width: 100%;
+        min-height: 38px;
         padding: 9px;
-        background: var(--primary);
+        background: linear-gradient(180deg, var(--primary), var(--primary-2));
         border: none;
-        border-radius: 6px;
+        border-radius: 10px;
         color: #fff;
         font-weight: 600;
         font-size: 13px;
         cursor: pointer;
+        transition: filter 120ms ease;
+      }
+      button:hover {
+        filter: brightness(1.1);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        button {
+          transition: none;
+        }
       }
       .msg {
         font-size: 12px;
         margin-top: 8px;
         text-align: center;
-        color: #34d399;
+        color: var(--ok);
         display: none;
       }
     </style>

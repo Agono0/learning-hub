@@ -277,7 +277,7 @@ export default function GraphPage() {
         title="Knowledge Graph"
         subtitle="Notes, skills, and adaptive prerequisite DAGs as one navigable web."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex max-w-full flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => router.push('/constellation')}
@@ -296,6 +296,7 @@ export default function GraphPage() {
             {/* View Switcher — kit ChipPicker (choose-one mode row) */}
             <ChipPicker<'web' | 'prereq' | 'schema_studio'>
               label="Graph view"
+              className="min-w-0 max-w-full"
               items={[
                 { value: 'web', label: 'Force Web', icon: <Network /> },
                 { value: 'prereq', label: 'Prerequisite DAG & Remedial', icon: <GitFork /> },

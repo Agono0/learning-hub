@@ -222,6 +222,44 @@ Every UI PR passes all twelve; tests are never weakened to pass (rule 13).
 12. Boundaries: `<Markdown>` for untrusted content; no raw `fetch`; nav from `nav.ts`;
     zod-surfaced server errors.
 
+## 8. Amendment: bento composition and the 2026 redesign
+
+This document is a floor for consistency, not a ceiling. The redesign extends it; where a rule above
+conflicts with a rule here, this section wins for the surfaces named here.
+
+### 8.1 What changed
+
+- Surfaces: 20px radius tiles with a 1px hairline, a lit top edge and one long soft shadow
+  (`--clay-radius`, `--clay-shadow`, `--bento-*` tokens). Dark calm palette is deeper ink.
+- Type: Sora for h1/h2, Inter for body and h3 and below. Neither face covers Arabic, so RTL is not
+  claimed; Arabic text falls back to the system face.
+- Composition: `BentoGrid` / `BentoTile` (12 columns, container-query reflow). A page has at most one
+  hero tile, the single next action. Small tiles carry status only. DOM order is reading and tab
+  order; spans change shape, never order of meaning. On narrow containers status tiles follow the
+  learning content.
+- Navigation: the Learn group shows the daily core (Dashboard, Review, Courses, Decks, Reading,
+  Planner, Metrics) and folds the rest into "More ways to learn". Items stay in the DOM and open
+  automatically when one is active.
+- Motion: pointer spotlight on tiles (fine pointer and no reduced motion only), count-up on stat
+  tiles, expo-out easing token. The reduced-motion kill switch is unchanged.
+
+### 8.2 Evidence versus interpretation
+
+- Evidence-backed, cited by the choice they support: visible focus (WCAG 2.4.7, AA); minimum target
+  24px (2.5.8, AA); 44px is this product's design goal (2.5.5 is AAA); pause/stop/hide for moving
+  content (2.2.2, level A); contrast per the token tests.
+- Interpretation, not science: bento as a scanning aid, motion durations, transform-only animation,
+  one accent hue. These are team taste and recommendations. No claim that bento "proves" better
+  retention or attention.
+- Attention: use attention to point at the next useful action. No streak shaming, no variable
+  rewards, no fake urgency.
+
+### 8.3 Route coverage
+
+Every route inherits the tokens above. Only routes listed in the PR's coverage ledger are
+hand-tuned; the rest are inherited or audited by screenshot. Do not describe a route as redesigned
+unless the ledger says so.
+
 ## 7. Provenance
 
 | Contribution                                                                    | Source                                                                                |

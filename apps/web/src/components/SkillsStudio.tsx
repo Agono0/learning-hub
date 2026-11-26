@@ -490,7 +490,9 @@ export function SkillsStudio() {
 
                   <div className="flex items-center justify-between pt-1">
                     <span className="text-[11px] text-tertiary">
-                      Generated at {new Date(currentResult.timestamp).toLocaleTimeString()}
+                      {executeMutation.data
+                        ? `Generated at ${new Date(currentResult.timestamp).toLocaleTimeString()}`
+                        : 'Live preview (run the skill to generate)'}
                     </span>
                     <Button variant="ghost" onClick={() => handleCopy(currentResult.rawOutput)}>
                       {copied ? (

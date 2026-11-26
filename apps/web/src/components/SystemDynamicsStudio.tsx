@@ -225,7 +225,7 @@ export function SystemDynamicsStudio() {
       )}
 
       {/* Navigation Tabs */}
-      <div className="flex border-b border-neutral-200 dark:border-(--hub-border) gap-2 text-xs">
+      <div className="flex border-b border-neutral-200 dark:border-(--hub-border) gap-2 text-xs overflow-x-auto [&>button]:shrink-0 [&>button]:whitespace-nowrap">
         <button
           onClick={() => setActiveTab('mapping')}
           className={`pb-2.5 px-3 font-semibold transition-colors flex items-center gap-1.5 border-b-2 ${
@@ -403,7 +403,7 @@ export function SystemDynamicsStudio() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <span className="text-xs font-bold text-strong">{loop.name}</span>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3 max-w-full">
                       <label className="flex items-center gap-1.5 text-xs text-secondary cursor-pointer">
                         <input
                           type="checkbox"

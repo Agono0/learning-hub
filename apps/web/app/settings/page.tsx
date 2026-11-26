@@ -285,11 +285,11 @@ function SectionJumpNav({ onJump }: { onJump: (id: string) => void }) {
   return (
     <nav
       aria-label="Jump to a settings section"
-      className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-20 pb-1 pt-1 md:top-3"
+      className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-20 bg-neutral-50 dark:bg-(--hub-bg) pb-1.5 pt-1 md:top-3"
     >
       <div
         ref={chipsRef}
-        className="flex gap-1.5 overflow-x-auto rounded-2xl border border-neutral-200 bg-white/85 p-1.5 pr-8 backdrop-blur dark:border-(--hub-border) dark:bg-(--hub-sunken)/85"
+        className="flex gap-1.5 overflow-x-auto rounded-2xl border border-neutral-200 bg-white p-1.5 pr-10 dark:border-(--hub-border) dark:bg-(--hub-sunken)"
       >
         {SECTION_ANCHORS.map((anchor) => (
           <button
@@ -317,7 +317,7 @@ function SectionJumpNav({ onJump }: { onJump: (id: string) => void }) {
           pointer-events-none keeps every chip tappable beneath the overlay. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-y-1 right-0 w-6 bg-gradient-to-l from-white to-transparent dark:from-(--hub-bg) dark:to-transparent"
+        className="pointer-events-none absolute inset-y-1.5 right-px w-10 rounded-r-2xl bg-gradient-to-l from-white via-white/80 to-transparent dark:from-(--hub-sunken) dark:via-(--hub-sunken)/80 dark:to-transparent"
       />
     </nav>
   )

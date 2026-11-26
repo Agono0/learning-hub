@@ -241,7 +241,7 @@ function CalendarSubscriptionCard() {
         <button
           type="button"
           onClick={() => void copy()}
-          className="btn min-h-[44px]"
+          className="btn-secondary min-h-[44px] border"
           aria-label="Copy the calendar feed URL"
         >
           {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}

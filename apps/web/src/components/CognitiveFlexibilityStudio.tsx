@@ -249,7 +249,7 @@ export function CognitiveFlexibilityStudio({
       />
 
       {/* Studio Navigation Tabs */}
-      <div className="flex border-b border-slate-800">
+      <div className="flex border-b border-slate-800 overflow-x-auto [&>button]:shrink-0 [&>button]:whitespace-nowrap">
         <button
           type="button"
           onClick={() => {

@@ -1022,6 +1022,11 @@ function ReviewPageInner() {
   }, [results])
 
   // ─── Setup screen ───
+  const setupDue = (decksData?.decks ?? [])
+    .filter((d) =>
+      multiDeckMode ? selectedDeckIds.includes(d.id) : deckId === null || d.id === deckId,
+    )
+    .reduce((acc, d) => acc + d.due, 0)
   if (!started) {
     return (
       // Entrance: header (beat 0) and the setup panel (beat 1) rise + fade on
@@ -1038,6 +1043,25 @@ function ReviewPageInner() {
             CTA isolated full-width below and Audio Digest / Workload demoted to
             a ghost secondary row. Handlers and state are byte-identical. */}
         <ClayIn delayS={staggerDelay(1)} className="panel space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-lg font-semibold">
+                {setupDue > 0 ? `${setupDue} cards due` : 'Nothing due right now'}
+              </p>
+              <p className="text-sm text-secondary">
+                {setupDue > 0
+                  ? 'Pick a deck below, or just start. You can stop any time.'
+                  : 'You can still practice ahead. Pick a deck below.'}
+              </p>
+            </div>
+            <Button
+              variant="primary"
+              disabled={(decksData?.decks ?? []).length === 0}
+              onClick={() => setStarted(true)}
+            >
+              <Zap className="h-4 w-4" /> Start session
+            </Button>
+          </div>
           <section className="space-y-3" aria-label="Deck selection">
             <SectionHeader
               icon={Layers}
@@ -1051,7 +1075,7 @@ function ReviewPageInner() {
                       setSelectedDeckIds([deckId])
                     }
                   }}
-                  className="inline-flex items-center text-xs font-medium text-indigo-400 hover:text-indigo-300 focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none rounded [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-2"
+                  className="inline-flex min-h-6 items-center text-xs font-medium text-ac-text hover:underline focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none rounded [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-2"
                 >
                   {multiDeckMode ? '← Back to single deck' : '⇄ Interleave multiple decks'}
                 </button>
@@ -1061,6 +1085,7 @@ function ReviewPageInner() {
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setDeckId(null)}
+                  aria-pressed={deckId === null}
                   className={`rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 ${
                     deckId === null
                       ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300'
@@ -1076,6 +1101,7 @@ function ReviewPageInner() {
                   <button
                     key={d.id}
                     onClick={() => setDeckId(d.id)}
+                    aria-pressed={deckId === d.id}
                     className={`rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 ${
                       deckId === d.id
                         ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300'
@@ -1096,6 +1122,7 @@ function ReviewPageInner() {
                       <button
                         key={d.id}
                         type="button"
+                        aria-pressed={isSelected}
                         onClick={() => {
                           setSelectedDeckIds((prev) =>
                             isSelected ? prev.filter((id) => id !== d.id) : [...prev, d.id],
@@ -1123,124 +1150,132 @@ function ReviewPageInner() {
             )}
           </section>
 
-          {/* Group 2 — session mode (audit R-setup) */}
-          <section className="space-y-3" aria-label="Session mode">
-            <SectionHeader icon={Compass} title="Session mode" />
-            <div className="flex flex-wrap gap-2">
-              {(['normal', 'pretest', 'cram', 'commute'] as const).map((m) => (
-                <Button
-                  key={m}
-                  onClick={() => setMode(m)}
-                  variant={mode === m ? 'secondary' : 'ghost'}
-                >
-                  {m === 'commute' ? '🎧 commute' : m}
-                </Button>
-              ))}
-            </div>
-            <p className="text-xs text-tertiary">
-              {mode === 'normal' &&
-                'Due cards, most overdue first. Confident-wrong answers retry first (hypercorrection).'}
-              {mode === 'pretest' && 'Test before study: never-reviewed cards surface first.'}
-              {mode === 'cram' && 'Ignore due dates — weakest memories first.'}
-              {mode === 'commute' &&
-                'Hands-free audio loop: prompts read aloud, voice answer recognized & fuzzy graded.'}
-            </p>
-          </section>
-
-          {/* Group 3 — length & options: session size, retrieval criterion, speed drill */}
-          <section className="space-y-3" aria-label="Session length and options">
-            <SectionHeader icon={Sliders} title="Length &amp; options" />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <div className="label mb-2">Session size</div>
-                <input
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={limit}
-                  onChange={(e) => setLimit(Number(e.target.value))}
-                  className="input"
-                />
-              </div>
-              <div>
-                <SelectField
-                  label={
-                    <>
-                      Retrieval criterion{' '}
-                      <span className="font-normal normal-case tracking-normal">
-                        (correct recalls after a mistake)
-                      </span>
-                    </>
-                  }
-                  value={srCriterion}
-                  onChange={(e) => setSrCriterion(Number(e.target.value))}
-                >
-                  {Array.from({ length: MAX_SR_CRITERION }, (_, i) => i + 1).map((n) => (
-                    <option key={n} value={n}>
-                      {n} — {n === 1 ? 'one verification recall' : `${n} spaced correct recalls`}
-                    </option>
+          {/* Advanced options live behind one disclosure so the start path is short. The summary
+              always states what the session will do. Handlers and state are unchanged. */}
+          <details className="group/opts rounded-xl border border-neutral-200 dark:border-(--hub-border)">
+            <summary className="[@media(pointer:coarse)]:min-h-11 flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+              <span className="flex items-center gap-2">
+                <Sliders className="h-4 w-4" aria-hidden />
+                Session options
+              </span>
+              <span className="text-xs font-normal text-tertiary">
+                {mode} · {limit} cards{speedDrillActive ? ` · speed drill ${speedLimitSec}s` : ''}
+              </span>
+            </summary>
+            <div className="space-y-6 px-4 pb-4 pt-2">
+              {/* Group 2 — session mode (audit R-setup) */}
+              <section className="space-y-3" aria-label="Session mode">
+                <SectionHeader icon={Compass} title="Session mode" />
+                <div className="flex flex-wrap gap-2">
+                  {(['normal', 'pretest', 'cram', 'commute'] as const).map((m) => (
+                    <Button
+                      key={m}
+                      onClick={() => setMode(m)}
+                      aria-pressed={mode === m}
+                      variant={mode === m ? 'secondary' : 'ghost'}
+                    >
+                      {m === 'commute' ? '🎧 commute' : m}
+                    </Button>
                   ))}
-                </SelectField>
-                <p className="mt-2 text-xs text-tertiary">
-                  Successive relearning: a failed card repeats (spaced) until it has been recalled
-                  correctly this many times (Rawson &amp; Dunlosky 2011).
-                </p>
-              </div>
-            </div>
-            {/* Speed Drill sub-panel (unchanged handlers) */}
-            <div className="rounded-lg border border-neutral-200 dark:border-(--hub-border) p-3 bg-neutral-50/50 dark:bg-neutral-900/30">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-status-warning-text" />
-                  <span className="text-sm font-medium">⚡ Speed Drill Mode</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setSpeedDrillActive(!speedDrillActive)}
-                  className={`rounded px-2.5 py-1 text-xs font-medium border transition-colors focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-3 ${
-                    speedDrillActive
-                      ? 'border-amber-500 bg-amber-500/20 text-status-warning-text'
-                      : 'border-neutral-300 dark:border-neutral-700 text-tertiary hover:text-secondary'
-                  }`}
-                >
-                  {speedDrillActive ? 'Enabled' : 'Disabled'}
-                </button>
-              </div>
-              <p className="text-xs text-tertiary mb-2">
-                Timed retrieval sprints (Kornell 2009): enforces rapid active recall before surface
-                cues take over.
-              </p>
-              {speedDrillActive && (
-                <div className="flex items-center gap-2 pt-1 border-t border-neutral-200 dark:border-(--hub-border) text-xs">
-                  <span className="text-faint">Time per card:</span>
-                  {[5, 8, 10, 15].map((s) => (
+                <p className="text-xs text-tertiary">
+                  {mode === 'normal' &&
+                    'Due cards, most overdue first. Confident-wrong answers retry first (hypercorrection).'}
+                  {mode === 'pretest' && 'Test before study: never-reviewed cards surface first.'}
+                  {mode === 'cram' && 'Ignore due dates — weakest memories first.'}
+                  {mode === 'commute' &&
+                    'Hands-free audio loop: prompts read aloud, voice answer recognized & fuzzy graded.'}
+                </p>
+              </section>
+
+              {/* Group 3 — length & options: session size, retrieval criterion, speed drill */}
+              <section className="space-y-3" aria-label="Session length and options">
+                <SectionHeader icon={Sliders} title="Length &amp; options" />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <div className="label mb-2">Session size</div>
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={limit}
+                      onChange={(e) => setLimit(Number(e.target.value))}
+                      aria-label="Session size (cards)"
+                      className="input"
+                    />
+                  </div>
+                  <div>
+                    <SelectField
+                      label={
+                        <>
+                          Retrieval criterion{' '}
+                          <span className="font-normal normal-case tracking-normal">
+                            (correct recalls after a mistake)
+                          </span>
+                        </>
+                      }
+                      value={srCriterion}
+                      onChange={(e) => setSrCriterion(Number(e.target.value))}
+                    >
+                      {Array.from({ length: MAX_SR_CRITERION }, (_, i) => i + 1).map((n) => (
+                        <option key={n} value={n}>
+                          {n} —{' '}
+                          {n === 1 ? 'one verification recall' : `${n} spaced correct recalls`}
+                        </option>
+                      ))}
+                    </SelectField>
+                    <p className="mt-2 text-xs text-tertiary">
+                      Successive relearning: a failed card repeats (spaced) until it has been
+                      recalled correctly this many times (Rawson &amp; Dunlosky 2011).
+                    </p>
+                  </div>
+                </div>
+                {/* Speed Drill sub-panel (unchanged handlers) */}
+                <div className="rounded-lg border border-neutral-200 dark:border-(--hub-border) p-3 bg-neutral-50/50 dark:bg-neutral-900/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-status-warning-text" />
+                      <span className="text-sm font-medium">⚡ Speed Drill Mode</span>
+                    </div>
                     <button
-                      key={s}
                       type="button"
-                      onClick={() => setSpeedLimitSec(s)}
-                      className={`rounded px-2 py-0.5 border focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 inline-flex items-center justify-center ${
-                        speedLimitSec === s
-                          ? 'border-amber-500 bg-amber-500/20 text-status-warning-text font-bold'
-                          : 'border-neutral-300 dark:border-neutral-700 text-faint'
+                      onClick={() => setSpeedDrillActive(!speedDrillActive)}
+                      className={`rounded px-2.5 py-1 text-xs font-medium border transition-colors focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-3 ${
+                        speedDrillActive
+                          ? 'border-amber-500 bg-amber-500/20 text-status-warning-text'
+                          : 'border-neutral-300 dark:border-neutral-700 text-tertiary hover:text-secondary'
                       }`}
                     >
-                      {s}s
+                      {speedDrillActive ? 'Enabled' : 'Disabled'}
                     </button>
-                  ))}
+                  </div>
+                  <p className="text-xs text-tertiary mb-2">
+                    Timed retrieval sprints (Kornell 2009): enforces rapid active recall before
+                    surface cues take over.
+                  </p>
+                  {speedDrillActive && (
+                    <div className="flex items-center gap-2 pt-1 border-t border-neutral-200 dark:border-(--hub-border) text-xs">
+                      <span className="text-faint">Time per card:</span>
+                      {[5, 8, 10, 15].map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setSpeedLimitSec(s)}
+                          className={`rounded px-2 py-0.5 border focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 inline-flex items-center justify-center ${
+                            speedLimitSec === s
+                              ? 'border-amber-500 bg-amber-500/20 text-status-warning-text font-bold'
+                              : 'border-neutral-300 dark:border-neutral-700 text-faint'
+                          }`}
+                        >
+                          {s}s
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
+              </section>
             </div>
-          </section>
-
-          {/* Primary CTA — isolated on its own full-width row (audit R-setup) */}
-          <Button
-            variant="primary"
-            className="w-full"
-            disabled={(decksData?.decks ?? []).length === 0}
-            onClick={() => setStarted(true)}
-          >
-            <Zap className="h-4 w-4" /> Start session
-          </Button>
+          </details>
 
           {/* Secondary row: Audio Digest / Workload are clearly not the main path */}
           <div className="flex flex-wrap items-center justify-center gap-3 border-t border-neutral-200 pt-4 dark:border-(--hub-border)">
@@ -2068,7 +2103,9 @@ function CardFront(props: {
           />
         )}
         <div className="flex items-start justify-between gap-2">
-          <div className="text-xl font-medium">{front}</div>
+          <div dir="auto" className="text-xl font-medium">
+            {front}
+          </div>
           {isSpeechAvailable() && (
             <Button
               variant="ghost"
@@ -2087,7 +2124,7 @@ function CardFront(props: {
           // on the server; gated by `motionOK`). Replaces the old CSS
           // `animate-fade-in-up` so the entrance has exactly one owner.
           <ClayPop className="border-t border-neutral-200 pt-4 text-lg text-ac-text dark:border-(--hub-border)">
-            {content.basic.back}
+            <div dir="auto">{content.basic.back}</div>
           </ClayPop>
         )}
       </div>
@@ -2100,7 +2137,7 @@ function CardFront(props: {
     const clozeCorrect = isCardAnswerCorrect(content, props.clozeInput)
     return (
       <div className="space-y-3">
-        <div className="text-xl leading-loose">
+        <div dir="auto" className="text-xl leading-loose">
           {/* segments are a pure function of the card's immutable content —
               they never reorder or grow, so index keys are stable per card */}
           {segments.map((seg, i) => {
@@ -2159,7 +2196,9 @@ function CardFront(props: {
             </span>
           </div>
         )}
-        <div className="text-xl font-medium">{question}</div>
+        <div dir="auto" className="text-xl font-medium">
+          {question}
+        </div>
         <input
           ref={props.inputRef}
           value={props.typeinValue}
@@ -2195,7 +2234,9 @@ function CardFront(props: {
             </span>
           </div>
         )}
-        <div className="text-xl font-medium">{question}</div>
+        <div dir="auto" className="text-xl font-medium">
+          {question}
+        </div>
         {!revealed && (
           <div className="text-sm text-tertiary">
             options appear after you commit — recall first (stepwise MCQ)

@@ -174,7 +174,7 @@ export function ContrastingCasesStudio() {
       </div>
 
       {/* Main Studio Navigation Tabs */}
-      <div className="flex border-b border-neutral-200 dark:border-(--hub-border) gap-2 text-xs">
+      <div className="flex border-b border-neutral-200 dark:border-(--hub-border) gap-2 text-xs overflow-x-auto [&>button]:shrink-0 [&>button]:whitespace-nowrap">
         <button
           onClick={() => setActiveTab('variants')}
           className={`pb-2 px-3 font-medium flex items-center gap-1.5 border-b-2 transition-colors ${

@@ -67,6 +67,24 @@ copyFileSync(baseDb, clone)
       now,
     )
   }
+  // Mixed-script fixture (separate deck so the Smoke Test Deck flow is unchanged): one
+  // Arabic-first card and one English-first card with an Arabic phrase inside.
+  db.prepare('DELETE FROM cards WHERE deck_id IN (SELECT id FROM decks WHERE name = ?)').run(
+    'Arabic Mixed Deck',
+  )
+  db.prepare('DELETE FROM decks WHERE name = ?').run('Arabic Mixed Deck')
+  const mixedDeck = db
+    .prepare('INSERT INTO decks (name, emoji, created_at) VALUES (?, ?, ?)')
+    .run('Arabic Mixed Deck', '🌍', now)
+  for (const basic of [
+    { front: 'ما هي عاصمة مصر؟', back: 'القاهرة (Cairo)' },
+    {
+      front: 'What does «التكرار المتباعد» mean in Anki?',
+      back: 'Spaced repetition: مراجعة البطاقة قبل نسيانها',
+    },
+  ]) {
+    insertCard.run(mixedDeck.lastInsertRowid, JSON.stringify({ basic }), now, now)
+  }
   db.close()
 }
 
@@ -82,7 +100,10 @@ function cleanup() {
 // root node_modules).
 import { createRequire } from 'node:module'
 const nextBin = createRequire(path.join(webDir, 'package.json')).resolve('next/dist/bin/next')
-const child = spawn(process.execPath, [nextBin, 'dev', '-p', String(PORT)], {
+// LH_PROD=1 serves the already-built production bundle (`next start`) instead of `next dev`,
+// so the same specs can prove the production render, not only the dev server.
+const nextMode = process.env.LH_PROD === '1' ? 'start' : 'dev'
+const child = spawn(process.execPath, [nextBin, nextMode, '-p', String(PORT)], {
   cwd: webDir,
   env: {
     ...process.env,

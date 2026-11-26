@@ -340,10 +340,20 @@ export default function DecksPage() {
           title="Decks & Cards"
           actions={
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="primary" onClick={() => setEditing('new')} disabled={!activeDeck}>
+              <Button
+                variant="primary"
+                onClick={() => setEditing('new')}
+                disabled={!activeDeck}
+                aria-describedby={activeDeck ? undefined : 'decks-select-hint'}
+              >
                 <Plus className="h-4 w-4" /> New card
               </Button>
-              <Button variant="ghost" onClick={() => setAiOpen(true)} disabled={!activeDeck}>
+              <Button
+                variant="ghost"
+                onClick={() => setAiOpen(true)}
+                disabled={!activeDeck}
+                aria-describedby={activeDeck ? undefined : 'decks-select-hint'}
+              >
                 <Wand2 className="h-4 w-4" /> AI generate
               </Button>
               <Menu
@@ -377,6 +387,11 @@ export default function DecksPage() {
             </div>
           }
         />
+        {!activeDeck && (
+          <p id="decks-select-hint" className="mt-2 text-sm text-secondary">
+            Select a deck below to add or generate cards.
+          </p>
+        )}
       </ClayIn>
 
       {/* deck rail — entrance beat 1 */}
@@ -584,30 +599,50 @@ export default function DecksPage() {
           className="divide-y divide-neutral-100 dark:divide-(--hub-panel-2)"
         >
           {displayedCards.map((card) => (
-            <div key={card.id} className="flex items-center gap-3 py-2 text-sm">
+            <div
+              key={card.id}
+              className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 py-2.5 text-sm sm:grid-cols-[auto_auto_minmax(0,1fr)_auto_auto_auto_auto]"
+            >
               <BoxChip box={leitnerBox(card)} />
-              <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-xs uppercase tracking-wide text-tertiary dark:bg-(--hub-panel-2)">
-                {card.type}
+              {/* Narrow: the preview takes the middle column and wraps to two lines instead of
+                  truncating to a stub; the meta (type, tags, due) drops to a second row. */}
+              <span className="order-3 col-span-3 flex items-center gap-2 sm:order-none sm:col-span-1">
+                <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-xs uppercase tracking-wide text-tertiary dark:bg-(--hub-panel-2)">
+                  {card.type}
+                </span>
+                <span className="text-xs text-tertiary sm:hidden">
+                  {card.suspended ? 'suspended' : `due ${card.due.slice(0, 10)}`}
+                </span>
               </span>
-              <span className="min-w-0 flex-1 truncate">{cardPreview(card.content)}</span>
-              <span className="text-xs text-tertiary">
+              <span className="min-w-0 line-clamp-2 sm:truncate sm:line-clamp-none">
+                {cardPreview(card.content)}
+              </span>
+              <span className="hidden text-xs text-tertiary sm:inline">
                 {card.tags.length ? card.tags.map((t) => `#${t}`).join(' ') : ''}
               </span>
               <span
-                className={`text-xs ${card.suspended ? 'text-status-warning-text' : 'text-tertiary'}`}
+                className={`hidden text-xs sm:inline ${card.suspended ? 'text-status-warning-text' : 'text-tertiary'}`}
               >
                 {card.suspended ? 'suspended' : card.due.slice(0, 10)}
               </span>
-              <Button variant="ghost" className="px-2 py-1" onClick={() => setEditing(card)}>
-                <Pencil className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                className="px-2 py-1 hover:text-danger-text"
-                onClick={() => setConfirmAction({ kind: 'card', id: card.id })}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
+              <span className="col-start-3 row-start-1 flex items-center sm:col-auto sm:row-auto sm:contents">
+                <Button
+                  variant="ghost"
+                  className="px-2 py-1"
+                  aria-label={`Edit card: ${cardPreview(card.content).slice(0, 40)}`}
+                  onClick={() => setEditing(card)}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="px-2 py-1 hover:text-danger-text"
+                  aria-label={`Delete card: ${cardPreview(card.content).slice(0, 40)}`}
+                  onClick={() => setConfirmAction({ kind: 'card', id: card.id })}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </span>
             </div>
           ))}
           {cards.data && cards.data.cards.length === 0 && (

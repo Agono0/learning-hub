@@ -79,8 +79,8 @@ export function SkillsHUD({
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
             <Cpu className="h-4 w-4" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-sm font-bold text-white">{skill.meta.title}</h3>
               <Badge tone={cat.tone}>
                 <span className="flex items-center gap-1">

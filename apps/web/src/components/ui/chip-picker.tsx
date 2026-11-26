@@ -73,6 +73,10 @@ export function ChipPicker<T extends string>({
   // Press scale is enabled after mount. A lazy initializer reads window, so the
   // client's first render (whileTap makes motion.button focusable: tabIndex=0)
   // disagreed with the server HTML and raised a hydration mismatch.
+  // Lazy one-shot gate for the press scale; stable across re-renders.
+  // Hydration-safe: the server cannot know motionOK(), and a client-initialised `true` made
+  // framer-motion add tabIndex=0 to the buttons that the server HTML lacked (React hydration
+  // mismatch on /settings). Start false on both, then opt in after mount.
   const [motionAllowed, setMotionAllowed] = React.useState(false)
   React.useEffect(() => {
     setMotionAllowed(motionOK())
@@ -112,7 +116,7 @@ export function ChipPicker<T extends string>({
                 {item.icon}
               </span>
             ) : null}
-            <span className="flex flex-col items-start">
+            <span className="flex min-w-0 flex-col items-start">
               <span className="truncate">{item.label}</span>
               {item.hint ? (
                 <span className="text-[11px] font-normal leading-tight text-tertiary">

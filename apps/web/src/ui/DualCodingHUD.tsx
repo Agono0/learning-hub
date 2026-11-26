@@ -104,7 +104,7 @@ export function DualCodingHUD({
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600/10 text-ac-text">
             <Layers className="h-5 w-5" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h3 className="text-sm font-semibold text-strong">Dual-Coding &amp; Mayer CTML HUD</h3>
             <p className="text-xs text-tertiary">
               Paivio (1971) Additive Dual-Channel Model • Mayer (2014) Multimedia Learning

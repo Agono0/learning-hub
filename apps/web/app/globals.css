@@ -30,7 +30,7 @@
   --color-neutral-300: var(--n-300);
   --color-neutral-400: var(--n-400);
   --color-neutral-500: var(--n-500);
-  --color-neutral-600: var(--n-600);
+  --color-neutral-600: var(--n-600-ink);
   --color-neutral-700: var(--n-700);
   --color-neutral-800: var(--n-800);
   --color-neutral-900: var(--n-900);
@@ -41,7 +41,7 @@
   --color-slate-300: var(--n-300);
   --color-slate-400: var(--n-400);
   --color-slate-500: var(--n-500);
-  --color-slate-600: var(--n-600);
+  --color-slate-600: var(--n-600-ink);
   --color-slate-700: var(--n-700);
   --color-slate-800: var(--n-800);
   --color-slate-900: var(--n-900);
@@ -125,12 +125,12 @@
   --ac-mid: #6366f1;
   --ac-soft: #c7d2fe;
   --ac-deep: #312e81;
-  --hub-bg: #191832;
-  --hub-panel: #211f45;
-  --hub-panel-2: #282554;
-  --hub-sunken: #151430;
-  --hub-border: #34316b;
-  --hub-border-strong: #4b4890;
+  --hub-bg: #0c0d1b;
+  --hub-panel: #141530;
+  --hub-panel-2: #1b1c3c;
+  --hub-sunken: #090a16;
+  --hub-border: #262858;
+  --hub-border-strong: #3d3f7e;
 }
 
 [data-theme='forest'] {
@@ -214,6 +214,183 @@
   --n-400: color-mix(in oklab, var(--tint) 38%, white);
   --n-500: color-mix(in oklab, var(--tint) 52%, white);
   --n-600: color-mix(in oklab, var(--tint) 64%, black 6%);
+  /* `text-neutral-600` is used as light-mode body-ish text across ~70 sites. The raw 600 step gave
+     about 2.6:1 on the ocean palette (computed), so the utility maps to this darker ink: 28% black
+     computes to >= 4.5:1 on n-50..n-100 for every palette. --n-600 itself is unchanged, so
+     --text-tertiary/--text-faint are untouched. */
+  --n-600-ink: color-mix(in oklab, var(--tint) 64%, black 28%);
+  /* Empty heat cell: a light well in light mode (dark mode overrides below). */
+  --heat-0: color-mix(in oklab, var(--tint) 15%, white);
+  --n-700: color-mix(in oklab, var(--tint) 52%, black 22%);
+  --n-800: color-mix(in oklab, var(--tint) 40%, black 38%);
+  --n-900: color-mix(in oklab, var(--tint) 30%, black 52%);
+  --n-950: color-mix(in oklab, var(--tint) 18%, black 72%);
+
+  /* Semantic text ramp — LIGHT values (on --n-50 / white panels). The
+     tertiary/faint steps mix extra black into the ramp steps so every palette
+     (incl. the light sunset/blossom tints) clears WCAG AA 4.5:1; locked by
+     apps/web/tests/design-token-contrast.test.ts (both modes, every palette). */
+  --text-strong: var(--n-900);
+  --text-body: var(--n-800);
+  --text-secondary: color-mix(in oklab, var(--n-700) 88%, black 12%);
+  --text-tertiary: color-mix(in oklab, var(--n-600) 76%, black 24%);
+  --text-faint: color-mix(in oklab, var(--n-600) 70%, black 30%);
+
+  /* Accent/status text — LIGHT steps (600/700-level so they pass on white).
+     --ac-text mixes a little black into the palette accent so every palette
+     clears 4.5:1 on the tinted --n-50 page background. */
+  --ac-text: color-mix(in oklab, var(--ac-strong) 88%, black 12%);
+  --status-success-text: #047857; /* emerald-700 */
+  --status-warning-text: #92400e; /* amber-800 */
+  --status-info-text: #0369a1; /* sky-700 */
+  /* 500-level equivalents: darker in light (AA as text + 3:1 as fills), the
+     raw 500 steps in dark (no dark-mode visual change). */
+  --status-success-strong: #047857; /* emerald-700 */
+  --status-warning-strong: #b45309; /* amber-700 */
+  --status-info-strong: #0369a1; /* sky-700 */
+
+  /* Danger = rose, one hue for both modes. Fills use rose-600 (white on it
+     passes AA); text uses rose-700 in light so it clears 4.5:1 on the tinted
+     page background (rose-600 only manages 4.17:1 there). */
+  --danger-strong: #e11d48; /* rose-600 */
+  --danger-text: #be123c; /* rose-700 */
+  --danger-soft: color-mix(in oklab, #e11d48 15%, transparent);
+
+  /* ── Claymorphism layer (ui-ux-pro-max style recipe) ──
+     Soft 3D "clay" surfaces: chunky radii, thick borders, double shadows
+     (inner highlight + outer drop), and a springy press. Values are
+     mode-aware via the .dark block so clay reads puffy in light and
+     glossy in dark. */
+  --clay-radius: 20px;
+  --clay-radius-sm: 12px;
+  --clay-border: 1px;
+  /* Bento surface: a 1px hairline, a lit top edge and one long soft shadow. Depth comes from
+     light, not from thick borders. (Token names kept so every component inherits.) */
+  --clay-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 2px rgba(30, 27, 75, 0.06),
+    0 14px 30px -18px rgba(30, 27, 75, 0.28);
+  --clay-shadow-sm: 0 1px 2px rgba(30, 27, 75, 0.1), 0 4px 10px -6px rgba(30, 27, 75, 0.25);
+  --clay-pressed: inset 0 2px 4px rgba(30, 27, 75, 0.2);
+  --bento-gap: 0.75rem;
+  --bento-glow: color-mix(in oklab, var(--ac-mid) 22%, transparent);
+  --bento-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0) 55%);
+
+  /* Motion tokens (values on :root below). Use the arbitrary-var syntax —
+     `duration-(--duration-base)` / `ease-(--ease-enter)` — or the named
+     `duration-fast|base|slow` utilities; easings go through
+     `ease-(--ease-enter)` etc. */
+  --transition-duration-fast: var(--duration-fast);
+  --transition-duration-base: var(--duration-base);
+  --transition-duration-slow: var(--duration-slow);
+}
+
+/* Default palette: Calm — sage-tinted warm gray. */
+:root,
+[data-theme='calm'] {
+  /* clay default: vibrant indigo + energetic orange (ui-ux-pro-max
+     "Educational App" palette), lavender-white light surfaces, deep
+     indigo-night dark surfaces */
+  --tint: #6366f1;
+  --ac-strong: #4f46e5;
+  --ac-mid: #6366f1;
+  --ac-soft: #c7d2fe;
+  --ac-deep: #312e81;
+  --hub-bg: #0c0d1b;
+  --hub-panel: #141530;
+  --hub-panel-2: #1b1c3c;
+  --hub-sunken: #090a16;
+  --hub-border: #262858;
+  --hub-border-strong: #3d3f7e;
+}
+
+[data-theme='forest'] {
+  --tint: #10b981;
+  --ac-strong: #047857;
+  --ac-mid: #10b981;
+  --ac-soft: #a7f3d0;
+  --ac-deep: #064e3b;
+  --hub-bg: #0c1512;
+  --hub-panel: #122019;
+  --hub-panel-2: #182a21;
+  --hub-sunken: #0e1813;
+  --hub-border: #1f3b2e;
+  --hub-border-strong: #2f5a45;
+}
+
+[data-theme='ocean'] {
+  --tint: #38bdf8;
+  --ac-strong: #0369a1;
+  --ac-mid: #0ea5e9;
+  --ac-soft: #bae6fd;
+  --ac-deep: #0c4a6e;
+  --hub-bg: #0a1220;
+  --hub-panel: #0f1b30;
+  --hub-panel-2: #16233c;
+  --hub-sunken: #0c1524;
+  --hub-border: #1e3355;
+  --hub-border-strong: #2f4f80;
+}
+
+[data-theme='sunset'] {
+  --tint: #fb923c;
+  --ac-strong: #c2410c;
+  --ac-mid: #f97316;
+  --ac-soft: #fed7aa;
+  --ac-deep: #7c2d12;
+  --hub-bg: #1c1208;
+  --hub-panel: #2a1a0d;
+  --hub-panel-2: #362213;
+  --hub-sunken: #1e130a;
+  --hub-border: #46280f;
+  --hub-border-strong: #6d3f18;
+}
+
+[data-theme='blossom'] {
+  --tint: #f472b6;
+  --ac-strong: #db2777;
+  --ac-mid: #ec4899;
+  --ac-soft: #fbcfe8;
+  --ac-deep: #831843;
+  --hub-bg: #1d0d17;
+  --hub-panel: #2a1220;
+  --hub-panel-2: #371829;
+  --hub-sunken: #1e0e17;
+  --hub-border: #471c33;
+  --hub-border-strong: #6d2c4f;
+}
+
+[data-theme='midnight'] {
+  --tint: #a78bfa;
+  --ac-strong: #7c3aed;
+  --ac-mid: #8b5cf6;
+  --ac-soft: #ddd6fe;
+  --ac-deep: #4c1d95;
+  --hub-bg: #14122b;
+  --hub-panel: #1c1940;
+  --hub-panel-2: #242050;
+  --hub-sunken: #100e24;
+  --hub-border: #2e2960;
+  --hub-border-strong: #453f8f;
+}
+
+/* Perceived-lightness ramp derived from the palette tint (one source of truth).
+   The ramp is mode-independent and stays for SURFACES; muted TEXT is
+   mode-scoped — see --text-* below and docs/ui-design-signature.md §3.1. */
+:root {
+  --n-50: color-mix(in oklab, var(--tint) 5%, white);
+  --n-100: color-mix(in oklab, var(--tint) 9%, white);
+  --n-200: color-mix(in oklab, var(--tint) 15%, white);
+  --n-300: color-mix(in oklab, var(--tint) 24%, white);
+  --n-400: color-mix(in oklab, var(--tint) 38%, white);
+  --n-500: color-mix(in oklab, var(--tint) 52%, white);
+  --n-600: color-mix(in oklab, var(--tint) 64%, black 6%);
+  /* `text-neutral-600` is used as light-mode body-ish text across ~70 sites. The raw 600 step gave
+     about 2.6:1 on the ocean palette (computed), so the utility maps to this darker ink: 28% black
+     computes to >= 4.5:1 on n-50..n-100 for every palette. --n-600 itself is unchanged, so
+     --text-tertiary/--text-faint are untouched. */
+  --n-600-ink: color-mix(in oklab, var(--tint) 64%, black 28%);
+  /* Empty heat cell: a light well in light mode (dark mode overrides below). */
+  --heat-0: color-mix(in oklab, var(--tint) 15%, white);
   --n-700: color-mix(in oklab, var(--tint) 52%, black 22%);
   --n-800: color-mix(in oklab, var(--tint) 40%, black 38%);
   --n-900: color-mix(in oklab, var(--tint) 30%, black 52%);
@@ -266,7 +443,12 @@
     inset 3px 3px 7px rgba(30, 27, 75, 0.12), inset -2px -2px 5px rgba(255, 255, 255, 0.6);
 
   /* Motion tokens — one language for every transition/animation. */
-  --ease-clay: cubic-bezier(0.34, 1.56, 0.64, 1); /* springy overshoot — hover/press bounce */
+  --ease-clay: cubic-bezier(
+    0.16,
+    1,
+    0.3,
+    1
+  ); /* expo-out: fast start, long settle (was a springy overshoot) */
   --duration-fast: 150ms; /* press feedback, hovers, small state swaps */
   --duration-base: 240ms; /* sheets, dialogs, reveals, progress fills */
   --duration-slow: 400ms; /* large surfaces & world entrances only (micro ceiling 300ms) */
@@ -278,12 +460,14 @@
 
 /* Semantic text tokens — DARK values (on the --hub-* surfaces). */
 .dark {
+  --heat-0: var(--hub-border);
   --clay-shadow:
-    inset -3px -3px 7px rgba(255, 255, 255, 0.05), inset 2px 2px 6px rgba(0, 0, 0, 0.3),
-    7px 7px 18px rgba(0, 0, 0, 0.5);
-  --clay-shadow-sm: inset -2px -2px 5px rgba(255, 255, 255, 0.04), 4px 4px 12px rgba(0, 0, 0, 0.4);
-  --clay-pressed:
-    inset 3px 3px 7px rgba(0, 0, 0, 0.45), inset -2px -2px 5px rgba(255, 255, 255, 0.05);
+    inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 2px rgba(0, 0, 0, 0.5),
+    0 20px 40px -22px rgba(0, 0, 0, 0.85);
+  --clay-shadow-sm: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 6px 14px -8px rgba(0, 0, 0, 0.8);
+  --clay-pressed: inset 0 2px 5px rgba(0, 0, 0, 0.55);
+  --bento-glow: color-mix(in oklab, var(--ac-mid) 30%, transparent);
+  --bento-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 45%);
   --text-strong: var(--n-100);
   --text-body: var(--n-200);
   --text-secondary: var(--n-300);
@@ -318,40 +502,48 @@ body {
   font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Playful clay identity: rounded display face for every heading level. */
+/* Display face for every heading level, set slightly tight for a confident, premium rhythm. */
 h1,
-h2,
+h2 {
+  font-family: var(--font-heading), var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.02em;
+  word-spacing: 0.1em;
+}
+/* Small headings use the body face: the display face loses legibility below ~18px. */
 h3,
 h4,
 h5,
 h6 {
-  font-family: var(--font-heading), var(--font-body), ui-sans-serif, system-ui, sans-serif;
-  letter-spacing: 0.01em;
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.005em;
 }
 
-/* Card surfaces used across all pages — claymorphism: chunky radius, thick
-   border, double shadow (inner highlight + outer drop). */
+/* Card surfaces used across all pages — bento tiles: generous radius, 1px hairline, a lit top
+   edge and a long soft shadow. `.bento-tile` adds the pointer spotlight (see below). */
 .panel {
   @apply p-4 bg-white border-neutral-200 dark:border-(--hub-border) dark:bg-(--hub-panel);
   border-radius: var(--clay-radius);
   border-width: var(--clay-border);
+  background-image: var(--bento-sheen);
   box-shadow: var(--clay-shadow);
 }
 
 .btn {
-  @apply inline-flex items-center gap-2 px-4 py-2 text-sm font-bold transition-all text-white
+  @apply inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white
     bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:pointer-events-none;
   border-radius: var(--clay-radius-sm);
-  border: 2px solid rgba(255, 255, 255, 0.25);
+  border: 1px solid color-mix(in oklab, white 22%, transparent);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0));
   box-shadow: var(--clay-shadow-sm);
+  transition-property: background-color, box-shadow, transform, border-color;
   transition-duration: var(--duration-fast);
   transition-timing-function: var(--ease-clay);
 }
 .btn:hover {
-  transform: translateY(-1px) scale(1.02);
+  transform: translateY(-1px);
 }
 .btn:active {
-  transform: translateY(1px) scale(0.98);
+  transform: translateY(0);
   box-shadow: var(--clay-pressed);
 }
 
@@ -359,6 +551,7 @@ h6 {
   @apply inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold transition-all
     text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-(--hub-panel-2) disabled:opacity-50;
   border-radius: var(--clay-radius-sm);
+  transition-property: background-color, color, transform;
   transition-duration: var(--duration-fast);
   transition-timing-function: var(--ease-clay);
 }
@@ -372,8 +565,9 @@ h6 {
     border-neutral-200 bg-neutral-100 text-neutral-800 hover:bg-neutral-200
     dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-neutral-200 dark:hover:bg-(--hub-border);
   border-radius: var(--clay-radius-sm);
-  border-width: 2px;
+  border-width: 1px;
   box-shadow: var(--clay-shadow-sm);
+  transition-property: background-color, border-color, transform, box-shadow;
   transition-duration: var(--duration-fast);
   transition-timing-function: var(--ease-clay);
 }
@@ -389,8 +583,14 @@ h6 {
   @apply w-full border-neutral-300 bg-white px-3 py-2 text-sm outline-none
     focus:ring-2 focus:ring-indigo-500/40 dark:border-(--hub-border) dark:bg-(--hub-sunken) dark:text-neutral-100;
   border-radius: var(--clay-radius-sm);
-  border-width: 2px;
+  border-width: 1px;
   font-family: inherit;
+}
+
+/* A text input with a leading icon: placed after .input so its padding wins (logical, RTL-safe). */
+.input-icon-start {
+  padding-inline-start: 2.25rem;
+  padding-inline-end: 2.25rem;
 }
 
 .label {
@@ -542,6 +742,11 @@ h6 {
   canvas,
   svg {
     max-width: 100%;
+  }
+  /* A select sizes to its longest option; without a cap it widens its flex row past a phone. */
+  select {
+    max-width: 100%;
+    min-width: 0;
   }
 }
 
@@ -712,6 +917,7 @@ html.theme-e-ink {
   --n-400: #a3a3a3;
   --n-500: #737373;
   --n-600: #525252;
+  --n-600-ink: #525252;
   --n-700: #404040;
   --n-800: #262626;
   --n-900: #171717;
@@ -743,20 +949,142 @@ html.theme-e-ink .panel {
 /* .panel is the default card; .panel-elevated is the raised/interactive tile.
    (.panel-glass / .panel-interactive were retired — folded into this one.) */
 .panel-elevated {
-  @apply bg-white border-neutral-200/80 transition-all
-    hover:border-neutral-300 dark:border-(--hub-border) dark:bg-(--hub-panel) dark:hover:border-(--hub-border-strong);
+  @apply bg-white border-neutral-200/80 hover:border-neutral-300
+    dark:border-(--hub-border) dark:bg-(--hub-panel) dark:hover:border-(--hub-border-strong);
   border-radius: var(--clay-radius);
   border-width: var(--clay-border);
+  background-image: var(--bento-sheen);
   box-shadow: var(--clay-shadow);
+  transition-property: transform, border-color, box-shadow;
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-clay);
 }
 .panel-elevated:hover {
   transform: translateY(-2px);
-  box-shadow:
-    7px 9px 20px rgba(79, 70, 229, 0.2),
-    var(--clay-shadow);
-  transition:
-    transform var(--duration-fast) var(--ease-clay),
-    box-shadow var(--duration-fast) var(--ease-clay);
+}
+
+/* ── Bento layout ──────────────────────────────────────────────────────────
+   A 12-column grid whose tiles span by size. Tiles reflow by the CONTAINER width (not the
+   viewport), so the same grid works in the 360px phone shell, the tablet sheet and the wide
+   desktop pane. Order in the DOM is the reading and tab order; spans only change shape. */
+.bento {
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--bento-gap);
+}
+.bento > * {
+  grid-column: span 12;
+  min-width: 0;
+}
+/* Narrow containers: status tiles follow the learning content instead of pushing it down. */
+.bento > .bento-stat {
+  order: 2;
+}
+@container (min-width: 36rem) {
+  .bento > .bento-stat {
+    grid-column: span 4;
+    order: 0;
+  }
+  .bento > .bento-sm {
+    grid-column: span 6;
+  }
+  .bento > .bento-md {
+    grid-column: span 6;
+  }
+  .bento > .bento-lg {
+    grid-column: span 12;
+  }
+}
+@container (min-width: 60rem) {
+  .bento > .bento-sm {
+    grid-column: span 4;
+  }
+  .bento > .bento-md {
+    grid-column: span 6;
+  }
+  .bento > .bento-lg {
+    grid-column: span 8;
+  }
+  .bento > .bento-tall {
+    grid-row: span 2;
+  }
+}
+
+/* Pointer spotlight: a soft accent glow that follows the cursor inside a tile. It is hover
+   feedback only (no information), so it is fine-pointer only and off under reduced motion
+   and e-ink. --mx/--my are set by <BentoTile>. */
+.bento-tile {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.bento-tile::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    22rem circle at var(--mx, 50%) var(--my, 0%),
+    var(--bento-glow),
+    transparent 65%
+  );
+  transition: opacity var(--duration-base) var(--ease-enter);
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .bento-tile:hover::before {
+    opacity: 1;
+  }
+}
+/* The hero tile carries a permanent, quiet accent wash so the eye lands on the next action. */
+.bento-hero {
+  background-image:
+    radial-gradient(60rem circle at 0% 0%, var(--bento-glow), transparent 55%), var(--bento-sheen);
+}
+html.theme-e-ink .bento-tile::before {
+  display: none;
+}
+/* The hero keeps its content in e-ink; only the accent wash goes (a combined display:none rule
+   used to hide the whole "Up next" tile). */
+html.theme-e-ink .bento-hero {
+  background-image: none !important;
+}
+
+/* Page canvas: a fixed, very low-contrast accent bloom behind the content (dark only). It sits
+   behind everything, never scrolls, and carries no information. */
+.dark body {
+  background-image:
+    radial-gradient(
+      70rem 40rem at 85% -10%,
+      color-mix(in oklab, var(--ac-mid) 14%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      50rem 30rem at -10% 110%,
+      color-mix(in oklab, var(--ac-mid) 9%, transparent),
+      transparent 60%
+    );
+  background-attachment: fixed;
+}
+html.theme-e-ink body {
+  background-image: none !important;
+}
+
+/* Tabular figures for every metric so counters and timers do not jitter as digits change. */
+.tnum,
+[data-metric] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Quiet, consistent scrollbars. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--hub-border-strong) 80%, transparent) transparent;
+}
+::selection {
+  background: color-mix(in oklab, var(--ac-mid) 35%, transparent);
 }
 
 /* Subtle glow pulse for active badges and indicators */
@@ -793,4 +1121,34 @@ html.theme-e-ink .panel {
   -webkit-background-clip: text;
   background-clip: text;
   animation: shimmer 3s linear infinite;
+}
+
+/* Active nav item: a soft accent wash plus a 3px marker on the leading edge (logical, so it
+   flips in RTL). The marker is the non-color cue; it does not rely on hue alone. */
+.nav-active {
+  position: relative;
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--ac-mid) 16%, transparent),
+    color-mix(in oklab, var(--ac-mid) 4%, transparent)
+  );
+}
+.nav-active::before {
+  content: '';
+  position: absolute;
+  inset-block: 22%;
+  inset-inline-start: 0;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--ac-mid);
+}
+
+/* Search hit highlight: bold + underline carry the meaning; the wash is decoration only. */
+.search-mark {
+  background: color-mix(in oklab, var(--color-indigo-500, #6366f1) 18%, transparent);
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  border-radius: 2px;
 }

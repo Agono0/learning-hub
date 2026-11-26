@@ -339,7 +339,7 @@ export function InformationGapStudio() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 max-w-full">
           <label htmlFor="mystery-select" className="text-xs font-medium text-secondary">
             Paradox Suite:
           </label>
@@ -374,7 +374,7 @@ export function InformationGapStudio() {
       />
 
       {/* Navigation Tabs */}
-      <div className="flex border-b border-neutral-200/80 dark:border-(--hub-border)/80 text-sm font-medium">
+      <div className="flex border-b border-neutral-200/80 dark:border-(--hub-border)/80 text-sm font-medium overflow-x-auto [&>button]:shrink-0 [&>button]:whitespace-nowrap">
         <button
           type="button"
           onClick={() => setActiveTab('clues')}

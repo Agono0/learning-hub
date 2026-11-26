@@ -321,7 +321,7 @@ export function SchemaDistillationStudio({
       />
 
       {/* Tab Navigation */}
-      <div className="flex border-b border-white/10 text-xs font-bold">
+      <div className="flex border-b border-white/10 text-xs font-bold overflow-x-auto [&>button]:shrink-0 [&>button]:whitespace-nowrap">
         <button
           onClick={() => {
             setActiveTab('hierarchy_web')

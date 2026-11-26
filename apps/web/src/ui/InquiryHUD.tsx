@@ -75,8 +75,8 @@ export function InquiryHUD({ metrics, activeLabTitle, className = '' }: InquiryH
           <div className="p-2 rounded-lg bg-teal-500/10 text-status-success-text dark:text-status-success-text">
             <Microscope className="w-5 h-5" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-semibold uppercase tracking-wider text-secondary">
                 Inquiry &amp; Discovery Telemetry
               </span>
@@ -112,7 +112,7 @@ export function InquiryHUD({ metrics, activeLabTitle, className = '' }: InquiryH
             </span>
             <span className="text-[11px] text-secondary">isolated</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">Chen &amp; Klahr 1999</p>
+          <p className="text-[10px] text-tertiary line-clamp-2">Chen &amp; Klahr 1999</p>
         </div>
 
         {/* 2. Confirmation Bias Index */}
@@ -131,7 +131,7 @@ export function InquiryHUD({ metrics, activeLabTitle, className = '' }: InquiryH
             </span>
             <span className="text-[11px] text-secondary">positive tests</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">Wason 1960 Ratio</p>
+          <p className="text-[10px] text-tertiary line-clamp-2">Wason 1960 Ratio</p>
         </div>
 
         {/* 3. Anomalous Data Resolution */}
@@ -146,7 +146,7 @@ export function InquiryHUD({ metrics, activeLabTitle, className = '' }: InquiryH
             </span>
             <span className="text-[11px] text-secondary">epistemic</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">Chinn &amp; Brewer 1993</p>
+          <p className="text-[10px] text-tertiary line-clamp-2">Chinn &amp; Brewer 1993</p>
         </div>
 
         {/* 4. Scientific Discovery Index */}
@@ -161,7 +161,7 @@ export function InquiryHUD({ metrics, activeLabTitle, className = '' }: InquiryH
             </span>
             <span className="text-[11px] text-secondary">/ 100 SDI</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">Composite score</p>
+          <p className="text-[10px] text-tertiary line-clamp-2">Composite score</p>
         </div>
       </div>
 

@@ -237,7 +237,7 @@ export function ProductiveFailureStudio() {
       {/* Main Studio Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-200 dark:border-(--hub-border) pb-3">
         {/* Scenario Switcher */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 max-w-full">
           <label
             htmlFor="scenario-select"
             className="text-xs font-semibold text-secondary whitespace-nowrap"

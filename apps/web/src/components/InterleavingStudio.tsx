@@ -560,7 +560,7 @@ export function InterleavingStudio({
                   FSRS Identify-the-Invariant Deck ({deckCards.length} cards)
                 </h3>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 max-w-full">
                 {copyStatus && <span className="text-xs text-tertiary">{copyStatus}</span>}
                 {decks.length > 0 && (
                   <select
